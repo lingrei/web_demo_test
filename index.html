@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Soundwave - MVP V18.3 (Audio Assets Integrated)</title>
+    <title>Soundwave - MVP V18.4 (MP3 Fix)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         /* --- 样式 (保持 V8.3/V16.0 标准) --- */
@@ -322,22 +322,23 @@
     // --- Constants ---
     const TICKS = 32;
     const TOTAL_TRACKS = 3; 
-    const TOTAL_DURATION = 16; 
-    const TICK_DURATION = TOTAL_DURATION / TICKS;
     
-    // --- AUDIO ASSETS (V18.3 NEW) ---
-    // 假设这些文件与 index.html 位于同一目录
+    // V18.4 FIX: TOTAL_DURATION will be set dynamically based on BGM
+    let TOTAL_DURATION = 16; 
+    let TICK_DURATION = TOTAL_DURATION / TICKS;
+    
+    // --- AUDIO ASSETS (V18.4 MP3 FIX) ---
     const AUDIO_SOURCES = {
-        bgm: "LEV1_LOOP.mp3",
+        bgm: "LEV1_LOOP.mp3", // Fixed filename (no spaces) and extension
         
-        // Strong Beat (SB)
+        // Strong Beat (SB) - All mp3
         SB1: "On_Beat_1.mp3", 
         SB2: "On_Beat_2.mp3", 
         SB3: "On_Beat_3.mp3", 
         SB4: "On_Beat_4.mp3", 
         SB5: "On_Beat_5.mp3", 
         
-        // Empty Beat (EB)
+        // Empty Beat (EB) - All mp3
         EB1: "Off_Beat_1.mp3", 
         EB2: "Off_Beat_2.mp3", 
         EB3: "Off_Beat_3.mp3", 
@@ -345,7 +346,7 @@
         EB5: "Off_Beat_5.mp3", 
         EB6: "Off_Beat_6.mp3", 
         
-        // No Genre (NG / exp)
+        // No Genre (NG / exp) - All mp3
         NG1: "exp_Beat_1.mp3", 
         NG2: "exp_Beat_2.mp3", 
         NG3: "exp_Beat_3.mp3", 
@@ -785,9 +786,7 @@
         });
     }
 
-    // --- Audio Logic (V18.3 REPLACED) ---
-    // 保留了原有的逻辑接口 (init, schedule, configureBgmSegment) 
-    // 但内部不再使用 Synth 生成声音，改为直接播放 WAV
+    // --- Audio Logic (V18.4 REPLACED) ---
     let visualInterval = null;
     let playbackStartTime = 0;
     let playbackTimer = null; 
@@ -809,15 +808,14 @@
 
         await Tone.start();
 
-        // Initialize Effects (Preserved for SB4/SB5/EB5 Logic)
+        // Initialize Effects
         effects.filter = new Tone.Filter(20000, "lowpass").toDestination();
         effects.crusher = new Tone.BitCrusher(16).toDestination(); 
         effects.phaser = new Tone.Phaser({ frequency: 15, octaves: 5, baseFrequency: 1000, wet: 0 }).toDestination();
 
         // 1. Load BGM Loops
-        // Notice: As requested, both players now point to "LEV1 LOOP.wav" to serve as placeholders
         bgPlayer = new Tone.Player({ url: AUDIO_SOURCES.bgm, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -2 });
-        losePlayer = new Tone.Player({ url: AUDIO_SOURCES.bgm, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -2 }); // Using same asset for now
+        losePlayer = new Tone.Player({ url: AUDIO_SOURCES.bgm, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -2 }); 
 
         // Connect BGM to Effects Chain
         bgPlayer.disconnect(); bgPlayer.connect(effects.filter);
@@ -826,7 +824,6 @@
         effects.crusher.connect(effects.phaser);
 
         // 2. Load Item Samples
-        // Filter out 'bgm' key, keep items
         const itemUrls = {};
         for (const [key, url] of Object.entries(AUDIO_SOURCES)) {
             if (key !== 'bgm') itemUrls[key] = url;
@@ -840,15 +837,20 @@
 
         // Wait for all buffers
         await Tone.loaded();
+        
+        // V18.4 FIX: Auto-adjust duration to BGM length to prevent RangeError
+        if (bgPlayer.buffer.duration > 0) {
+            TOTAL_DURATION = bgPlayer.buffer.duration;
+            TICK_DURATION = TOTAL_DURATION / TICKS;
+            console.log(`Audio Loaded. Total Duration set to: ${TOTAL_DURATION}s`);
+        }
+
         console.log("Audio assets loaded.");
         if(btn) btn.innerText = UI_TEXT[state.lang].submit;
         audioInitialized = true;
     }
 
     function configureBgmSegment() {
-        // V18.3: 当前所有状态暂且都映射到同一个 BGM 文件的完整长度
-        // 保留此函数是为了未来替换多 BGM 时无需重写逻辑
-        // 假设 LEV1 LOOP.wav 是完整的 Loop，不需要 offset
         if(bgPlayer) { bgPlayer.loopStart = 0; bgPlayer.loopEnd = TOTAL_DURATION; }
         if(losePlayer) { losePlayer.loopStart = 0; losePlayer.loopEnd = TOTAL_DURATION; }
         return 0; 
@@ -860,7 +862,7 @@
         Tone.Transport.stop();
         Tone.Transport.position = 0;
 
-        // BGM Scheduling (Logic Preserved)
+        // BGM Scheduling
         const player = (state.lives === 1) ? losePlayer : bgPlayer;
         const other = (state.lives === 1) ? bgPlayer : losePlayer;
         if(other.state==="started") other.stop();
@@ -875,7 +877,7 @@
         effects.crusher.bits.value = 16;
         effects.phaser.wet.value = 0;
 
-        // Item Scheduling (Replaced with WAV triggering)
+        // Item Scheduling (WAV triggering)
         state.placedItems.forEach(item => {
             const start = item.start * TICK_DURATION;
             const duration = item.data.len * TICK_DURATION;
@@ -888,13 +890,13 @@
                 }
             }, start);
 
-            // Engine Effects Automation (Preserved Logic)
+            // Engine Effects Automation
             if (id === "SB4") { 
                 Tone.Transport.schedule(t => effects.filter.frequency.rampTo(400, 0.2, t), start); 
                 Tone.Transport.schedule(t => effects.filter.frequency.rampTo(20000, 0.2, t), start + duration); 
             }
             else if (id === "SB5") { 
-                if (start % 8 === 0) { // Matches logic: Start of Strong Beat
+                if (start % 8 === 0) { 
                     Tone.Transport.schedule(t => effects.phaser.wet.rampTo(1, 0.2, t), start); 
                     Tone.Transport.schedule(t => effects.phaser.wet.rampTo(0, 0.2, t), start + duration); 
                 }
@@ -925,7 +927,8 @@
 
         startVisualEngine(false);
         if (playbackTimer) clearTimeout(playbackTimer);
-        playbackTimer = setTimeout(finishPlayback, TOTAL_DURATION * 1000 + 150);
+        // Safety buffer: TOTAL_DURATION + 0.15s
+        playbackTimer = setTimeout(finishPlayback, (TOTAL_DURATION * 1000) + 150);
     }
 
     function startVisualEngine(fastForward) {

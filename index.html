@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Soundwave - MVP V19.1 (Sell Feedback)</title>
+    <title>Soundwave - MVP V19.2 (Mac Fix & Layout)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         /* --- 基础样式 --- */
@@ -61,6 +61,8 @@
         .placed-item:active { cursor: grabbing; z-index: 20; }
         .placed-item.selected-placed { border-color: white; z-index: 20; transform: scale(1.02); }
         .placed-item.playing-active { filter: brightness(2.5) contrast(1.5) !important; box-shadow: 0 0 30px white !important; z-index: 50 !important; transform: scale(1.1); }
+        
+        /* Glows */
         .placed-item.glowing-score { box-shadow: inset 0 0 10px var(--c-score); border: 2px solid var(--c-score); background-color: rgba(255,215,0,0.3) !important; }
         .placed-item.glowing-support { box-shadow: inset 0 0 10px var(--c-support); border: 2px solid var(--c-support); background-color: rgba(0,229,255,0.3) !important; }
         .placed-item.glowing-engine { box-shadow: inset 0 0 10px var(--c-engine); border: 2px solid var(--c-engine); background-color: rgba(213,0,249,0.3) !important; }
@@ -115,10 +117,15 @@
         .tag-score { color: var(--c-score); border-color: var(--c-score); }
         .tag-support { color: var(--c-support); border-color: var(--c-support); }
         .tag-engine { color: var(--c-engine); border-color: var(--c-engine); }
+        
+        /* FIX: Progress Bar Layout */
         .campaign-status-modal { margin-bottom: 15px; font-size: 16px; color: #aaa; letter-spacing: 1px; display: flex; justify-content: center; gap: 20px; }
+        .status-item { display: flex; align-items: center; gap: 5px; }
+        .status-dots { display: flex; gap: 4px; } /* Added display: flex for horizontal dots */
         .status-dot { width: 12px; height: 12px; border-radius: 50%; background: #444; }
         .status-dot.done { background: var(--highlight); }
         .status-dot.current { border: 2px solid white; transform: scale(1.2); }
+        
         .help-section { text-align: left; margin-bottom: 20px; border-bottom: 1px solid #555; padding-bottom: 15px; }
     </style>
 </head>
@@ -345,7 +352,7 @@
         levelIndex: 0, selectedInvItem: null, shopLocked: false, isPlaying: false,
         gold: 150, cpuPurchasedRound: 0, roundBase: 10, currentShopItems: [],
         ng1PermanentStacks: 0, lastRoundReward: 0, lives: 3,
-        lang: 'cn' 
+        lang: 'en'  // CHANGED: Default is now English
     };
 
     // --- Drag State ---
@@ -788,8 +795,8 @@
         effects.filter = new Tone.Filter(20000, "lowpass").toDestination();
         effects.crusher = new Tone.BitCrusher(16).toDestination(); 
         effects.phaser = new Tone.Phaser({ frequency: 15, octaves: 5, baseFrequency: 1000, wet: 0 }).toDestination();
-        bgPlayer = new Tone.Player({ url: AUDIO_SOURCES.bgm, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -7 });
-        losePlayer = new Tone.Player({ url: AUDIO_SOURCES.bgm, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -7 }); 
+        bgPlayer = new Tone.Player({ url: AUDIO_SOURCES.bgm, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -8 });
+        losePlayer = new Tone.Player({ url: AUDIO_SOURCES.bgm, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -8 }); 
         bgPlayer.disconnect(); bgPlayer.connect(effects.filter);
         losePlayer.disconnect(); losePlayer.connect(effects.filter);
         effects.filter.connect(effects.crusher);
@@ -1001,7 +1008,36 @@
         }); 
         return output; 
     }
-    function updateRealTimeState() { updateCPU(); const results = calculateLogic(); state.placedItems.forEach(p => { const res = results.find(r => r.record === p); p.el.classList.remove('glowing-score', 'glowing-support', 'glowing-engine'); if(res && res.triggered) { if (p.data.type === "score") p.el.classList.add('glowing-score'); else if (p.data.type === "support") p.el.classList.add('glowing-support'); else if (p.data.type === "engine") p.el.classList.add('glowing-engine'); } }); }
+
+    // --- FIX: Optimized for Mac Safari/Chrome (No DOM Thrashing) ---
+    function updateRealTimeState() { 
+        updateCPU(); 
+        const results = calculateLogic(); 
+        
+        state.placedItems.forEach(p => { 
+            const res = results.find(r => r.record === p); 
+            const shouldGlow = res && res.triggered;
+            
+            // Determine target class string
+            let targetClass = '';
+            if (shouldGlow) {
+                if (p.data.type === "score") targetClass = 'glowing-score';
+                else if (p.data.type === "support") targetClass = 'glowing-support';
+                else if (p.data.type === "engine") targetClass = 'glowing-engine';
+            }
+
+            // Only modify DOM if classList doesn't match target state
+            // This prevents "remove -> add" flickering on Mac
+            ['glowing-score', 'glowing-support', 'glowing-engine'].forEach(cls => {
+                if (cls === targetClass) {
+                    if (!p.el.classList.contains(cls)) p.el.classList.add(cls);
+                } else {
+                    if (p.el.classList.contains(cls)) p.el.classList.remove(cls);
+                }
+            });
+        }); 
+    }
+
     function showDetail(item) { document.getElementById('detailTitle').innerText = item.name[state.lang]; document.getElementById('detailTitle').style.color = item.color; document.getElementById('detailMeta').innerHTML = `<span>CPU: ${item.cpu}</span><span>${state.lang==='en'?'Len':'长度'}: ${item.len}</span><span>${state.lang==='en'?'Base':'基础'}: ${item.base}</span>`; let desc = item.desc[state.lang]; if (item.id === "NG1") { desc += `<br><span style="color:#ffd700; font-weight:bold;">[${UI_TEXT[state.lang].ng1Charge}: ${state.ng1PermanentStacks}]</span>`; } for (const key in DEFINITIONS[state.lang]) { const regex = new RegExp(`\\[${key}\\]`, "g"); desc = desc.replace(regex, `<span class="tooltip-ref" onmouseenter="showTooltip(event, '${key}')" onmouseleave="hideTooltip()">[${key}]</span>`); } document.getElementById('detailContent').innerHTML = desc; }
 </script>
 </body>

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Soundwave - MVP V19.2 (Mac Fix & Layout)</title>
+    <title>Soundwave - MVP V19.3 (UI Refine & Debug)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         /* --- 基础样式 --- */
@@ -11,7 +11,8 @@
 
         body { background-color: var(--bg-color); color: var(--text-color); font-family: 'Segoe UI', sans-serif; margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; user-select: none; }
         
-        .container { width: 98vw; max-width: 1600px; height: 95vh; display: grid; grid-template-columns: 220px 1fr 260px; grid-template-rows: 70px 1fr 180px; gap: 8px; background: #2a2a2a; padding: 10px; box-shadow: 0 0 50px rgba(0,0,0,0.8); border-radius: 8px; }
+        /* 布局调整：Header 高度保持 70px，给 CPU 足够空间 */
+        .container { width: 98vw; max-width: 1600px; height: 95vh; display: grid; grid-template-columns: 220px 1fr 260px; grid-template-rows: 80px 1fr 180px; gap: 8px; background: #2a2a2a; padding: 10px; box-shadow: 0 0 50px rgba(0,0,0,0.8); border-radius: 8px; }
         
         /* Header */
         .header { grid-column: 1 / -1; grid-row: 1 / 2; background: var(--panel-color); border: var(--border); border-radius: 4px; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; position: relative; }
@@ -21,20 +22,30 @@
         .btn-help { background: #1976d2; } .btn-help:hover { background: #1565c0; }
         .btn-clear { background: #d32f2f; } .btn-clear:hover { background: #f44336; }
         
-        /* Stats */
-        .stat-group { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; gap: 20px; align-items: center; justify-content: center; z-index: 5; }
-        .stat-block { display: flex; flex-direction: column; align-items: center; background: #222; padding: 5px 15px; border-radius: 8px; border: 1px solid #444; min-width: 90px; }
-        .stat-label { font-size: 10px; color: #aaa; margin-bottom: 2px; text-transform: uppercase; }
-        .stat-val { font-size: 18px; font-weight: bold; color: white; }
-        .gold-display { color: var(--gold-color); text-shadow: 0 0 5px rgba(255, 215, 0, 0.3); }
-        .cpu-container { width: 180px; display: flex; flex-direction: column; gap: 2px; }
-        .cpu-track { height: 10px; background: #111; border-radius: 6px; overflow: hidden; border: 1px solid #444; }
-        .cpu-fill { height: 100%; width: 0%; background: var(--highlight); transition: width 0.3s; }
-        .cpu-fill.danger { background: #f44336; }
+        /* Debug Panel (Restored) */
+        .header-right { display: flex; align-items: center; justify-content: flex-end; min-width: 150px; z-index: 10; }
+        .debug-panel { display: flex; gap: 4px; align-items: center; background: #111; padding: 4px 8px; border: 1px solid #444; border-radius: 4px; }
+        .debug-text { color: #666; font-size: 10px; font-weight: bold; margin-right: 2px; }
+        .debug-input { width: 40px; background: #333; color: white; border: 1px solid #555; padding: 2px; font-size: 11px; text-align: center; }
+        .debug-btn { background: #555; color: white; border: none; padding: 3px 8px; font-size: 10px; cursor: pointer; border-radius: 2px; }
+        .debug-btn:hover { background: #777; }
+
+        /* Stats (CPU & Target Center) */
+        .stat-group { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; gap: 30px; align-items: center; justify-content: center; z-index: 5; }
+        .stat-block { display: flex; flex-direction: column; align-items: center; background: #222; padding: 8px 20px; border-radius: 8px; border: 1px solid #444; min-width: 100px; }
+        .stat-label { font-size: 11px; color: #aaa; margin-bottom: 4px; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; }
+        .stat-val { font-size: 24px; font-weight: bold; color: white; } /* Target Bigger */
+        
+        /* Enlarged CPU Bar */
+        .cpu-container { width: 300px; display: flex; flex-direction: column; gap: 4px; } /* Wider */
+        .cpu-track { height: 16px; background: #111; border-radius: 8px; overflow: hidden; border: 1px solid #555; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); } /* Thicker */
+        .cpu-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #4caf50, #81c784); transition: width 0.3s; }
+        .cpu-fill.danger { background: linear-gradient(90deg, #f44336, #e57373); }
+        .cpu-text-row { display: flex; justify-content: space-between; font-size: 12px; color: #ccc; font-weight: bold; padding: 0 4px; }
 
         /* Panels */
         .inventory-panel { grid-column: 1 / 2; grid-row: 2 / 3; background: var(--panel-color); border: var(--border); display: flex; flex-direction: column; overflow: hidden; }
-        .panel-header { background: #222; padding: 8px; font-weight: bold; text-align: center; border-bottom: var(--border); font-size: 13px; text-transform: uppercase; }
+        .panel-header { background: #222; padding: 10px 15px; font-weight: bold; text-align: center; border-bottom: var(--border); font-size: 13px; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; }
         .inventory-list { flex: 1; padding: 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
         .inv-item { background: #444; padding: 6px 8px; border-radius: 4px; cursor: grab; border: 1px solid transparent; transition: all 0.2s; border-left-width: 4px; position: relative; }
         .inv-item:hover { background: #505050; } 
@@ -83,6 +94,9 @@
         .btn-trade { flex: 1; padding: 8px; border: none; cursor: pointer; font-weight: bold; font-size: 11px; border-radius: 4px; color: white; }
         .btn-cpu { background: #2196f3; display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
         
+        /* Funds Display in Shop Header */
+        .shop-funds { color: var(--gold-color); font-size: 16px; font-weight: bold; text-shadow: 0 0 5px rgba(255, 215, 0, 0.3); }
+
         .bottom-panel { grid-column: 1 / -1; grid-row: 3 / 4; display: flex; gap: 10px; padding-top: 5px; position: relative; overflow: hidden; }
         .info-box { background: var(--panel-color); border: var(--border); padding: 10px 15px; border-radius: 4px; overflow-y: auto; transition: filter 0.3s; }
         .info-left { flex: 2; border-left: 4px solid var(--highlight); } 
@@ -102,7 +116,6 @@
         .item-being-dragged { opacity: 0.4; filter: grayscale(1); }
         .skip-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(211, 47, 47, 0.9); color: white; display: none; justify-content: center; align-items: center; cursor: pointer; z-index: 100; font-weight: bold; font-size: 24px; }
         
-        /* NEW: Sell Tooltip */
         .drag-sell-tooltip { position: fixed; z-index: 10000; background: #222; border: 2px solid gold; padding: 5px 10px; border-radius: 6px; font-weight: bold; font-size: 14px; color: gold; box-shadow: 0 0 15px rgba(255, 215, 0, 0.5); pointer-events: none; transform: translate(15px, -15px); }
 
         /* Modals & Tooltips */
@@ -118,14 +131,12 @@
         .tag-support { color: var(--c-support); border-color: var(--c-support); }
         .tag-engine { color: var(--c-engine); border-color: var(--c-engine); }
         
-        /* FIX: Progress Bar Layout */
         .campaign-status-modal { margin-bottom: 15px; font-size: 16px; color: #aaa; letter-spacing: 1px; display: flex; justify-content: center; gap: 20px; }
         .status-item { display: flex; align-items: center; gap: 5px; }
-        .status-dots { display: flex; gap: 4px; } /* Added display: flex for horizontal dots */
+        .status-dots { display: flex; gap: 4px; }
         .status-dot { width: 12px; height: 12px; border-radius: 50%; background: #444; }
         .status-dot.done { background: var(--highlight); }
         .status-dot.current { border: 2px solid white; transform: scale(1.2); }
-        
         .help-section { text-align: left; margin-bottom: 20px; border-bottom: 1px solid #555; padding-bottom: 15px; }
     </style>
 </head>
@@ -146,7 +157,7 @@
                 <div class="stat-label" id="lblCpu">★ CPU</div>
                 <div class="cpu-container">
                     <div class="cpu-track"><div class="cpu-fill" id="cpuBar"></div></div>
-                    <div style="display:flex; justify-content:space-between; font-size:10px; color:#888;">
+                    <div class="cpu-text-row">
                         <span id="cpuText">0</span>
                         <span id="maxCpuText">Max: 12</span>
                     </div>
@@ -157,14 +168,17 @@
                 <div class="stat-label" id="lblTarget">TARGET</div>
                 <div class="stat-val" id="targetText">360</div>
             </div>
-
-            <div class="stat-block">
-                <div class="stat-label" id="lblFunds">FUNDS (G)</div>
-                <div class="stat-val gold-display" id="goldText">150</div>
-            </div>
         </div>
 
-        <div class="header-right"></div> 
+        <div class="header-right">
+            <div class="debug-panel">
+                <span class="debug-text">DBG:</span>
+                <input type="number" id="dbgGold" class="debug-input" placeholder="G">
+                <button class="debug-btn" onclick="debugSetGold()">Set</button>
+                <input type="number" id="dbgTarget" class="debug-input" placeholder="Tgt">
+                <button class="debug-btn" onclick="debugSetTarget()">Set</button>
+            </div>
+        </div> 
     </div>
 
     <div class="inventory-panel">
@@ -178,7 +192,10 @@
     </div>
 
     <div class="shop-panel" id="shopPanel">
-        <div class="panel-header" id="lblShop">SHOP</div>
+        <div class="panel-header">
+            <span id="lblShop">SHOP</span>
+            <span class="shop-funds" id="goldText">150 G</span>
+        </div>
         <div class="shop-list" id="shopList"></div>
         <div class="shop-controls">
             <div class="trade-area">
@@ -352,7 +369,7 @@
         levelIndex: 0, selectedInvItem: null, shopLocked: false, isPlaying: false,
         gold: 150, cpuPurchasedRound: 0, roundBase: 10, currentShopItems: [],
         ng1PermanentStacks: 0, lastRoundReward: 0, lives: 3,
-        lang: 'en'  // CHANGED: Default is now English
+        lang: 'en'  // Default EN
     };
 
     // --- Drag State ---
@@ -364,7 +381,7 @@
         sourceInvItem: null, // if inventory
         ghostEl: null,
         previewEl: null,
-        sellTooltip: null, // NEW: Tooltip Element
+        sellTooltip: null, 
         currentHover: null,
         startX: 0, startY: 0
     };
@@ -376,6 +393,10 @@
         // Global Drag Listeners
         window.addEventListener('mousemove', onGlobalDragMove);
         window.addEventListener('mouseup', onGlobalDragEnd);
+        
+        // Expose Debug
+        window.debugSetGold = () => { const val = parseInt(document.getElementById('dbgGold').value); if(!isNaN(val)) { state.gold = val; updateUI(); } };
+        window.debugSetTarget = () => { const val = parseInt(document.getElementById('dbgTarget').value); if(!isNaN(val)) { config.target = val; updateUI(); } };
     });
 
     // --- Drag Logic ---
@@ -470,7 +491,7 @@
                     shopPanel.classList.add('drag-target-sell');
                     dragManager.hoverType = 'shop';
                     
-                    // SHOW SELL PRICE TOOLTIP (NEW)
+                    // SHOW SELL PRICE TOOLTIP
                     if (!dragManager.sellTooltip) {
                         const tooltip = document.createElement('div');
                         tooltip.className = 'drag-sell-tooltip';
@@ -615,7 +636,7 @@
         document.getElementById('txtClear').innerText = t.clear;
         document.getElementById('lblCpu').innerText = t.cpu;
         document.getElementById('lblTarget').innerText = t.target;
-        document.getElementById('lblFunds').innerText = t.funds;
+        // document.getElementById('lblFunds').innerText = t.funds; // REMOVED from Header
         document.getElementById('lblInventory').innerText = t.inventory;
         document.getElementById('lblShop').innerText = t.shop;
         document.getElementById('txtUpCpu').innerText = t.upCpu;
@@ -698,13 +719,13 @@
         document.getElementById('trackNum').innerText = config.activeTracks;
         document.getElementById('maxCpuText').innerText = `Max: ${config.maxCpu}`;
         document.getElementById('targetText').innerText = config.target;
-        document.getElementById('goldText').innerText = state.gold;
+        document.getElementById('goldText').innerText = state.gold + " G"; // Update new location
         updateInventoryUI();
         updateCpuButton();
         updateCPU();
     }
 
-    function updateGold(amount) { state.gold += amount; document.getElementById('goldText').innerText = state.gold; }
+    function updateGold(amount) { state.gold += amount; document.getElementById('goldText').innerText = state.gold + " G"; }
     function updateCpuButton() { const cost = 30 + (Math.min(state.cpuPurchasedRound, 3) * state.roundBase); document.getElementById('cpuPriceText').innerText = `${cost}G`; }
     function updateCPU() { const used = state.placedItems.reduce((a,b)=>a+b.data.cpu, 0); const pct = Math.min(100, (used/config.maxCpu)*100); const bar = document.getElementById('cpuBar'); if(bar) { bar.style.width = pct+"%"; bar.className = "cpu-fill " + (pct>=100?"danger":""); } document.getElementById('cpuText').innerText = `${used}`; }
 

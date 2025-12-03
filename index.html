@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Soundwave - MVP V19.3 (UI Refine & Debug)</title>
+    <title>Soundwave - MVP V19.4 (Text Update)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         /* --- 基础样式 --- */
@@ -11,7 +11,6 @@
 
         body { background-color: var(--bg-color); color: var(--text-color); font-family: 'Segoe UI', sans-serif; margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; user-select: none; }
         
-        /* 布局调整：Header 高度保持 70px，给 CPU 足够空间 */
         .container { width: 98vw; max-width: 1600px; height: 95vh; display: grid; grid-template-columns: 220px 1fr 260px; grid-template-rows: 80px 1fr 180px; gap: 8px; background: #2a2a2a; padding: 10px; box-shadow: 0 0 50px rgba(0,0,0,0.8); border-radius: 8px; }
         
         /* Header */
@@ -22,7 +21,7 @@
         .btn-help { background: #1976d2; } .btn-help:hover { background: #1565c0; }
         .btn-clear { background: #d32f2f; } .btn-clear:hover { background: #f44336; }
         
-        /* Debug Panel (Restored) */
+        /* Debug Panel */
         .header-right { display: flex; align-items: center; justify-content: flex-end; min-width: 150px; z-index: 10; }
         .debug-panel { display: flex; gap: 4px; align-items: center; background: #111; padding: 4px 8px; border: 1px solid #444; border-radius: 4px; }
         .debug-text { color: #666; font-size: 10px; font-weight: bold; margin-right: 2px; }
@@ -34,11 +33,11 @@
         .stat-group { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; gap: 30px; align-items: center; justify-content: center; z-index: 5; }
         .stat-block { display: flex; flex-direction: column; align-items: center; background: #222; padding: 8px 20px; border-radius: 8px; border: 1px solid #444; min-width: 100px; }
         .stat-label { font-size: 11px; color: #aaa; margin-bottom: 4px; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; }
-        .stat-val { font-size: 24px; font-weight: bold; color: white; } /* Target Bigger */
+        .stat-val { font-size: 24px; font-weight: bold; color: white; }
         
         /* Enlarged CPU Bar */
-        .cpu-container { width: 300px; display: flex; flex-direction: column; gap: 4px; } /* Wider */
-        .cpu-track { height: 16px; background: #111; border-radius: 8px; overflow: hidden; border: 1px solid #555; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); } /* Thicker */
+        .cpu-container { width: 300px; display: flex; flex-direction: column; gap: 4px; } 
+        .cpu-track { height: 16px; background: #111; border-radius: 8px; overflow: hidden; border: 1px solid #555; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); } 
         .cpu-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #4caf50, #81c784); transition: width 0.3s; }
         .cpu-fill.danger { background: linear-gradient(90deg, #f44336, #e57373); }
         .cpu-text-row { display: flex; justify-content: space-between; font-size: 12px; color: #ccc; font-weight: bold; padding: 0 4px; }
@@ -94,7 +93,6 @@
         .btn-trade { flex: 1; padding: 8px; border: none; cursor: pointer; font-weight: bold; font-size: 11px; border-radius: 4px; color: white; }
         .btn-cpu { background: #2196f3; display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
         
-        /* Funds Display in Shop Header */
         .shop-funds { color: var(--gold-color); font-size: 16px; font-weight: bold; text-shadow: 0 0 5px rgba(255, 215, 0, 0.3); }
 
         .bottom-panel { grid-column: 1 / -1; grid-row: 3 / 4; display: flex; gap: 10px; padding-top: 5px; position: relative; overflow: hidden; }
@@ -332,26 +330,41 @@
     };
 
     const DEFINITIONS = {
-        en: { "Strong Beat": "1st and 3rd beat.", "Weak Beat": "2nd and 4th beat.", "Same Track": "Same row items.", "Sync": "Same time vertical trigger.", "Empty Slot": "Unoccupied Grid.", "Consume": "Reduce target score." },
-        cn: { "强拍": "每小节第1、3拍。", "弱拍": "每小节第2、4拍。", "同轨": "同一行道具。", "同步": "同一时间点垂直触发。", "空拍": "未占用格子。", "吞噬": "减少目标分数归为己有。" }
+        en: { 
+            "Strong Beat": "The start of the 1st and 3rd beat of a bar.", 
+            "Weak Beat": "The 2nd and 4th beat of a bar.", 
+            "Same Track": "items placed on the same horizontal track.", 
+            "Sync": "Refers to items triggered at the exact same time (vertical column) on different tracks.", 
+            "Empty Slot": "An unoccupied Grid unit on the timeline. (1 Beat = 4 Grids).", 
+            "Empty Slots": "An unoccupied Grid unit on the timeline. (1 Beat = 4 Grids).",
+            "Consume": "Reduces the Groove of target items and uses the reduced amount to calculate self Groove." 
+        },
+        cn: { 
+            "强拍": "每小节的第1拍与第3拍。", 
+            "弱拍": "每小节的第2拍与第4拍。", 
+            "同轨": "处于同一音轨上的道具。", 
+            "同步": "垂直方向上，与该道具在同一时间点被触发的其他道具。", 
+            "空拍": "DAW中最小的空间单位。1拍 = 4格。", // "格" mapped to "空拍" text
+            "吞噬": "减少目标道具的分数，并将其作为自身分数的计算依据。" 
+        }
     };
 
     const DB = [
-        { id: "SB1", name: {en: "Kick Drum", cn: "底鼓"}, desc: {en: "Gain 20 Groove. +10 if on [Strong Beat].", cn: "获得20分。若在[强拍]额外+10。"}, len: 4, cpu: 1, base: 20, type: "score", color: "#ffecb3", price: 75, rarity: 1 },
-        { id: "SB2", name: {en: "Sidechain", cn: "侧链"}, desc: {en: "[Sync] items +50%. +25% if on [Strong Beat].", cn: "[同步]道具+50%。若在[强拍]额外+25%。"}, len: 4, cpu: 1, base: 0, type: "support", color: "#b2ebf2", price: 75, rarity: 1 },
-        { id: "SB3", name: {en: "Accent", cn: "重音标记"}, desc: {en: "[Same Track] Next +100%. Next counts as [Strong Beat].", cn: "[同轨]下一个+100%。下一个视为[强拍]。"}, len: 4, cpu: 2, base: 0, type: "support", color: "#80deea", price: 100, rarity: 2 },
-        { id: "SB4", name: {en: "Master Clock", cn: "主时钟"}, desc: {en: "If 5+ [Strong Beat] used: Future [Strong Beat] x1.5.", cn: "若已触发5次[强拍]：后续[强拍] x1.5。"}, len: 4, cpu: 4, base: 0, type: "engine", color: "#e1bee7", price: 150, rarity: 3 },
-        { id: "SB5", name: {en: "Quantizer", cn: "量化器"}, desc: {en: "If at start of [Strong Beat], [Weak Beat] becomes Strong.", cn: "若在[强拍]起点，全场[弱拍]变强拍。"}, len: 8, cpu: 4, base: 0, type: "engine", color: "#ce93d8", price: 150, rarity: 3 },
-        { id: "EB1", name: {en: "Rest Note", cn: "休止符"}, desc: {en: "Gain 14. If gap ≥4 [Empty Slot], +20.", cn: "获得14分。若间隔≥4[空拍]，额外+20。"}, len: 2, cpu: 1, base: 14, type: "score", color: "#ffe082", price: 75, rarity: 1 },
-        { id: "EB2", name: {en: "Pre-Delay", cn: "预延时"}, desc: {en: "Next +35%. +12.5% per gap [Empty Slot].", cn: "下一个+35%。每间隔1[空拍]额外+12.5%。"}, len: 2, cpu: 1, base: 0, type: "support", color: "#4dd0e1", price: 75, rarity: 1 },
-        { id: "EB3", name: {en: "Isolation Booth", cn: "隔离室"}, desc: {en: "[Sync] +10. +7.5% per neighbor gap.", cn: "[同步]+10分。前后每1[空拍]额外+7.5%。"}, len: 4, cpu: 2, base: 0, type: "support", color: "#00bcd4", price: 100, rarity: 2 },
-        { id: "EB4", name: {en: "Atmosphere", cn: "氛围采样"}, desc: {en: "Gain 30. +5% per past [Empty Slot].", cn: "获得30分。此前每1[空拍]+5%。"}, len: 4, cpu: 3, base: 30, type: "score", color: "#ffd54f", price: 150, rarity: 3 },
-        { id: "EB5", name: {en: "Time Stretch", cn: "时间拉伸"}, desc: {en: "Passive: 1 [Empty Slot] counts as 2.", cn: "被动：1个[空拍]视为2个。"}, len: 8, cpu: 4, base: 0, type: "engine", color: "#ba68c8", price: 150, rarity: 3 },
-        { id: "EB6", name: {en: "Pad", cn: "铺底音色"}, desc: {en: "Gain 30. +5% per current [Empty Slot].", cn: "获得30分。全场每1[空拍]+5%。"}, len: 8, cpu: 2, base: 30, type: "score", color: "#ffca28", price: 100, rarity: 2 },
-        { id: "NG1", name: {en: "Viral Hit", cn: "网红单曲"}, desc: {en: "Gain 30. Sell: Discount shop per play.", cn: "获得30分。卖出：基于上场次数给商店打折。"}, len: 8, cpu: 1, base: 30, type: "score", color: "#cfd8dc", price: 75, rarity: 1 },
-        { id: "NG2", name: {en: "Layering", cn: "叠层"}, desc: {en: "Gain 20. If [Sync], +10.", cn: "获得20分。若[同步]触发，额外+10。"}, len: 4, cpu: 1, base: 20, type: "score", color: "#b0bec5", price: 75, rarity: 1 },
-        { id: "NG3", name: {en: "Solo Fader", cn: "独奏推子"}, desc: {en: "Prev/Next +35%. If no [Sync], +35% more.", cn: "前后+35%。若无[同步]物品，额外+35%。"}, len: 2, cpu: 1, base: 0, type: "support", color: "#90a4ae", price: 100, rarity: 2 },
-        { id: "NG4", name: {en: "Noise Gate", cn: "降噪门"}, desc: {en: "[Consume] [Sync] items. Gain 1.5x consumed.", cn: "[吞噬]所有[同步]物品。获得1.5倍吞噬分。"}, len: 4, cpu: 2, base: 40, type: "score", color: "#78909c", price: 150, rarity: 3 }
+        { id: "SB1", name: {en: "Kick Drum", cn: "底鼓"}, desc: {en: "Gain 20 Groove on trigger. If placed on a [Strong Beat], gain an additional 10 Groove.", cn: "触发时获得 20 Groove。<br>若放置在 [强拍] 上，额外获得 10 Groove。"}, len: 4, cpu: 1, base: 20, type: "score", color: "#ffecb3", price: 75, rarity: 1 },
+        { id: "SB2", name: {en: "Sidechain", cn: "侧链"}, desc: {en: "Increase Groove of all [Sync] items by +50%. If placed on a [Strong Beat], increase this effect by an additional +25%.", cn: "使所有 [同步] 道具 Groove +50%。<br>若放置在 [强拍] 上，该增幅效果额外 +25%。"}, len: 4, cpu: 1, base: 0, type: "support", color: "#b2ebf2", price: 75, rarity: 1 },
+        { id: "SB3", name: {en: "Accent", cn: "重音标记"}, desc: {en: "[Same Track] Increase Groove of the Next item by +100%. If placed on a [Strong Beat], the Next item is treated as being triggered on a [Strong Beat]", cn: "[同轨] 使 下一个 道具 [Groove] +100%。<br>若放置在 [强拍] 上，下一个 道具将被视为 在[强拍]触发。"}, len: 4, cpu: 2, base: 0, type: "support", color: "#80deea", price: 100, rarity: 2 },
+        { id: "SB4", name: {en: "Master Clock", cn: "主时钟"}, desc: {en: "If [Strong Beat] effects have triggered at least 5 times before this item triggers: Multiply the Groove of all subsequent [Strong Beat] items by 1.5x.", cn: "若 触发前 已触发至少 5次  [强拍] 效果：<br>后续 触发的所有 [强拍] 道具 [Groove] x 1.5。"}, len: 4, cpu: 4, base: 0, type: "engine", color: "#e1bee7", price: 150, rarity: 3 },
+        { id: "SB5", name: {en: "Quantizer", cn: "量化器"}, desc: {en: "If placed on the start of a [Strong Beat], all [Weak Beat] positions on the timeline are treated as [Strong Beat].", cn: "若放置在 [强拍] 的起始点上，全场所有的 [弱拍] 均被视为 [强拍]。"}, len: 8, cpu: 4, base: 0, type: "engine", color: "#ce93d8", price: 150, rarity: 3 },
+        { id: "EB1", name: {en: "Rest Note", cn: "休止符"}, desc: {en: "Gain 14 Groove on trigger. If the Previous item on the [Same Track] is ≥ 4 [Empty Slots] away, gain an additional 20 Groove.", cn: "触发时获得 14 [Groove]。<br>若 [同轨]前一个 道具与自身间隔 ≥ 4 [空拍]，额外获得 20 [Groove]。"}, len: 2, cpu: 1, base: 14, type: "score", color: "#ffe082", price: 75, rarity: 1 },
+        { id: "EB2", name: {en: "Pre-Delay", cn: "预延时"}, desc: {en: "[Same Track] Increase Groove of the Next item by +35%. For every 1 [Empty Slot] between self and the next item, increase this effect by +12.5% (Max 125%).", cn: "[同轨] 使 下一个 道具 [Groove] +35%。<br>自身与下一个道具每间隔 1 [空拍]，该增幅效果 +12.5%（上限125%）。"}, len: 2, cpu: 1, base: 0, type: "support", color: "#4dd0e1", price: 75, rarity: 1 },
+        { id: "EB3", name: {en: "Isolation Booth", cn: "隔离室"}, desc: {en: "Increase Groove of all [Sync] scoring items by +10. For every 1 [Empty Slot] between self and [Same Track] neighbors (Previous/Next), increase the Groove of [Sync] items by +7.5% (Max 240%).", cn: "使所有 [同步] 道具 [Groove] +10。<br>自身 每与 [同轨] 前后道具间隔 1 [空拍]，使 [同步] 道具的 [Groove] +7.5%（上限240%）。"}, len: 4, cpu: 2, base: 0, type: "support", color: "#00bcd4", price: 100, rarity: 2 },
+        { id: "EB4", name: {en: "Atmosphere", cn: "氛围采样"}, desc: {en: "Gain 30 Groove on trigger. Gain +5% Groove for every 1 [Empty Slot] that appeared before this trigger.", cn: "触发时获得 30 [Groove]。<br>触发前 每出现 1 [空拍]，自身 [Groove] +5%。"}, len: 4, cpu: 3, base: 30, type: "score", color: "#ffd54f", price: 150, rarity: 3 },
+        { id: "EB5", name: {en: "Time Stretch", cn: "时间拉伸"}, desc: {en: "1 [Empty Slot] counts as 2 [Empty Slots] for all [Empty Slot] effects calculations.", cn: "计算所有 [空拍] 效果时，1 [空拍] 将被视为 2 [空拍]。"}, len: 8, cpu: 4, base: 0, type: "engine", color: "#ba68c8", price: 150, rarity: 3 },
+        { id: "EB6", name: {en: "Pad", cn: "铺底音色"}, desc: {en: "Gain 30 Groove over duration. During duration: Gain +5% Groove for every 1 [Empty Slot] currently on the timeline.", cn: "持续期间获得 30 [Groove]。<br>持续期间 全场每存在 1 [空拍]，自身 [Groove] +5%。"}, len: 8, cpu: 2, base: 30, type: "score", color: "#ffca28", price: 100, rarity: 2 },
+        { id: "NG1", name: {en: "Viral Hit", cn: "网红单曲"}, desc: {en: "Gain 30 Groove on trigger. On Sold: Based on the cumulative number of times this item was played, immediately apply a discount to all items in the Shop.", cn: "触发时获得 30 [Groove]。<br>离场: 卖出此道具时，基于其累计上场次数，立即 使商店所有道具打折。"}, len: 8, cpu: 1, base: 30, type: "score", color: "#cfd8dc", price: 75, rarity: 1 },
+        { id: "NG2", name: {en: "Layering", cn: "叠层"}, desc: {en: "Gain 20 Groove on trigger. If triggered in [Sync] with other items, gain an additional 10 Groove.", cn: "触发时获得 20 [Groove]。<br>若有其他道具 [同步] 触发，额外获得 10 [Groove]。"}, len: 4, cpu: 1, base: 20, type: "score", color: "#b0bec5", price: 75, rarity: 1 },
+        { id: "NG3", name: {en: "Solo Fader", cn: "独奏推子"}, desc: {en: "[Same Track] Increase Groove of Previous and Next items by +35%. If triggered with no [Sync] items, increase this effect by an additional +35%.", cn: "[同轨] 使 前一个 和 下一个 道具 [Groove] +35%。<br>若触发时 无 其他道具 [同步] 触发，该增幅效果额外 +35%。"}, len: 2, cpu: 1, base: 0, type: "support", color: "#90a4ae", price: 100, rarity: 2 },
+        { id: "NG4", name: {en: "Noise Gate", cn: "降噪门"}, desc: {en: "[Consume] Reduce the Groove of all [Sync] items by 50%. Gain Groove equal to (40 + [Consumed] amount) x 1.5.", cn: "[吞噬]: 使所有 [同步] 道具的 [Groove] 减半。<br>自身获得 [Groove] = (40 + [吞噬] 的数值) x 1.5。"}, len: 4, cpu: 2, base: 40, type: "score", color: "#78909c", price: 150, rarity: 3 }
     ];
     
     const LEVEL_CONFIG = [
@@ -816,8 +829,8 @@
         effects.filter = new Tone.Filter(20000, "lowpass").toDestination();
         effects.crusher = new Tone.BitCrusher(16).toDestination(); 
         effects.phaser = new Tone.Phaser({ frequency: 15, octaves: 5, baseFrequency: 1000, wet: 0 }).toDestination();
-        bgPlayer = new Tone.Player({ url: AUDIO_SOURCES.bgm, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -8 });
-        losePlayer = new Tone.Player({ url: AUDIO_SOURCES.bgm, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -8 }); 
+        bgPlayer = new Tone.Player({ url: AUDIO_SOURCES.bgm, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -10 });
+        losePlayer = new Tone.Player({ url: AUDIO_SOURCES.bgm, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -10 }); 
         bgPlayer.disconnect(); bgPlayer.connect(effects.filter);
         losePlayer.disconnect(); losePlayer.connect(effects.filter);
         effects.filter.connect(effects.crusher);

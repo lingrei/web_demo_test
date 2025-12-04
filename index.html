@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Soundwave - MVP V19.6 (Polished)</title>
+    <title>Soundwave - MVP V19.7 (CPU Preview)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         /* --- 基础样式 --- */
@@ -35,11 +35,64 @@
         .stat-label { font-size: 11px; color: #aaa; margin-bottom: 4px; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; }
         .stat-val { font-size: 24px; font-weight: bold; color: white; }
         
-        /* Enlarged CPU Bar */
+        /* Enlarged CPU Bar (UPDATED) */
         .cpu-container { width: 300px; display: flex; flex-direction: column; gap: 4px; } 
-        .cpu-track { height: 16px; background: #111; border-radius: 8px; overflow: hidden; border: 1px solid #555; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); } 
-        .cpu-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #4caf50, #81c784); transition: width 0.3s; }
+        .cpu-track { 
+            height: 16px; 
+            background: #111; 
+            border-radius: 8px; 
+            overflow: hidden; 
+            border: 1px solid #555; 
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); 
+            position: relative; /* Essential for preview positioning */
+        } 
+        
+        .cpu-fill { 
+            height: 100%; 
+            width: 0%; 
+            background: linear-gradient(90deg, #4caf50, #81c784); 
+            transition: width 0.3s; 
+            position: absolute;
+            left: 0;
+            top: 0;
+            z-index: 1;
+        }
         .cpu-fill.danger { background: linear-gradient(90deg, #f44336, #e57373); }
+
+        /* CPU Preview Bar */
+        .cpu-preview {
+            height: 100%;
+            position: absolute;
+            top: 0;
+            z-index: 2;
+            display: none;
+        }
+        
+        /* Preview: Valid (Yellow Pulse) */
+        .cpu-preview.valid {
+            background-color: #ffd700;
+            box-shadow: 0 0 10px #ffd700;
+            animation: pulse-slow 1.5s infinite ease-in-out;
+        }
+
+        /* Preview: Invalid (Red Flash) */
+        .cpu-preview.invalid {
+            background-color: #ff5252;
+            box-shadow: 0 0 15px #ff5252;
+            animation: pulse-fast 0.3s infinite alternate;
+        }
+
+        @keyframes pulse-slow {
+            0% { opacity: 0.4; }
+            50% { opacity: 0.8; }
+            100% { opacity: 0.4; }
+        }
+
+        @keyframes pulse-fast {
+            0% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
         .cpu-text-row { display: flex; justify-content: space-between; font-size: 12px; color: #ccc; font-weight: bold; padding: 0 4px; }
 
         /* Panels */
@@ -197,7 +250,10 @@
             <div class="stat-block">
                 <div class="stat-label" id="lblCpu">★ CPU</div>
                 <div class="cpu-container">
-                    <div class="cpu-track"><div class="cpu-fill" id="cpuBar"></div></div>
+                    <div class="cpu-track">
+                        <div class="cpu-fill" id="cpuBar"></div>
+                        <div class="cpu-preview" id="cpuPreviewBar"></div>
+                    </div>
                     <div class="cpu-text-row">
                         <span id="cpuText">0</span>
                         <span id="maxCpuText">Max: 12</span>
@@ -520,7 +576,7 @@
         if(e.button !== 0) return; // Left click only
         e.stopPropagation(); // Don't trigger click selection immediately
         
-        // Removed the previous CPU block. Now we allow dragging but show red if invalid.
+        // Refinement 8: Allow drag even if CPU full, feedback happens in updateCPU via preview
         setupDrag(e, invItem.data, 'inventory', null, invItem);
     }
 
@@ -574,6 +630,9 @@
         if (!dragManager.active) return;
         e.preventDefault();
         updateGhostPosition(e.clientX, e.clientY);
+        
+        // Real-time CPU Preview Update
+        updateCPU(); 
 
         // 1. Check Track Hover
         const gridPos = getGridFromClient(e.clientX, e.clientY);
@@ -663,6 +722,7 @@
 
         dragManager.active = false;
         dragManager.ghostEl = null;
+        updateCPU(); // Reset preview
         updateUI();
     }
 
@@ -685,17 +745,15 @@
     function checkPlacementValidity(trackIdx, startTick, itemData) {
         if (startTick + itemData.len > TICKS) return false;
         
-        // 1. CPU Check (Refinement 8)
-        // Only check if adding from inventory. Moving tracks doesn't change total CPU.
+        // 1. CPU Check (Refinement 8: Drag feedback)
         if (dragManager.sourceType === 'inventory') {
             const currentCpu = state.placedItems.reduce((a,b)=>a+b.data.cpu, 0);
             if (currentCpu + itemData.cpu > config.maxCpu) {
-                return false;
+                return false; // Will render red preview
             }
         }
 
         // 2. Collision Check
-        // Collision check (exclude self if moving)
         const others = state.placedItems.filter(p => p !== dragManager.sourceRecord);
         for (let item of others) {
             if (item.track === trackIdx) {
@@ -978,7 +1036,48 @@
         document.getElementById('cpuPriceText').innerText = `${cost}G`; 
     }
     
-    function updateCPU() { const used = state.placedItems.reduce((a,b)=>a+b.data.cpu, 0); const pct = Math.min(100, (used/config.maxCpu)*100); const bar = document.getElementById('cpuBar'); if(bar) { bar.style.width = pct+"%"; bar.className = "cpu-fill " + (pct>=100?"danger":""); } document.getElementById('cpuText').innerText = `${used}`; }
+    function updateCPU() { 
+        // 1. Calculate Used
+        const used = state.placedItems.reduce((a, b) => a + b.data.cpu, 0); 
+        const max = config.maxCpu;
+        const usedPct = Math.min(100, (used / max) * 100); 
+        
+        // 2. Update Basic Bar
+        const bar = document.getElementById('cpuBar'); 
+        if (bar) { 
+            bar.style.width = usedPct + "%"; 
+            bar.className = "cpu-fill " + (used >= max ? "danger" : ""); 
+        } 
+        document.getElementById('cpuText').innerText = `${used}`; 
+
+        // 3. Handle Preview
+        const previewBar = document.getElementById('cpuPreviewBar');
+        if (!previewBar) return;
+
+        // Only show preview if dragging from inventory
+        if (dragManager.active && dragManager.sourceType === 'inventory' && dragManager.itemData) {
+            const itemCost = dragManager.itemData.cpu;
+            const projectedTotal = used + itemCost;
+            const previewWidthPct = (itemCost / max) * 100;
+            
+            previewBar.style.left = usedPct + "%";
+            previewBar.style.width = previewWidthPct + "%";
+            previewBar.style.display = 'block';
+
+            if (projectedTotal > max) {
+                previewBar.className = "cpu-preview invalid";
+                document.getElementById('cpuText').style.color = '#ff5252';
+                document.getElementById('cpuText').innerText = `${used} + ${itemCost}`;
+            } else {
+                previewBar.className = "cpu-preview valid";
+                document.getElementById('cpuText').style.color = '#ffd700'; 
+                document.getElementById('cpuText').innerText = `${used} + ${itemCost}`;
+            }
+        } else {
+            previewBar.style.display = 'none';
+            document.getElementById('cpuText').style.color = '#ccc';
+        }
+    }
 
     function initGrid() {
         const rh = document.querySelector('.timeline-header'); 

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Soundwave - MVP V19.5 (Tutorial Update)</title>
+    <title>Soundwave - MVP V19.6 (Polished)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         /* --- 基础样式 --- */
@@ -87,12 +87,45 @@
         .shop-row-btm { display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #888;}
         .btn-buy { background: var(--highlight); border: none; color: white; cursor: pointer; padding: 3px 10px; border-radius: 2px; font-size: 11px; }
         .btn-buy:disabled { background: #444 !important; color: #888 !important; cursor: not-allowed; }
-        .shop-controls { padding: 8px; border-top: 1px solid #444; display: flex; flex-direction: column; gap: 6px; background: #252525; }
-        .btn-reroll { background: #ff9800; color: black; border: none; padding: 6px; cursor: pointer; font-weight: bold; font-size: 12px; border-radius: 4px; }
-        .trade-area { display: flex; gap: 5px; }
-        .btn-trade { flex: 1; padding: 8px; border: none; cursor: pointer; font-weight: bold; font-size: 11px; border-radius: 4px; color: white; }
-        .btn-cpu { background: #2196f3; display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
-        .btn-cpu:disabled { background: #444; color: #aaa; cursor: not-allowed; }
+        
+        /* Updated Shop Controls for better hierarchy */
+        .shop-controls { padding: 10px; border-top: 1px solid #444; display: flex; flex-direction: column; gap: 10px; background: #252525; }
+        
+        .btn-cpu { 
+            width: 100%; 
+            padding: 12px; 
+            background: linear-gradient(135deg, #1e88e5, #42a5f5); 
+            border: 1px solid #64b5f6;
+            color: white; 
+            cursor: pointer; 
+            font-weight: bold; 
+            border-radius: 6px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            line-height: 1.2; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+        }
+        .btn-cpu:hover { transform: translateY(-1px); box-shadow: 0 6px 10px rgba(0,0,0,0.4); filter: brightness(1.1); }
+        .btn-cpu:active { transform: translateY(1px); box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+        .btn-cpu:disabled { background: #444; border-color: #555; color: #aaa; cursor: not-allowed; box-shadow: none; transform: none; }
+
+        .btn-reroll { 
+            width: 100%; 
+            background: #444; 
+            color: #ddd; 
+            border: 1px solid #555; 
+            padding: 8px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            font-size: 11px; 
+            border-radius: 4px; 
+            transition: background 0.2s;
+        }
+        .btn-reroll:hover { background: #555; color: white; }
         
         .shop-funds { color: var(--gold-color); font-size: 16px; font-weight: bold; text-shadow: 0 0 5px rgba(255, 215, 0, 0.3); }
 
@@ -138,10 +171,14 @@
         .status-dot.current { border: 2px solid white; transform: scale(1.2); }
         .help-section { text-align: left; margin-bottom: 20px; border-bottom: 1px solid #555; padding-bottom: 15px; }
 
-        /* New Button Styles for Tutorial/Lang */
-        .btn-large-option { width: 45%; padding: 15px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; margin: 0 10px; transition: all 0.2s; }
-        .btn-green { background: #4caf50; color: white; } .btn-green:hover { background: #43a047; transform: scale(1.05); }
-        .btn-gray { background: #555; color: #ccc; } .btn-gray:hover { background: #666; }
+        /* Unified Button Styles for Selection */
+        .btn-large-option { width: 45%; padding: 15px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; margin: 0 10px; transition: all 0.2s; color: white; background: #444; border: 1px solid #555; }
+        .btn-large-option:hover { background: #555; transform: scale(1.05); }
+        
+        .btn-confirm { background: #4caf50; border-color: #4caf50; }
+        .btn-confirm:hover { background: #43a047; }
+        
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
@@ -202,12 +239,10 @@
         </div>
         <div class="shop-list" id="shopList"></div>
         <div class="shop-controls">
-            <div class="trade-area">
-                <button class="btn-trade btn-cpu" onclick="buyCpu()" id="btnBuyCpu">
-                    <span id="txtUpCpu">UP CPU</span>
-                    <span style="font-size:10px; color:#ddd;" id="cpuPriceText">50G</span>
-                </button>
-            </div>
+            <button class="btn-cpu" onclick="buyCpu()" id="btnBuyCpu">
+                <span id="txtUpCpu" style="font-size:14px;">UP CPU</span>
+                <span style="font-size:11px; opacity:0.8; margin-top:2px;" id="cpuPriceText">50G</span>
+            </button>
             <button class="btn-reroll" onclick="rerollShop()" id="btnReroll">REROLL (10G)</button>
         </div>
     </div>
@@ -241,8 +276,8 @@
     <div class="modal-content" style="width: 500px;">
         <h2 style="margin-bottom: 30px;">Select Language / 选择语言</h2>
         <div style="display:flex; justify-content: center;">
-            <button class="btn-large-option btn-gray" onclick="selectLang('en')">English</button>
-            <button class="btn-large-option btn-green" onclick="selectLang('cn')">简体中文</button>
+            <button class="btn-large-option" onclick="selectLang('en')">English</button>
+            <button class="btn-large-option" onclick="selectLang('cn')">简体中文</button>
         </div>
     </div>
 </div>
@@ -252,8 +287,8 @@
         <h2 id="lblTutTitle" style="margin-bottom: 10px;">Tutorial</h2>
         <p id="lblTutDesc" style="color:#aaa; margin-bottom: 30px;">Recommended for new players.</p>
         <div style="display:flex; justify-content: center;">
-            <button class="btn-large-option btn-gray" onclick="skipTutorial()" id="btnSkipTut">Skip</button>
-            <button class="btn-large-option btn-green" onclick="playTutorial()" id="btnPlayTut">Play Tutorial</button>
+            <button class="btn-large-option" onclick="skipTutorial()" id="btnSkipTut">Skip</button>
+            <button class="btn-large-option btn-confirm" onclick="playTutorial()" id="btnPlayTut">Play Tutorial</button>
         </div>
     </div>
 </div>
@@ -428,12 +463,13 @@
     ];
 
     const TUTORIAL_CONFIG = [
-        // Level 1: Score/Target/CPU. 1 Track. 2xTUT1(4tick)+3xTUT2(8tick) to fit 32 ticks & 5 CPU.
-        { tracks: 1, target: 130, reward: 100, startCpu: 5, initialItems: ["TUT1", "TUT1", "TUT2", "TUT2", "TUT2"], poolAdds: [] },
+        // Level 1: Score/Target/CPU. 1 Track. 1xTUT1(4tick)+1xTUT2(8tick) given.
+        { tracks: 1, target: 130, reward: 100, startCpu: 5, initialItems: ["TUT1", "TUT2"], poolAdds: [] },
         // Level 2: Economy/Empty Space. Unlocks Rest Note. 
         { tracks: 1, target: 150, reward: 130, poolAdds: ["EB1"] },
         // Level 3: Strong Beat / One-time CPU Upgrade. Unlocks Kick.
-        { tracks: 1, target: 185, reward: 210, poolAdds: ["SB1"], oneTimeCpu: true },
+        // Reward 220 ensures Level 4 starts with 220G.
+        { tracks: 1, target: 185, reward: 220, poolAdds: ["SB1"], oneTimeCpu: true },
         // Level 4: Multi-track / Buffs / Repeatable CPU. Unlocks Pre-delay. Fail Reward 110.
         { tracks: 2, target: 270, reward: 0, poolAdds: ["EB2"], repeatableCpu: true, failReward: 110 }
     ];
@@ -484,18 +520,7 @@
         if(e.button !== 0) return; // Left click only
         e.stopPropagation(); // Don't trigger click selection immediately
         
-        // Check CPU immediately to feedback
-        const currentCpu = state.placedItems.reduce((a,b)=>a+b.data.cpu, 0);
-        if (currentCpu + invItem.data.cpu > config.maxCpu) {
-            // Shake CPU bar visual feedback
-            const bar = document.querySelector('.cpu-container');
-            bar.style.transform = "translateX(5px)";
-            setTimeout(()=>bar.style.transform="translateX(0)", 100);
-            setTimeout(()=>bar.style.transform="translateX(-5px)", 200);
-            setTimeout(()=>bar.style.transform="translateX(0)", 300);
-            return; 
-        }
-
+        // Removed the previous CPU block. Now we allow dragging but show red if invalid.
         setupDrag(e, invItem.data, 'inventory', null, invItem);
     }
 
@@ -636,13 +661,6 @@
             actionTaken = true;
         }
 
-        // If simple click (no movement), treat as selection/inspect
-        if (!actionTaken && Math.abs(e.clientX - dragManager.startX) < 5 && Math.abs(e.clientY - dragManager.startY) < 5) {
-            if(sourceType === 'track') {
-               // Select Track Item logic handled by restoring visuals
-            }
-        }
-
         dragManager.active = false;
         dragManager.ghostEl = null;
         updateUI();
@@ -666,6 +684,17 @@
 
     function checkPlacementValidity(trackIdx, startTick, itemData) {
         if (startTick + itemData.len > TICKS) return false;
+        
+        // 1. CPU Check (Refinement 8)
+        // Only check if adding from inventory. Moving tracks doesn't change total CPU.
+        if (dragManager.sourceType === 'inventory') {
+            const currentCpu = state.placedItems.reduce((a,b)=>a+b.data.cpu, 0);
+            if (currentCpu + itemData.cpu > config.maxCpu) {
+                return false;
+            }
+        }
+
+        // 2. Collision Check
         // Collision check (exclude self if moving)
         const others = state.placedItems.filter(p => p !== dragManager.sourceRecord);
         for (let item of others) {
@@ -798,6 +827,10 @@
         state.inventory = []; state.ng1PermanentStacks = 0; state.lives = 3; state.gold = 150;
         ["SB1", "EB1", "NG2"].forEach(id => addItemToInventory(id, 0)); 
         config.maxCpu = 12;
+        
+        // Clear board when entering standard game (Refinement 5)
+        state.placedItems = [];
+        
         applyLevelConfig(0);
         updateUI();
     }
@@ -862,8 +895,6 @@
                     state.currentShopItems.push({ data: data, price: data.price, isDiscount: false, discountPercent: 0, sold: false });
                 }
             });
-            // Fill rest with random if needed? Tutorial usually specific.
-            // For now just show the critical items.
         }
         renderShopFromState();
     }
@@ -898,10 +929,17 @@
         document.getElementById('trackNum').innerText = config.activeTracks;
         document.getElementById('maxCpuText').innerText = `Max: ${config.maxCpu}`;
         document.getElementById('targetText').innerText = config.target;
-        document.getElementById('goldText').innerText = state.gold + " G"; // Update new location
+        document.getElementById('goldText').innerText = state.gold + " G"; 
         updateInventoryUI();
         updateCpuButton();
         updateCPU();
+        
+        // Hide Reroll in Tutorial (Refinement 4)
+        if (state.isTutorial) {
+            document.getElementById('btnReroll').style.display = 'none';
+        } else {
+            document.getElementById('btnReroll').style.display = 'block';
+        }
     }
 
     function updateGold(amount) { state.gold += amount; document.getElementById('goldText').innerText = state.gold + " G"; }
@@ -909,7 +947,16 @@
     function updateCpuButton() { 
         const btn = document.getElementById('btnBuyCpu');
         
-        // Tutorial Level 3 Special Constraint
+        // Hide CPU button until Level 3 in Tutorial (Refinement 3)
+        // Level 1=idx0, Level 2=idx1. Level 3=idx2.
+        if (state.isTutorial && state.levelIndex < 2) {
+            btn.style.display = 'none';
+            return;
+        } else {
+            btn.style.display = 'flex';
+        }
+        
+        // Tutorial Level 3 Special Constraint (One time purchase)
         if (state.isTutorial && state.levelIndex === 2) {
             if (state.tutorialCpuBought) {
                 btn.disabled = true;
@@ -1287,7 +1334,6 @@
     
     function rerollShop() { 
         if(state.isPlaying) return; 
-        // In Tutorial, reroll is disabled or limited, but let's keep it simple: manual reroll works, but initial shop is forced.
         
         const isManual = (event && event.target && event.target.id === 'btnReroll'); 
         if (isManual) { 

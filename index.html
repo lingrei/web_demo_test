@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Soundwave - MVP V19.7 (CPU Preview)</title>
+    <title>Soundwave - MVP V19.8 (Full Bar Overload)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         /* --- 基础样式 --- */
@@ -44,7 +44,7 @@
             overflow: hidden; 
             border: 1px solid #555; 
             box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); 
-            position: relative; /* Essential for preview positioning */
+            position: relative;
         } 
         
         .cpu-fill { 
@@ -58,6 +58,13 @@
             z-index: 1;
         }
         .cpu-fill.danger { background: linear-gradient(90deg, #f44336, #e57373); }
+
+        /* NEW: Overload State for the main bar (Flash Red) */
+        .cpu-fill.overload {
+            background: #ff5252 !important; /* Force red */
+            box-shadow: 0 0 15px #ff5252;
+            animation: pulse-fast 0.3s infinite alternate;
+        }
 
         /* CPU Preview Bar */
         .cpu-preview {
@@ -722,7 +729,7 @@
 
         dragManager.active = false;
         dragManager.ghostEl = null;
-        updateCPU(); // Reset preview
+        updateCPU(); // Reset preview and overload state
         updateUI();
     }
 
@@ -1042,15 +1049,10 @@
         const max = config.maxCpu;
         const usedPct = Math.min(100, (used / max) * 100); 
         
-        // 2. Update Basic Bar
+        // 2. Update Basic Bar (Default State)
         const bar = document.getElementById('cpuBar'); 
-        if (bar) { 
-            bar.style.width = usedPct + "%"; 
-            bar.className = "cpu-fill " + (used >= max ? "danger" : ""); 
-        } 
-        document.getElementById('cpuText').innerText = `${used}`; 
-
-        // 3. Handle Preview
+        
+        // 3. Handle Preview Logic
         const previewBar = document.getElementById('cpuPreviewBar');
         if (!previewBar) return;
 
@@ -1065,18 +1067,33 @@
             previewBar.style.display = 'block';
 
             if (projectedTotal > max) {
+                // OVERLOAD STATE
                 previewBar.className = "cpu-preview invalid";
+                // Force the main bar to also flash red
+                if (bar) bar.className = "cpu-fill overload"; 
+                
                 document.getElementById('cpuText').style.color = '#ff5252';
                 document.getElementById('cpuText').innerText = `${used} + ${itemCost}`;
             } else {
+                // VALID PREVIEW STATE
                 previewBar.className = "cpu-preview valid";
+                // Main bar stays normal
+                if (bar) bar.className = "cpu-fill " + (used >= max ? "danger" : "");
+                
                 document.getElementById('cpuText').style.color = '#ffd700'; 
                 document.getElementById('cpuText').innerText = `${used} + ${itemCost}`;
             }
         } else {
+            // NO DRAG STATE
             previewBar.style.display = 'none';
+            // Restore main bar to normal state
+            if (bar) bar.className = "cpu-fill " + (used >= max ? "danger" : "");
+            
             document.getElementById('cpuText').style.color = '#ccc';
+            document.getElementById('cpuText').innerText = `${used}`;
         }
+        
+        if (bar) bar.style.width = usedPct + "%"; 
     }
 
     function initGrid() {

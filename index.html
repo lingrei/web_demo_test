@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Soundwave - MVP V19.4 (Text Update)</title>
+    <title>Soundwave - MVP V19.5 (Tutorial Update)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         /* --- 基础样式 --- */
@@ -92,6 +92,7 @@
         .trade-area { display: flex; gap: 5px; }
         .btn-trade { flex: 1; padding: 8px; border: none; cursor: pointer; font-weight: bold; font-size: 11px; border-radius: 4px; color: white; }
         .btn-cpu { background: #2196f3; display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
+        .btn-cpu:disabled { background: #444; color: #aaa; cursor: not-allowed; }
         
         .shop-funds { color: var(--gold-color); font-size: 16px; font-weight: bold; text-shadow: 0 0 5px rgba(255, 215, 0, 0.3); }
 
@@ -136,6 +137,11 @@
         .status-dot.done { background: var(--highlight); }
         .status-dot.current { border: 2px solid white; transform: scale(1.2); }
         .help-section { text-align: left; margin-bottom: 20px; border-bottom: 1px solid #555; padding-bottom: 15px; }
+
+        /* New Button Styles for Tutorial/Lang */
+        .btn-large-option { width: 45%; padding: 15px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; margin: 0 10px; transition: all 0.2s; }
+        .btn-green { background: #4caf50; color: white; } .btn-green:hover { background: #43a047; transform: scale(1.05); }
+        .btn-gray { background: #555; color: #ccc; } .btn-gray:hover { background: #666; }
     </style>
 </head>
 <body>
@@ -227,7 +233,36 @@
     <div class="modal-content" style="width: 400px;">
         <h1>Soundwave</h1>
         <p style="color:#aaa; margin-bottom:30px;" id="txtStartMsg">Music Roguelike Deckbuilder</p>
-        <button class="submit-btn" onclick="startGame()" id="btnStartGame">START GAME</button>
+        <button class="submit-btn" onclick="showLangSelect()" id="btnStartGame">START GAME</button>
+    </div>
+</div>
+
+<div class="modal" id="langSelectModal">
+    <div class="modal-content" style="width: 500px;">
+        <h2 style="margin-bottom: 30px;">Select Language / 选择语言</h2>
+        <div style="display:flex; justify-content: center;">
+            <button class="btn-large-option btn-gray" onclick="selectLang('en')">English</button>
+            <button class="btn-large-option btn-green" onclick="selectLang('cn')">简体中文</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="tutorialQueryModal">
+    <div class="modal-content" style="width: 500px;">
+        <h2 id="lblTutTitle" style="margin-bottom: 10px;">Tutorial</h2>
+        <p id="lblTutDesc" style="color:#aaa; margin-bottom: 30px;">Recommended for new players.</p>
+        <div style="display:flex; justify-content: center;">
+            <button class="btn-large-option btn-gray" onclick="skipTutorial()" id="btnSkipTut">Skip</button>
+            <button class="btn-large-option btn-green" onclick="playTutorial()" id="btnPlayTut">Play Tutorial</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="tutorialCompleteModal">
+    <div class="modal-content" style="width: 500px;">
+        <h2 style="color:var(--highlight);">Tutorial Complete!</h2>
+        <p style="color:#aaa; margin-bottom:30px;" id="lblTutCompDesc">You are now ready for the real challenge.</p>
+        <button class="submit-btn" onclick="finishTutorialFlow()">ENTER GAME</button>
     </div>
 </div>
 
@@ -290,7 +325,9 @@
         bgm: "LEV1_LOOP.mp3",
         SB1: "On_Beat_1.mp3", SB2: "On_Beat_2.mp3", SB3: "On_Beat_3.mp3", SB4: "On_Beat_4.mp3", SB5: "On_Beat_5.mp3",
         EB1: "Off_Beat_1.mp3", EB2: "Off_Beat_2.mp3", EB3: "Off_Beat_3.mp3", EB4: "Off_Beat_4.mp3", EB5: "Off_Beat_5.mp3", EB6: "Off_Beat_6.mp3",
-        NG1: "exp_Beat_1.mp3", NG2: "exp_Beat_2.mp3", NG3: "exp_Beat_3.mp3", NG4: "exp_Beat_4.mp3"
+        NG1: "exp_Beat_1.mp3", NG2: "exp_Beat_2.mp3", NG3: "exp_Beat_3.mp3", NG4: "exp_Beat_4.mp3",
+        // Reuse sounds for tutorial dummy items
+        TUT1: "On_Beat_2.mp3", TUT2: "On_Beat_3.mp3"
     };
 
     // --- I18N Data ---
@@ -309,7 +346,12 @@
             reward: "Reward", consolation: "Consolation", ng1Charge: "NG1 Charge", stacks: "stacks",
             item: "Item", base: "Base", cond: "Cond", mult: "Mult", final: "Final", note: "Note", effect: "Effect", sold: "Sold",
             helpTitle: "HOW TO PLAY", helpControlTitle: "CONTROLS",
-            helpControlTxt: "• <b>Drag Inventory -> Track</b>: Place Item<br>• <b>Drag Track -> Track</b>: Move Item<br>• <b>Drag Track -> Outside</b>: Remove Item (Refund CPU)<br>• <b>Drag Inventory -> Shop</b>: Sell Item<br>• <b>Right Click</b>: Quick Remove"
+            helpControlTxt: "• <b>Drag Inventory -> Track</b>: Place Item<br>• <b>Drag Track -> Track</b>: Move Item<br>• <b>Drag Track -> Outside</b>: Remove Item (Refund CPU)<br>• <b>Drag Inventory -> Shop</b>: Sell Item<br>• <b>Right Click</b>: Quick Remove",
+            
+            // Tutorial Texts
+            tutTitle: "Tutorial", tutDesc: "Recommended for new players.", skip: "Skip", playTut: "Play Tutorial",
+            tutComp: "Tutorial Complete!", tutCompDesc: "You are now ready for the real challenge.", enterGame: "ENTER GAME",
+            soldOutQAQ: "Sold Out QAQ"
         },
         cn: {
             clear: "清空", help: "帮助", cpu: "★ CPU", target: "目标 Groove", funds: "资金 (G)",
@@ -325,7 +367,12 @@
             reward: "赏金", consolation: "抚恤金", ng1Charge: "NG1 充能", stacks: "层",
             item: "道具", base: "基础", cond: "条件", mult: "倍率", final: "最终", note: "备注", effect: "效果", sold: "已售出",
             helpTitle: "玩法说明", helpControlTitle: "操作方式",
-            helpControlTxt: "• <b>左键拖拽 (库存->音轨)</b>: 放置道具<br>• <b>左键拖拽 (音轨->音轨)</b>: 移动位置<br>• <b>拖拽至音轨外</b>: 移除道具 (返还CPU)<br>• <b>拖拽至商店区域</b>: 出售道具<br>• <b>右键点击</b>: 快速移除"
+            helpControlTxt: "• <b>左键拖拽 (库存->音轨)</b>: 放置道具<br>• <b>左键拖拽 (音轨->音轨)</b>: 移动位置<br>• <b>拖拽至音轨外</b>: 移除道具 (返还CPU)<br>• <b>拖拽至商店区域</b>: 出售道具<br>• <b>右键点击</b>: 快速移除",
+            
+            // Tutorial Texts
+            tutTitle: "新手教程", tutDesc: "强烈建议新玩家游玩。", skip: "跳过", playTut: "进入教程",
+            tutComp: "教程结束!", tutCompDesc: "恭喜完成! 现在进入正式挑战。", enterGame: "进入正式关卡",
+            soldOutQAQ: "商店卖断货了 QAQ"
         }
     };
 
@@ -350,13 +397,13 @@
     };
 
     const DB = [
-        { id: "SB1", name: {en: "Kick Drum", cn: "底鼓"}, desc: {en: "Gain 20 Groove on trigger. If placed on a [Strong Beat], gain an additional 10 Groove.", cn: "触发时获得 20 Groove。<br>若放置在 [强拍] 上，额外获得 10 Groove。"}, len: 4, cpu: 1, base: 20, type: "score", color: "#ffecb3", price: 75, rarity: 1 },
+        { id: "SB1", name: {en: "Kick Drum", cn: "底鼓"}, desc: {en: "Gain 20 Groove on trigger. If placed on a [Strong Beat], gain an additional 10 Groove.", cn: "触发时获得 20 Groove。<br>若放置在 [强拍] 上，额外获得 10 Groove。"}, len: 4, cpu: 1, base: 20, type: "score", color: "#ffecb3", price: 100, rarity: 1 },
         { id: "SB2", name: {en: "Sidechain", cn: "侧链"}, desc: {en: "Increase Groove of all [Sync] items by +50%. If placed on a [Strong Beat], increase this effect by an additional +25%.", cn: "使所有 [同步] 道具 Groove +50%。<br>若放置在 [强拍] 上，该增幅效果额外 +25%。"}, len: 4, cpu: 1, base: 0, type: "support", color: "#b2ebf2", price: 75, rarity: 1 },
         { id: "SB3", name: {en: "Accent", cn: "重音标记"}, desc: {en: "[Same Track] Increase Groove of the Next item by +100%. If placed on a [Strong Beat], the Next item is treated as being triggered on a [Strong Beat]", cn: "[同轨] 使 下一个 道具 [Groove] +100%。<br>若放置在 [强拍] 上，下一个 道具将被视为 在[强拍]触发。"}, len: 4, cpu: 2, base: 0, type: "support", color: "#80deea", price: 100, rarity: 2 },
         { id: "SB4", name: {en: "Master Clock", cn: "主时钟"}, desc: {en: "If [Strong Beat] effects have triggered at least 5 times before this item triggers: Multiply the Groove of all subsequent [Strong Beat] items by 1.5x.", cn: "若 触发前 已触发至少 5次  [强拍] 效果：<br>后续 触发的所有 [强拍] 道具 [Groove] x 1.5。"}, len: 4, cpu: 4, base: 0, type: "engine", color: "#e1bee7", price: 150, rarity: 3 },
         { id: "SB5", name: {en: "Quantizer", cn: "量化器"}, desc: {en: "If placed on the start of a [Strong Beat], all [Weak Beat] positions on the timeline are treated as [Strong Beat].", cn: "若放置在 [强拍] 的起始点上，全场所有的 [弱拍] 均被视为 [强拍]。"}, len: 8, cpu: 4, base: 0, type: "engine", color: "#ce93d8", price: 150, rarity: 3 },
-        { id: "EB1", name: {en: "Rest Note", cn: "休止符"}, desc: {en: "Gain 14 Groove on trigger. If the Previous item on the [Same Track] is ≥ 4 [Empty Slots] away, gain an additional 20 Groove.", cn: "触发时获得 14 [Groove]。<br>若 [同轨]前一个 道具与自身间隔 ≥ 4 [空拍]，额外获得 20 [Groove]。"}, len: 2, cpu: 1, base: 14, type: "score", color: "#ffe082", price: 75, rarity: 1 },
-        { id: "EB2", name: {en: "Pre-Delay", cn: "预延时"}, desc: {en: "[Same Track] Increase Groove of the Next item by +35%. For every 1 [Empty Slot] between self and the next item, increase this effect by +12.5% (Max 125%).", cn: "[同轨] 使 下一个 道具 [Groove] +35%。<br>自身与下一个道具每间隔 1 [空拍]，该增幅效果 +12.5%（上限125%）。"}, len: 2, cpu: 1, base: 0, type: "support", color: "#4dd0e1", price: 75, rarity: 1 },
+        { id: "EB1", name: {en: "Rest Note", cn: "休止符"}, desc: {en: "Gain 14 Groove on trigger. If the Previous item on the [Same Track] is ≥ 4 [Empty Slots] away, gain an additional 20 Groove.", cn: "触发时获得 14 [Groove]。<br>若 [同轨]前一个 道具与自身间隔 ≥ 4 [空拍]，额外获得 20 [Groove]。"}, len: 2, cpu: 1, base: 14, type: "score", color: "#ffe082", price: 100, rarity: 1 },
+        { id: "EB2", name: {en: "Pre-Delay", cn: "预延时"}, desc: {en: "[Same Track] Increase Groove of the Next item by +35%. For every 1 [Empty Slot] between self and the next item, increase this effect by +12.5% (Max 125%).", cn: "[同轨] 使 下一个 道具 [Groove] +35%。<br>自身与下一个道具每间隔 1 [空拍]，该增幅效果 +12.5%（上限125%）。"}, len: 2, cpu: 1, base: 0, type: "support", color: "#4dd0e1", price: 100, rarity: 1 },
         { id: "EB3", name: {en: "Isolation Booth", cn: "隔离室"}, desc: {en: "Increase Groove of all [Sync] scoring items by +10. For every 1 [Empty Slot] between self and [Same Track] neighbors (Previous/Next), increase the Groove of [Sync] items by +7.5% (Max 240%).", cn: "使所有 [同步] 道具 [Groove] +10。<br>自身 每与 [同轨] 前后道具间隔 1 [空拍]，使 [同步] 道具的 [Groove] +7.5%（上限240%）。"}, len: 4, cpu: 2, base: 0, type: "support", color: "#00bcd4", price: 100, rarity: 2 },
         { id: "EB4", name: {en: "Atmosphere", cn: "氛围采样"}, desc: {en: "Gain 30 Groove on trigger. Gain +5% Groove for every 1 [Empty Slot] that appeared before this trigger.", cn: "触发时获得 30 [Groove]。<br>触发前 每出现 1 [空拍]，自身 [Groove] +5%。"}, len: 4, cpu: 3, base: 30, type: "score", color: "#ffd54f", price: 150, rarity: 3 },
         { id: "EB5", name: {en: "Time Stretch", cn: "时间拉伸"}, desc: {en: "1 [Empty Slot] counts as 2 [Empty Slots] for all [Empty Slot] effects calculations.", cn: "计算所有 [空拍] 效果时，1 [空拍] 将被视为 2 [空拍]。"}, len: 8, cpu: 4, base: 0, type: "engine", color: "#ba68c8", price: 150, rarity: 3 },
@@ -364,7 +411,11 @@
         { id: "NG1", name: {en: "Viral Hit", cn: "网红单曲"}, desc: {en: "Gain 30 Groove on trigger. On Sold: Based on the cumulative number of times this item was played, immediately apply a discount to all items in the Shop.", cn: "触发时获得 30 [Groove]。<br>离场: 卖出此道具时，基于其累计上场次数，立即 使商店所有道具打折。"}, len: 8, cpu: 1, base: 30, type: "score", color: "#cfd8dc", price: 75, rarity: 1 },
         { id: "NG2", name: {en: "Layering", cn: "叠层"}, desc: {en: "Gain 20 Groove on trigger. If triggered in [Sync] with other items, gain an additional 10 Groove.", cn: "触发时获得 20 [Groove]。<br>若有其他道具 [同步] 触发，额外获得 10 [Groove]。"}, len: 4, cpu: 1, base: 20, type: "score", color: "#b0bec5", price: 75, rarity: 1 },
         { id: "NG3", name: {en: "Solo Fader", cn: "独奏推子"}, desc: {en: "[Same Track] Increase Groove of Previous and Next items by +35%. If triggered with no [Sync] items, increase this effect by an additional +35%.", cn: "[同轨] 使 前一个 和 下一个 道具 [Groove] +35%。<br>若触发时 无 其他道具 [同步] 触发，该增幅效果额外 +35%。"}, len: 2, cpu: 1, base: 0, type: "support", color: "#90a4ae", price: 100, rarity: 2 },
-        { id: "NG4", name: {en: "Noise Gate", cn: "降噪门"}, desc: {en: "[Consume] Reduce the Groove of all [Sync] items by 50%. Gain Groove equal to (40 + [Consumed] amount) x 1.5.", cn: "[吞噬]: 使所有 [同步] 道具的 [Groove] 减半。<br>自身获得 [Groove] = (40 + [吞噬] 的数值) x 1.5。"}, len: 4, cpu: 2, base: 40, type: "score", color: "#78909c", price: 150, rarity: 3 }
+        { id: "NG4", name: {en: "Noise Gate", cn: "降噪门"}, desc: {en: "[Consume] Reduce the Groove of all [Sync] items by 50%. Gain Groove equal to (40 + [Consumed] amount) x 1.5.", cn: "[吞噬]: 使所有 [同步] 道具的 [Groove] 减半。<br>自身获得 [Groove] = (40 + [吞噬] 的数值) x 1.5。"}, len: 4, cpu: 2, base: 40, type: "score", color: "#78909c", price: 150, rarity: 3 },
+        
+        // Tutorial Dummy Items
+        { id: "TUT1", name: {en: "Sampler A", cn: "采样器 A"}, desc: {en: "Gain 20 Groove.", cn: "获得 20 Groove。"}, len: 4, cpu: 1, base: 20, type: "score", color: "#ddd", price: 0, rarity: 1 },
+        { id: "TUT2", name: {en: "Sampler B", cn: "采样器 B"}, desc: {en: "Gain 30 Groove.", cn: "获得 30 Groove。"}, len: 8, cpu: 1, base: 30, type: "score", color: "#bbb", price: 0, rarity: 1 }
     ];
     
     const LEVEL_CONFIG = [
@@ -376,13 +427,28 @@
         { tracks: 3, target: 1200, reward: 0,   poolAdds: [] }
     ];
 
+    const TUTORIAL_CONFIG = [
+        // Level 1: Score/Target/CPU. 1 Track. 2xTUT1(4tick)+3xTUT2(8tick) to fit 32 ticks & 5 CPU.
+        { tracks: 1, target: 130, reward: 100, startCpu: 5, initialItems: ["TUT1", "TUT1", "TUT2", "TUT2", "TUT2"], poolAdds: [] },
+        // Level 2: Economy/Empty Space. Unlocks Rest Note. 
+        { tracks: 1, target: 150, reward: 130, poolAdds: ["EB1"] },
+        // Level 3: Strong Beat / One-time CPU Upgrade. Unlocks Kick.
+        { tracks: 1, target: 185, reward: 210, poolAdds: ["SB1"], oneTimeCpu: true },
+        // Level 4: Multi-track / Buffs / Repeatable CPU. Unlocks Pre-delay. Fail Reward 110.
+        { tracks: 2, target: 270, reward: 0, poolAdds: ["EB2"], repeatableCpu: true, failReward: 110 }
+    ];
+
     let config = { maxCpu: 12, target: 324, activeTracks: 2 };
     let state = {
         inventory: [], placedItems: [], poolIds: [], poolEntryTimes: {}, 
         levelIndex: 0, selectedInvItem: null, shopLocked: false, isPlaying: false,
         gold: 150, cpuPurchasedRound: 0, roundBase: 10, currentShopItems: [],
         ng1PermanentStacks: 0, lastRoundReward: 0, lives: 3,
-        lang: 'en'  // Default EN
+        lang: 'en',
+        
+        // Tutorial States
+        isTutorial: false,
+        tutorialCpuBought: false // For Level 3 constraint
     };
 
     // --- Drag State ---
@@ -649,7 +715,6 @@
         document.getElementById('txtClear').innerText = t.clear;
         document.getElementById('lblCpu').innerText = t.cpu;
         document.getElementById('lblTarget').innerText = t.target;
-        // document.getElementById('lblFunds').innerText = t.funds; // REMOVED from Header
         document.getElementById('lblInventory').innerText = t.inventory;
         document.getElementById('lblShop').innerText = t.shop;
         document.getElementById('txtUpCpu').innerText = t.upCpu;
@@ -677,7 +742,18 @@
         document.getElementById('lblHelpTitle').innerText = t.helpTitle;
         document.getElementById('lblHelpControl').innerText = t.helpControlTitle;
         document.getElementById('txtHelpControl').innerHTML = t.helpControlTxt;
+        
+        // Tutorial Text
+        document.getElementById('lblTutTitle').innerText = t.tutTitle;
+        document.getElementById('lblTutDesc').innerText = t.tutDesc;
+        document.getElementById('btnSkipTut').innerText = t.skip;
+        document.getElementById('btnPlayTut').innerText = t.playTut;
+        document.getElementById('lblTutCompDesc').innerText = t.tutCompDesc;
+        document.querySelector('#tutorialCompleteModal h2').innerText = t.tutComp;
+        document.querySelector('#tutorialCompleteModal button').innerText = t.enterGame;
+
         updateInventoryUI(); renderShopFromState();
+        updateCpuButton();
         if(state.selectedInvItem) showDetail(state.selectedInvItem.data);
     }
 
@@ -693,13 +769,103 @@
     }
     function hideTooltip() { const tip = document.getElementById('tooltip'); if(tip) tip.style.display = 'none'; }
 
-    function startGame() {
+    // --- Start & Flow Logic ---
+    function showLangSelect() {
         document.getElementById('startScreen').style.display = 'none';
-        state.inventory = []; state.ng1PermanentStacks = 0; state.lives = 3;
+        document.getElementById('langSelectModal').style.display = 'flex';
+    }
+
+    function selectLang(lang) {
+        state.lang = lang;
+        updateAllText();
+        document.getElementById('langSelectModal').style.display = 'none';
+        document.getElementById('tutorialQueryModal').style.display = 'flex';
+    }
+
+    function skipTutorial() {
+        document.getElementById('tutorialQueryModal').style.display = 'none';
+        startStandardGame();
+    }
+
+    function playTutorial() {
+        document.getElementById('tutorialQueryModal').style.display = 'none';
+        state.isTutorial = true;
+        startTutorialLevel(0);
+    }
+
+    function startStandardGame() {
+        state.isTutorial = false;
+        state.inventory = []; state.ng1PermanentStacks = 0; state.lives = 3; state.gold = 150;
         ["SB1", "EB1", "NG2"].forEach(id => addItemToInventory(id, 0)); 
         config.maxCpu = 12;
         applyLevelConfig(0);
         updateUI();
+    }
+
+    function startTutorialLevel(idx) {
+        state.levelIndex = idx;
+        const cfg = TUTORIAL_CONFIG[idx];
+        config.target = cfg.target;
+        config.activeTracks = cfg.tracks;
+        
+        // Tutorial Level 1 Init logic
+        if (idx === 0) {
+            state.inventory = [];
+            state.placedItems = [];
+            state.poolIds = [];
+            state.gold = 0; // Level 1 has no economy interaction usually, but let's zero it
+            config.maxCpu = cfg.startCpu;
+            if(cfg.initialItems) {
+                cfg.initialItems.forEach(id => addItemToInventory(id, 0));
+            }
+        }
+        
+        // Setup Pool adds for shop
+        if (cfg.poolAdds) {
+            cfg.poolAdds.forEach(id => {
+                if(!state.poolIds.includes(id)) state.poolIds.push(id);
+                // Force entry time so shop logic picks it up
+                if (!state.poolEntryTimes[id]) state.poolEntryTimes[id] = 0; 
+            });
+        }
+        
+        // Level 3 CPU Logic Reset
+        state.tutorialCpuBought = false;
+        
+        // Level 4 CPU Logic
+        if(cfg.repeatableCpu) {
+            state.cpuPurchasedRound = 0; // Resets price scale logic
+        }
+
+        updateUI();
+        initGrid(); 
+        restorePlacedItems();
+        
+        // If it's a shop level (idx > 0), ensure items are in shop
+        if (idx > 0) {
+            forceTutorialShop(idx);
+        } else {
+            state.currentShopItems = [];
+            renderShopFromState();
+        }
+    }
+    
+    // Custom Shop Logic for Tutorial to ensure items appear
+    function forceTutorialShop(idx) {
+        state.currentShopItems = [];
+        const cfg = TUTORIAL_CONFIG[idx];
+        if (cfg.poolAdds && cfg.poolAdds.length > 0) {
+            // Force add the new item
+            cfg.poolAdds.forEach(id => {
+                const data = DB.find(i => i.id === id);
+                if(data) {
+                    state.currentShopItems.push({ data: data, price: data.price, isDiscount: false, discountPercent: 0, sold: false });
+                }
+            });
+            // Fill rest with random if needed? Tutorial usually specific.
+            // For now just show the critical items.
+        }
+        renderShopFromState();
     }
 
     function addItemToInventory(id, price) {
@@ -739,7 +905,32 @@
     }
 
     function updateGold(amount) { state.gold += amount; document.getElementById('goldText').innerText = state.gold + " G"; }
-    function updateCpuButton() { const cost = 30 + (Math.min(state.cpuPurchasedRound, 3) * state.roundBase); document.getElementById('cpuPriceText').innerText = `${cost}G`; }
+    
+    function updateCpuButton() { 
+        const btn = document.getElementById('btnBuyCpu');
+        
+        // Tutorial Level 3 Special Constraint
+        if (state.isTutorial && state.levelIndex === 2) {
+            if (state.tutorialCpuBought) {
+                btn.disabled = true;
+                document.getElementById('txtUpCpu').innerText = UI_TEXT[state.lang].soldOutQAQ;
+                document.getElementById('cpuPriceText').innerText = "";
+                return;
+            } else {
+                btn.disabled = false;
+                document.getElementById('txtUpCpu').innerText = UI_TEXT[state.lang].upCpu;
+                document.getElementById('cpuPriceText').innerText = "30G";
+                return;
+            }
+        }
+        
+        // Standard Logic
+        btn.disabled = false;
+        document.getElementById('txtUpCpu').innerText = UI_TEXT[state.lang].upCpu;
+        const cost = 30 + (Math.min(state.cpuPurchasedRound, 3) * state.roundBase); 
+        document.getElementById('cpuPriceText').innerText = `${cost}G`; 
+    }
+    
     function updateCPU() { const used = state.placedItems.reduce((a,b)=>a+b.data.cpu, 0); const pct = Math.min(100, (used/config.maxCpu)*100); const bar = document.getElementById('cpuBar'); if(bar) { bar.style.width = pct+"%"; bar.className = "cpu-fill " + (pct>=100?"danger":""); } document.getElementById('cpuText').innerText = `${used}`; }
 
     function initGrid() {
@@ -950,21 +1141,60 @@
         const statusContainer = document.getElementById('campaignStatusContainer');
         const t = UI_TEXT[state.lang];
         nextBtn.style.display = 'none'; finishBtn.style.display = 'none'; retryBtn.style.display = 'none'; dieBtn.style.display = 'none';
-        if (!isWin) state.lives--;
-        let hearts = ""; for(let i=0; i<3; i++) { if(i < state.lives) hearts += "❤️"; else hearts += "💔"; }
-        let dots = ""; for(let i=0; i<LEVEL_CONFIG.length; i++) { let cls = "status-dot"; if(i < state.levelIndex) cls += " done"; if(i === state.levelIndex) cls += " current done"; dots += `<div class="${cls}"></div>`; }
-        statusContainer.innerHTML = `<div class="status-item"><span class="status-hearts">${hearts}</span></div><div class="status-item" style="margin-left:20px;"><span>Progress:</span><div class="status-dots">${dots}</div></div>`;
-        if(isWin) {
-            outcomeEl.innerText = t.outcomeWin; outcomeEl.style.color = "var(--highlight)";
-            const rw = LEVEL_CONFIG[state.levelIndex].reward; state.pendingReward = rw;
-            info.innerText = `${t.reward}: +${rw}G`;
-            if (state.levelIndex >= LEVEL_CONFIG.length - 1) finishBtn.style.display = "block"; else nextBtn.style.display = "block";
+        
+        let rewardVal = 0;
+        
+        // Handle Tutorial specific outcomes
+        if (state.isTutorial) {
+            if (isWin) {
+                const cfg = TUTORIAL_CONFIG[state.levelIndex];
+                rewardVal = cfg.reward;
+                outcomeEl.innerText = t.outcomeWin; outcomeEl.style.color = "var(--highlight)";
+                info.innerText = `${t.reward}: +${rewardVal}G`;
+                if (state.levelIndex >= TUTORIAL_CONFIG.length - 1) {
+                    // Tutorial Complete
+                    nextBtn.style.display = 'none';
+                    finishBtn.style.display = 'block'; 
+                    finishBtn.innerText = t.enterGame; 
+                    finishBtn.onclick = showTutorialComplete; // Override
+                } else {
+                    nextBtn.style.display = 'block';
+                }
+            } else {
+                outcomeEl.innerText = t.outcomeLose; outcomeEl.style.color = "var(--lose-color)";
+                // Tutorial Fail Logic
+                if (state.levelIndex === 3) {
+                    // Level 4 fail reward
+                    rewardVal = TUTORIAL_CONFIG[3].failReward || 0;
+                    info.innerText = `${t.consolation}: +${rewardVal}G`;
+                } else {
+                    rewardVal = 0;
+                    info.innerText = `Try Again`;
+                }
+                retryBtn.style.display = 'block';
+            }
         } else {
-            outcomeEl.innerText = t.outcomeLose; outcomeEl.style.color = "var(--lose-color)";
-            const rw = Math.floor(LEVEL_CONFIG[state.levelIndex].reward * 0.6); state.pendingReward = rw;
-            info.innerText = `${t.consolation}: +${rw}G`;
-            if(state.lives <= 0) dieBtn.style.display = "block"; else retryBtn.style.display = "block";
+            // Standard Game Logic
+            if (!isWin) state.lives--;
+            let hearts = ""; for(let i=0; i<3; i++) { if(i < state.lives) hearts += "❤️"; else hearts += "💔"; }
+            let dots = ""; for(let i=0; i<LEVEL_CONFIG.length; i++) { let cls = "status-dot"; if(i < state.levelIndex) cls += " done"; if(i === state.levelIndex) cls += " current done"; dots += `<div class="${cls}"></div>`; }
+            statusContainer.innerHTML = `<div class="status-item"><span class="status-hearts">${hearts}</span></div><div class="status-item" style="margin-left:20px;"><span>Progress:</span><div class="status-dots">${dots}</div></div>`;
+            
+            if(isWin) {
+                outcomeEl.innerText = t.outcomeWin; outcomeEl.style.color = "var(--highlight)";
+                rewardVal = LEVEL_CONFIG[state.levelIndex].reward;
+                info.innerText = `${t.reward}: +${rewardVal}G`;
+                if (state.levelIndex >= LEVEL_CONFIG.length - 1) finishBtn.style.display = "block"; else nextBtn.style.display = "block";
+            } else {
+                outcomeEl.innerText = t.outcomeLose; outcomeEl.style.color = "var(--lose-color)";
+                rewardVal = Math.floor(LEVEL_CONFIG[state.levelIndex].reward * 0.6);
+                info.innerText = `${t.consolation}: +${rewardVal}G`;
+                if(state.lives <= 0) dieBtn.style.display = "block"; else retryBtn.style.display = "block";
+            }
         }
+        
+        state.pendingReward = rewardVal;
+
         let html = `<table class="result-table"><thead><tr><th>${t.item}</th><th>${t.base}</th><th>${t.cond}</th><th>${t.mult}</th><th>${t.final}</th><th>${t.note}</th></tr></thead><tbody>`;
         const results = calculateLogic();
         results.forEach(r => {
@@ -979,11 +1209,43 @@
         document.getElementById('resTableContainer').innerHTML = html; document.getElementById('resTotalScore').innerText = Math.floor(totalScore); document.getElementById('resTargetDisplay').innerText = config.target; document.getElementById('resultModal').style.display = 'flex';
     }
 
+    function showTutorialComplete() {
+        document.getElementById('resultModal').style.display = 'none';
+        document.getElementById('tutorialCompleteModal').style.display = 'flex';
+    }
+    
+    function finishTutorialFlow() {
+        document.getElementById('tutorialCompleteModal').style.display = 'none';
+        startStandardGame();
+    }
+
     function showVictory() { document.getElementById('victoryModal').style.display = 'flex'; }
     function showGameOver() { document.getElementById('gameOverModal').style.display = 'flex'; }
     function closeResult() { document.getElementById('resultModal').style.display = 'none'; }
-    function nextLevel() { updateGold(state.pendingReward); const next = state.levelIndex + 1; document.getElementById('resultModal').style.display = 'none'; if(next >= LEVEL_CONFIG.length) showVictory(); else applyLevelConfig(next); }
-    function retryLevel() { updateGold(state.pendingReward); document.getElementById('resultModal').style.display = 'none'; updateUI(); rerollShop(); }
+    
+    function nextLevel() { 
+        updateGold(state.pendingReward); 
+        document.getElementById('resultModal').style.display = 'none'; 
+        
+        if (state.isTutorial) {
+            startTutorialLevel(state.levelIndex + 1);
+        } else {
+            const next = state.levelIndex + 1; 
+            if(next >= LEVEL_CONFIG.length) showVictory(); else applyLevelConfig(next); 
+        }
+    }
+    
+    function retryLevel() { 
+        updateGold(state.pendingReward); 
+        document.getElementById('resultModal').style.display = 'none'; 
+        
+        if (state.isTutorial) {
+             startTutorialLevel(state.levelIndex);
+        } else {
+            updateUI(); rerollShop(); 
+        }
+    }
+    
     function sellSelectedItem() { 
         if (!state.selectedInvItem) return; 
         const item = state.selectedInvItem; 
@@ -1003,8 +1265,66 @@
         setTimeout(()=>float.remove(), 1000);
     }
     function applyNG1Discount(count) { const minDisc = 0.05 * count; const maxDisc = 0.10 * count; alert(`NG1 Burst! ${count} stacks consumed!`); state.currentShopItems.forEach(item => { if(!item.sold) { let extra = minDisc + Math.random() * (maxDisc - minDisc); const minPrice = Math.floor(item.data.price * 0.1); let newPrice = Math.floor(item.price * (1 - extra)); if (newPrice < minPrice) newPrice = minPrice; item.price = newPrice; item.isDiscount = true; item.discountPercent += Math.round(extra * 100); } }); renderShopFromState(); }
-    function buyCpu() { const cost = 30 + (Math.min(state.cpuPurchasedRound, 3) * state.roundBase); if(state.gold >= cost) { updateGold(-cost); config.maxCpu++; state.cpuPurchasedRound++; updateUI(); updateCPU(); } else { alert("No Gold"); } }
-    function rerollShop() { if(state.isPlaying) return; const isManual = (event && event.target && event.target.id === 'btnReroll'); if (isManual) { if(state.gold < 10) { alert("No Gold"); return; } updateGold(-10); } state.currentShopItems = []; let candidates = DB.filter(i => state.poolIds.includes(i.id) && !state.inventory.some(inv => inv.id === i.id)); for(let i=0; i<4; i++) { if(candidates.length === 0) break; const rand = Math.random(); let rarityTarget = 1; if (rand > 0.6) rarityTarget = 2; if (rand > 0.9) rarityTarget = 3; let pool = candidates.filter(x => x.rarity === rarityTarget); if (pool.length === 0) pool = candidates; const itemBase = pool[0]; candidates = candidates.filter(x => x.id !== itemBase.id); const variance = Math.floor(Math.random() * 11) - 5; let finalPrice = itemBase.price + variance; const entryRound = state.poolEntryTimes[itemBase.id] || 0; const roundsInPool = state.levelIndex - entryRound; const discountChance = Math.min(0.5, 0.2 + (roundsInPool * 0.1)); let isDiscount = Math.random() < discountChance; let discountPercent = 0; if(isDiscount) { const maxOff = Math.min(0.5, 0.1 + (roundsInPool * 0.1)); const minOff = 0.1; const actualOff = minOff + Math.random() * (maxOff - minOff); finalPrice = Math.floor(finalPrice * (1 - actualOff)); discountPercent = Math.round(actualOff * 100); } state.currentShopItems.push({ data: itemBase, price: finalPrice, isDiscount: isDiscount, discountPercent: discountPercent, sold: false }); } renderShopFromState(); }
+    
+    function buyCpu() { 
+        // Tutorial Level 3 Constraint
+        if (state.isTutorial && state.levelIndex === 2) {
+             if (state.gold >= 30 && !state.tutorialCpuBought) {
+                 updateGold(-30);
+                 config.maxCpu++;
+                 state.tutorialCpuBought = true;
+                 updateUI();
+                 updateCPU();
+             } else if (state.gold < 30) {
+                 alert("No Gold");
+             }
+             return;
+        }
+
+        const cost = 30 + (Math.min(state.cpuPurchasedRound, 3) * state.roundBase); 
+        if(state.gold >= cost) { updateGold(-cost); config.maxCpu++; state.cpuPurchasedRound++; updateUI(); updateCPU(); } else { alert("No Gold"); } 
+    }
+    
+    function rerollShop() { 
+        if(state.isPlaying) return; 
+        // In Tutorial, reroll is disabled or limited, but let's keep it simple: manual reroll works, but initial shop is forced.
+        
+        const isManual = (event && event.target && event.target.id === 'btnReroll'); 
+        if (isManual) { 
+            if(state.gold < 10) { alert("No Gold"); return; } 
+            updateGold(-10); 
+        } 
+        state.currentShopItems = []; 
+        let candidates = DB.filter(i => state.poolIds.includes(i.id) && !state.inventory.some(inv => inv.id === i.id)); 
+        for(let i=0; i<4; i++) { 
+            if(candidates.length === 0) break; 
+            const rand = Math.random(); 
+            let rarityTarget = 1; 
+            if (rand > 0.6) rarityTarget = 2; 
+            if (rand > 0.9) rarityTarget = 3; 
+            let pool = candidates.filter(x => x.rarity === rarityTarget); 
+            if (pool.length === 0) pool = candidates; 
+            const itemBase = pool[0]; 
+            candidates = candidates.filter(x => x.id !== itemBase.id); 
+            const variance = Math.floor(Math.random() * 11) - 5; 
+            let finalPrice = itemBase.price + variance; 
+            const entryRound = state.poolEntryTimes[itemBase.id] || 0; 
+            const roundsInPool = state.levelIndex - entryRound; 
+            const discountChance = Math.min(0.5, 0.2 + (roundsInPool * 0.1)); 
+            let isDiscount = Math.random() < discountChance; 
+            let discountPercent = 0; 
+            if(isDiscount) { 
+                const maxOff = Math.min(0.5, 0.1 + (roundsInPool * 0.1)); 
+                const minOff = 0.1; 
+                const actualOff = minOff + Math.random() * (maxOff - minOff); 
+                finalPrice = Math.floor(finalPrice * (1 - actualOff)); 
+                discountPercent = Math.round(actualOff * 100); 
+            } 
+            state.currentShopItems.push({ data: itemBase, price: finalPrice, isDiscount: isDiscount, discountPercent: discountPercent, sold: false }); 
+        } 
+        renderShopFromState(); 
+    }
+    
     function renderShopFromState() { const list = document.getElementById('shopList'); list.innerHTML = ''; state.currentShopItems.forEach(item => { let d = document.createElement('div'); d.className = 'shop-item'; d.onclick = () => { if(!state.isPlaying) showDetail(item.data); }; let btn = document.createElement('button'); btn.className = "btn-buy"; if (item.sold) { btn.disabled = true; btn.innerText = UI_TEXT[state.lang].purchased; } else { btn.innerHTML = `${item.price}G`; btn.onclick = (e) => { e.stopPropagation(); if(state.gold>=item.price){ updateGold(-item.price); addItemToInventory(item.data.id, item.price); item.sold=true; updateInventoryUI(); renderShopFromState(); } else { alert("No Gold"); } }; } let html = `<div class="shop-row-top"><b style="color:${item.data.color}">${item.data.name[state.lang]}</b></div><div class="shop-row-btm"><span>CPU:${item.data.cpu}</span><span>Len:${item.data.len}</span></div>`; if (item.isDiscount) html += `<div class="discount-tag">-${item.discountPercent}%</div>`; d.innerHTML = html; d.querySelector('.shop-row-top').appendChild(btn); list.appendChild(d); }); }
     
     function calculateLogic() { 

@@ -2,107 +2,68 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Soundwave - MVP V19.8 (Full Bar Overload)</title>
+    <title>Soundwave - MVP V19.9 (Soft Tutorial & UI Polish)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         /* --- 基础样式 --- */
-        :root { --bg-color: #222; --panel-color: #333; --highlight: #4caf50; --text-color: #eee; --gold-color: #ffd700; --cpu-used: #ff9800; --item-blue: #64b5f6; --border: 1px solid #555; --playhead-color: #ff5252; --lose-color: #ff5252; }
+        :root { --bg-color: #1e1e1e; --panel-color: #2d2d2d; --highlight: #4caf50; --text-color: #eee; --gold-color: #ffd700; --cpu-used: #ff9800; --item-blue: #64b5f6; --border: 1px solid #444; --playhead-color: #ff5252; --lose-color: #ff5252; }
         :root { --c-score: #ffd700; --c-support: #00e5ff; --c-engine: #d500f9; }
 
         body { background-color: var(--bg-color); color: var(--text-color); font-family: 'Segoe UI', sans-serif; margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; user-select: none; }
         
-        .container { width: 98vw; max-width: 1600px; height: 95vh; display: grid; grid-template-columns: 220px 1fr 260px; grid-template-rows: 80px 1fr 180px; gap: 8px; background: #2a2a2a; padding: 10px; box-shadow: 0 0 50px rgba(0,0,0,0.8); border-radius: 8px; }
+        .container { width: 98vw; max-width: 1600px; height: 95vh; display: grid; grid-template-columns: 220px 1fr 260px; grid-template-rows: 70px 1fr 180px; gap: 8px; background: #252525; padding: 10px; box-shadow: 0 0 50px rgba(0,0,0,0.8); border-radius: 8px; }
         
-        /* Header */
-        .header { grid-column: 1 / -1; grid-row: 1 / 2; background: var(--panel-color); border: var(--border); border-radius: 4px; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; position: relative; }
-        .header-left { display: flex; align-items: center; justify-content: flex-start; min-width: 100px; z-index: 10; gap: 8px; } 
-        .btn-icon { border: none; padding: 6px 12px; font-size: 11px; font-weight: bold; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: background 0.2s; white-space: nowrap; color: white; }
-        .btn-lang { background: #555; } .btn-lang:hover { background: #666; }
-        .btn-help { background: #1976d2; } .btn-help:hover { background: #1565c0; }
-        .btn-clear { background: #d32f2f; } .btn-clear:hover { background: #f44336; }
+        /* --- Header Layout Redesign --- */
+        .header { 
+            grid-column: 1 / -1; grid-row: 1 / 2; 
+            background: var(--panel-color); border: var(--border); border-radius: 4px; 
+            display: flex; align-items: center; justify-content: space-between; 
+            padding: 0 20px; position: relative; 
+        }
         
-        /* Debug Panel */
-        .header-right { display: flex; align-items: center; justify-content: flex-end; min-width: 150px; z-index: 10; }
-        .debug-panel { display: flex; gap: 4px; align-items: center; background: #111; padding: 4px 8px; border: 1px solid #444; border-radius: 4px; }
-        .debug-text { color: #666; font-size: 10px; font-weight: bold; margin-right: 2px; }
-        .debug-input { width: 40px; background: #333; color: white; border: 1px solid #555; padding: 2px; font-size: 11px; text-align: center; }
-        .debug-btn { background: #555; color: white; border: none; padding: 3px 8px; font-size: 10px; cursor: pointer; border-radius: 2px; }
-        .debug-btn:hover { background: #777; }
-
-        /* Stats (CPU & Target Center) */
-        .stat-group { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; gap: 30px; align-items: center; justify-content: center; z-index: 5; }
-        .stat-block { display: flex; flex-direction: column; align-items: center; background: #222; padding: 8px 20px; border-radius: 8px; border: 1px solid #444; min-width: 100px; }
-        .stat-label { font-size: 11px; color: #aaa; margin-bottom: 4px; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; }
-        .stat-val { font-size: 24px; font-weight: bold; color: white; }
+        /* Left: System Buttons */
+        .header-left { display: flex; gap: 8px; flex: 1; } 
+        .btn-icon { border: none; padding: 6px 12px; font-size: 11px; font-weight: bold; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: background 0.2s; white-space: nowrap; color: white; background: #444; }
+        .btn-icon:hover { background: #555; }
+        .btn-clear { background: #d32f2f; } .btn-clear:hover { background: #ef5350; }
         
-        /* Enlarged CPU Bar (UPDATED) */
-        .cpu-container { width: 300px; display: flex; flex-direction: column; gap: 4px; } 
+        /* Center: Hero CPU Bar (Bigger, Brighter) */
+        .header-center { flex: 2; display: flex; justify-content: center; align-items: center; }
+        .stat-block-cpu { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 500px; }
+        .cpu-label-row { display: flex; justify-content: space-between; width: 100%; margin-bottom: 4px; font-size: 12px; color: #ccc; font-weight: bold; padding: 0 5px; }
+        .lbl-cpu-title { color: #4caf50; letter-spacing: 1px; text-transform: uppercase; }
+        
         .cpu-track { 
-            height: 16px; 
-            background: #111; 
-            border-radius: 8px; 
-            overflow: hidden; 
-            border: 1px solid #555; 
-            box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); 
-            position: relative;
-        } 
+            width: 100%; height: 24px; /* Taller */
+            background: #111; border-radius: 12px; overflow: hidden; 
+            border: 2px solid #555; box-shadow: inset 0 2px 8px rgba(0,0,0,0.6); 
+            position: relative; 
+        }
+        .cpu-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #66bb6a, #a5d6a7); position: absolute; left: 0; top: 0; z-index: 1; transition: width 0.2s; }
+        .cpu-fill.danger { background: linear-gradient(90deg, #ef5350, #e57373); }
+        .cpu-fill.overload { background: #ff5252 !important; box-shadow: 0 0 20px #ff5252; animation: pulse-fast 0.15s infinite alternate; }
+
+        .cpu-preview { height: 100%; position: absolute; top: 0; z-index: 2; display: none; }
+        /* Faster Animations */
+        .cpu-preview.valid { background-color: #ffd700; box-shadow: 0 0 15px #ffd700; animation: pulse-slow 0.8s infinite ease-in-out; }
+        .cpu-preview.invalid { background-color: #ff5252; box-shadow: 0 0 20px #ff5252; animation: pulse-fast 0.15s infinite alternate; }
+
+        @keyframes pulse-slow { 0% { opacity: 0.3; } 50% { opacity: 0.9; } 100% { opacity: 0.3; } }
+        @keyframes pulse-fast { 0% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        /* Right: Target & Debug */
+        .header-right { flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 20px; }
         
-        .cpu-fill { 
-            height: 100%; 
-            width: 0%; 
-            background: linear-gradient(90deg, #4caf50, #81c784); 
-            transition: width 0.3s; 
-            position: absolute;
-            left: 0;
-            top: 0;
-            z-index: 1;
-        }
-        .cpu-fill.danger { background: linear-gradient(90deg, #f44336, #e57373); }
+        .stat-block-target { display: flex; flex-direction: column; align-items: flex-end; background: #222; padding: 5px 15px; border-radius: 6px; border: 1px solid #444; min-width: 100px; }
+        .stat-label-target { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+        .stat-val-target { font-size: 22px; font-weight: bold; color: #fff; text-shadow: 0 0 5px rgba(255,255,255,0.1); }
 
-        /* NEW: Overload State for the main bar (Flash Red) */
-        .cpu-fill.overload {
-            background: #ff5252 !important; /* Force red */
-            box-shadow: 0 0 15px #ff5252;
-            animation: pulse-fast 0.3s infinite alternate;
-        }
+        .debug-panel { display: flex; gap: 4px; align-items: center; opacity: 0.3; transition: opacity 0.2s; }
+        .debug-panel:hover { opacity: 1; }
+        .debug-input { width: 30px; background: #333; color: white; border: 1px solid #555; padding: 2px; font-size: 10px; text-align: center; }
+        .debug-btn { background: #555; color: white; border: none; padding: 2px 6px; font-size: 10px; cursor: pointer; }
 
-        /* CPU Preview Bar */
-        .cpu-preview {
-            height: 100%;
-            position: absolute;
-            top: 0;
-            z-index: 2;
-            display: none;
-        }
-        
-        /* Preview: Valid (Yellow Pulse) */
-        .cpu-preview.valid {
-            background-color: #ffd700;
-            box-shadow: 0 0 10px #ffd700;
-            animation: pulse-slow 1.5s infinite ease-in-out;
-        }
-
-        /* Preview: Invalid (Red Flash) */
-        .cpu-preview.invalid {
-            background-color: #ff5252;
-            box-shadow: 0 0 15px #ff5252;
-            animation: pulse-fast 0.3s infinite alternate;
-        }
-
-        @keyframes pulse-slow {
-            0% { opacity: 0.4; }
-            50% { opacity: 0.8; }
-            100% { opacity: 0.4; }
-        }
-
-        @keyframes pulse-fast {
-            0% { opacity: 0.6; }
-            100% { opacity: 1; }
-        }
-
-        .cpu-text-row { display: flex; justify-content: space-between; font-size: 12px; color: #ccc; font-weight: bold; padding: 0 4px; }
-
-        /* Panels */
+        /* --- Panels --- */
         .inventory-panel { grid-column: 1 / 2; grid-row: 2 / 3; background: var(--panel-color); border: var(--border); display: flex; flex-direction: column; overflow: hidden; }
         .panel-header { background: #222; padding: 10px 15px; font-weight: bold; text-align: center; border-bottom: var(--border); font-size: 13px; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; }
         .inventory-list { flex: 1; padding: 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
@@ -132,7 +93,6 @@
         .placed-item.selected-placed { border-color: white; z-index: 20; transform: scale(1.02); }
         .placed-item.playing-active { filter: brightness(2.5) contrast(1.5) !important; box-shadow: 0 0 30px white !important; z-index: 50 !important; transform: scale(1.1); }
         
-        /* Glows */
         .placed-item.glowing-score { box-shadow: inset 0 0 10px var(--c-score); border: 2px solid var(--c-score); background-color: rgba(255,215,0,0.3) !important; }
         .placed-item.glowing-support { box-shadow: inset 0 0 10px var(--c-support); border: 2px solid var(--c-support); background-color: rgba(0,229,255,0.3) !important; }
         .placed-item.glowing-engine { box-shadow: inset 0 0 10px var(--c-engine); border: 2px solid var(--c-engine); background-color: rgba(213,0,249,0.3) !important; }
@@ -148,45 +108,13 @@
         .btn-buy { background: var(--highlight); border: none; color: white; cursor: pointer; padding: 3px 10px; border-radius: 2px; font-size: 11px; }
         .btn-buy:disabled { background: #444 !important; color: #888 !important; cursor: not-allowed; }
         
-        /* Updated Shop Controls for better hierarchy */
         .shop-controls { padding: 10px; border-top: 1px solid #444; display: flex; flex-direction: column; gap: 10px; background: #252525; }
-        
-        .btn-cpu { 
-            width: 100%; 
-            padding: 12px; 
-            background: linear-gradient(135deg, #1e88e5, #42a5f5); 
-            border: 1px solid #64b5f6;
-            color: white; 
-            cursor: pointer; 
-            font-weight: bold; 
-            border-radius: 6px; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            line-height: 1.2; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            transition: all 0.2s;
-        }
+        .btn-cpu { width: 100%; padding: 12px; background: linear-gradient(135deg, #1e88e5, #42a5f5); border: 1px solid #64b5f6; color: white; cursor: pointer; font-weight: bold; border-radius: 6px; display: flex; flex-direction: column; align-items: center; line-height: 1.2; box-shadow: 0 4px 6px rgba(0,0,0,0.3); text-transform: uppercase; letter-spacing: 1px; transition: all 0.2s; }
         .btn-cpu:hover { transform: translateY(-1px); box-shadow: 0 6px 10px rgba(0,0,0,0.4); filter: brightness(1.1); }
         .btn-cpu:active { transform: translateY(1px); box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
         .btn-cpu:disabled { background: #444; border-color: #555; color: #aaa; cursor: not-allowed; box-shadow: none; transform: none; }
-
-        .btn-reroll { 
-            width: 100%; 
-            background: #444; 
-            color: #ddd; 
-            border: 1px solid #555; 
-            padding: 8px; 
-            cursor: pointer; 
-            font-weight: bold; 
-            font-size: 11px; 
-            border-radius: 4px; 
-            transition: background 0.2s;
-        }
+        .btn-reroll { width: 100%; background: #444; color: #ddd; border: 1px solid #555; padding: 8px; cursor: pointer; font-weight: bold; font-size: 11px; border-radius: 4px; transition: background 0.2s; }
         .btn-reroll:hover { background: #555; color: white; }
-        
         .shop-funds { color: var(--gold-color); font-size: 16px; font-weight: bold; text-shadow: 0 0 5px rgba(255, 215, 0, 0.3); }
 
         .bottom-panel { grid-column: 1 / -1; grid-row: 3 / 4; display: flex; gap: 10px; padding-top: 5px; position: relative; overflow: hidden; }
@@ -207,7 +135,6 @@
         .drag-preview-invalid { background-color: rgba(244, 67, 54, 0.3) !important; border: 2px dashed #f44336; z-index: 10; pointer-events: none; }
         .item-being-dragged { opacity: 0.4; filter: grayscale(1); }
         .skip-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(211, 47, 47, 0.9); color: white; display: none; justify-content: center; align-items: center; cursor: pointer; z-index: 100; font-weight: bold; font-size: 24px; }
-        
         .drag-sell-tooltip { position: fixed; z-index: 10000; background: #222; border: 2px solid gold; padding: 5px 10px; border-radius: 6px; font-weight: bold; font-size: 14px; color: gold; box-shadow: 0 0 15px rgba(255, 215, 0, 0.5); pointer-events: none; transform: translate(15px, -15px); }
 
         /* Modals & Tooltips */
@@ -231,14 +158,42 @@
         .status-dot.current { border: 2px solid white; transform: scale(1.2); }
         .help-section { text-align: left; margin-bottom: 20px; border-bottom: 1px solid #555; padding-bottom: 15px; }
 
-        /* Unified Button Styles for Selection */
         .btn-large-option { width: 45%; padding: 15px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; margin: 0 10px; transition: all 0.2s; color: white; background: #444; border: 1px solid #555; }
         .btn-large-option:hover { background: #555; transform: scale(1.05); }
-        
         .btn-confirm { background: #4caf50; border-color: #4caf50; }
         .btn-confirm:hover { background: #43a047; }
-        
         .hidden { display: none !important; }
+
+        /* --- SOFT TUTORIAL GUIDE STYLES --- */
+        @keyframes guide-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.4); border-color: rgba(255, 215, 0, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 215, 0, 0); border-color: rgba(255, 215, 0, 1); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); border-color: rgba(255, 215, 0, 0.4); }
+        }
+        
+        .soft-guide {
+            position: relative;
+            z-index: 900;
+            border: 2px solid gold !important;
+            animation: guide-pulse 2s infinite;
+        }
+        
+        .soft-guide::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255,215,0,0.05);
+            pointer-events: none;
+        }
+
+        /* Track Unlock Animation */
+        @keyframes unlock-flash {
+            0% { background-color: white; transform: scale(1.02); }
+            100% { background-color: #1a1a1a; transform: scale(1); }
+        }
+        .track-unlock-anim {
+            animation: unlock-flash 1s ease-out;
+        }
     </style>
 </head>
 <body>
@@ -253,39 +208,38 @@
             <button class="btn-icon btn-clear" onclick="clearAllItems()">🗑️ <span id="txtClear">CLEAR</span></button>
         </div>
         
-        <div class="stat-group">
-            <div class="stat-block">
-                <div class="stat-label" id="lblCpu">★ CPU</div>
-                <div class="cpu-container">
-                    <div class="cpu-track">
-                        <div class="cpu-fill" id="cpuBar"></div>
-                        <div class="cpu-preview" id="cpuPreviewBar"></div>
-                    </div>
-                    <div class="cpu-text-row">
-                        <span id="cpuText">0</span>
-                        <span id="maxCpuText">Max: 12</span>
-                    </div>
+        <div class="header-center">
+            <div class="stat-block-cpu" id="cpuContainer">
+                <div class="cpu-label-row">
+                    <span class="lbl-cpu-title" id="lblCpu">★ CPU</span>
+                    <span id="maxCpuText">Max: 12</span>
                 </div>
-            </div>
-
-            <div class="stat-block">
-                <div class="stat-label" id="lblTarget">TARGET</div>
-                <div class="stat-val" id="targetText">360</div>
+                <div class="cpu-track">
+                    <div class="cpu-fill" id="cpuBar"></div>
+                    <div class="cpu-preview" id="cpuPreviewBar"></div>
+                </div>
+                <div class="cpu-label-row" style="margin-top: 2px;">
+                    <span id="cpuText">0</span>
+                </div>
             </div>
         </div>
 
         <div class="header-right">
+            <div class="stat-block-target" id="targetContainer">
+                <div class="stat-label-target" id="lblTarget">TARGET</div>
+                <div class="stat-val-target" id="targetText">360</div>
+            </div>
+            
             <div class="debug-panel">
-                <span class="debug-text">DBG:</span>
                 <input type="number" id="dbgGold" class="debug-input" placeholder="G">
-                <button class="debug-btn" onclick="debugSetGold()">Set</button>
+                <button class="debug-btn" onclick="debugSetGold()">$</button>
                 <input type="number" id="dbgTarget" class="debug-input" placeholder="Tgt">
-                <button class="debug-btn" onclick="debugSetTarget()">Set</button>
+                <button class="debug-btn" onclick="debugSetTarget()">T</button>
             </div>
         </div> 
     </div>
 
-    <div class="inventory-panel">
+    <div class="inventory-panel" id="invPanel">
         <div class="panel-header" id="lblInventory">INVENTORY</div>
         <div class="inventory-list" id="inventoryList"></div>
     </div>
@@ -312,7 +266,7 @@
 
     <div class="bottom-panel">
         <div id="skipOverlay" class="skip-overlay" onclick="skipPlayback()">⏩ CLICK TO FAST FORWARD</div>
-        <div class="info-box info-left">
+        <div class="info-box info-left" id="detailPanel">
             <div class="detail-title" id="detailTitle">Ready</div>
             <div class="detail-meta" id="detailMeta"></div>
             <div class="detail-desc" id="detailContent">...</div>
@@ -424,7 +378,6 @@
         SB1: "On_Beat_1.mp3", SB2: "On_Beat_2.mp3", SB3: "On_Beat_3.mp3", SB4: "On_Beat_4.mp3", SB5: "On_Beat_5.mp3",
         EB1: "Off_Beat_1.mp3", EB2: "Off_Beat_2.mp3", EB3: "Off_Beat_3.mp3", EB4: "Off_Beat_4.mp3", EB5: "Off_Beat_5.mp3", EB6: "Off_Beat_6.mp3",
         NG1: "exp_Beat_1.mp3", NG2: "exp_Beat_2.mp3", NG3: "exp_Beat_3.mp3", NG4: "exp_Beat_4.mp3",
-        // Reuse sounds for tutorial dummy items
         TUT1: "On_Beat_2.mp3", TUT2: "On_Beat_3.mp3"
     };
 
@@ -489,7 +442,7 @@
             "弱拍": "每小节的第2拍与第4拍。", 
             "同轨": "处于同一音轨上的道具。", 
             "同步": "垂直方向上，与该道具在同一时间点被触发的其他道具。", 
-            "空拍": "DAW中最小的空间单位。1拍 = 4格。", // "格" mapped to "空拍" text
+            "空拍": "DAW中最小的空间单位。1拍 = 4格。",
             "吞噬": "减少目标道具的分数，并将其作为自身分数的计算依据。" 
         }
     };
@@ -511,7 +464,6 @@
         { id: "NG3", name: {en: "Solo Fader", cn: "独奏推子"}, desc: {en: "[Same Track] Increase Groove of Previous and Next items by +35%. If triggered with no [Sync] items, increase this effect by an additional +35%.", cn: "[同轨] 使 前一个 和 下一个 道具 [Groove] +35%。<br>若触发时 无 其他道具 [同步] 触发，该增幅效果额外 +35%。"}, len: 2, cpu: 1, base: 0, type: "support", color: "#90a4ae", price: 100, rarity: 2 },
         { id: "NG4", name: {en: "Noise Gate", cn: "降噪门"}, desc: {en: "[Consume] Reduce the Groove of all [Sync] items by 50%. Gain Groove equal to (40 + [Consumed] amount) x 1.5.", cn: "[吞噬]: 使所有 [同步] 道具的 [Groove] 减半。<br>自身获得 [Groove] = (40 + [吞噬] 的数值) x 1.5。"}, len: 4, cpu: 2, base: 40, type: "score", color: "#78909c", price: 150, rarity: 3 },
         
-        // Tutorial Dummy Items
         { id: "TUT1", name: {en: "Sampler A", cn: "采样器 A"}, desc: {en: "Gain 20 Groove.", cn: "获得 20 Groove。"}, len: 4, cpu: 1, base: 20, type: "score", color: "#ddd", price: 0, rarity: 1 },
         { id: "TUT2", name: {en: "Sampler B", cn: "采样器 B"}, desc: {en: "Gain 30 Groove.", cn: "获得 30 Groove。"}, len: 8, cpu: 1, base: 30, type: "score", color: "#bbb", price: 0, rarity: 1 }
     ];
@@ -526,14 +478,9 @@
     ];
 
     const TUTORIAL_CONFIG = [
-        // Level 1: Score/Target/CPU. 1 Track. 1xTUT1(4tick)+1xTUT2(8tick) given.
         { tracks: 1, target: 130, reward: 100, startCpu: 5, initialItems: ["TUT1", "TUT2"], poolAdds: [] },
-        // Level 2: Economy/Empty Space. Unlocks Rest Note. 
         { tracks: 1, target: 150, reward: 130, poolAdds: ["EB1"] },
-        // Level 3: Strong Beat / One-time CPU Upgrade. Unlocks Kick.
-        // Reward 220 ensures Level 4 starts with 220G.
         { tracks: 1, target: 185, reward: 220, poolAdds: ["SB1"], oneTimeCpu: true },
-        // Level 4: Multi-track / Buffs / Repeatable CPU. Unlocks Pre-delay. Fail Reward 110.
         { tracks: 2, target: 270, reward: 0, poolAdds: ["EB2"], repeatableCpu: true, failReward: 110 }
     ];
 
@@ -544,35 +491,77 @@
         gold: 150, cpuPurchasedRound: 0, roundBase: 10, currentShopItems: [],
         ng1PermanentStacks: 0, lastRoundReward: 0, lives: 3,
         lang: 'en',
-        
-        // Tutorial States
         isTutorial: false,
-        tutorialCpuBought: false // For Level 3 constraint
+        tutorialCpuBought: false 
     };
 
-    // --- Drag State ---
     let dragManager = {
-        active: false,
-        itemData: null,      
-        sourceType: null,    // 'inventory' or 'track'
-        sourceRecord: null,  // if track
-        sourceInvItem: null, // if inventory
-        ghostEl: null,
-        previewEl: null,
-        sellTooltip: null, 
-        currentHover: null,
-        startX: 0, startY: 0
+        active: false, itemData: null, sourceType: null, sourceRecord: null, sourceInvItem: null,
+        ghostEl: null, previewEl: null, sellTooltip: null, currentHover: null, startX: 0, startY: 0
     };
+
+    // --- Tutorial System ---
+    let tutorialState = {
+        guidesActive: [] 
+    };
+
+    function addGuide(elId) {
+        if (!state.isTutorial) return;
+        const el = document.getElementById(elId);
+        if (el && !el.classList.contains('soft-guide')) {
+            el.classList.add('soft-guide');
+            tutorialState.guidesActive.push(elId);
+        }
+    }
+
+    function removeGuide(elId) {
+        const el = document.getElementById(elId);
+        if (el) el.classList.remove('soft-guide');
+        tutorialState.guidesActive = tutorialState.guidesActive.filter(id => id !== elId);
+    }
+
+    function clearAllGuides() {
+        tutorialState.guidesActive.forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.classList.remove('soft-guide');
+        });
+        tutorialState.guidesActive = [];
+    }
+
+    function updateTutorialVisuals(isStart = false) {
+        if (!state.isTutorial) { clearAllGuides(); return; }
+        
+        // Level 1: Basics
+        if (state.levelIndex === 0) {
+            if (isStart) {
+                addGuide('targetContainer');
+                addGuide('invPanel'); 
+                addGuide('detailPanel');
+            }
+        }
+        // Level 2: Shop/Gold
+        else if (state.levelIndex === 1) {
+            if (isStart) {
+                addGuide('goldText');
+                addGuide('shopList'); // Highlight shop area
+            }
+        }
+        // Level 3: CPU Upgrade
+        else if (state.levelIndex === 2) {
+            if (isStart) {
+                addGuide('btnBuyCpu');
+            }
+        }
+        // Level 4: Track Unlock (Handled via animation, not static guide)
+    }
 
     // --- Init ---
     window.addEventListener('DOMContentLoaded', () => { 
         initGrid(); 
         updateAllText(); 
-        // Global Drag Listeners
         window.addEventListener('mousemove', onGlobalDragMove);
         window.addEventListener('mouseup', onGlobalDragEnd);
         
-        // Expose Debug
         window.debugSetGold = () => { const val = parseInt(document.getElementById('dbgGold').value); if(!isNaN(val)) { state.gold = val; updateUI(); } };
         window.debugSetTarget = () => { const val = parseInt(document.getElementById('dbgTarget').value); if(!isNaN(val)) { config.target = val; updateUI(); } };
     });
@@ -580,10 +569,12 @@
     // --- Drag Logic ---
     function startDragInventory(e, invItem) {
         if(state.isPlaying) return;
-        if(e.button !== 0) return; // Left click only
-        e.stopPropagation(); // Don't trigger click selection immediately
+        if(e.button !== 0) return; 
+        e.stopPropagation(); 
         
-        // Refinement 8: Allow drag even if CPU full, feedback happens in updateCPU via preview
+        // Tutorial Hook: Clear Inventory Guide
+        if(state.isTutorial && state.levelIndex === 0) removeGuide('invPanel');
+
         setupDrag(e, invItem.data, 'inventory', null, invItem);
     }
 
@@ -592,7 +583,6 @@
         if(e.button !== 0) return;
         e.stopPropagation();
         
-        // Hide original
         record.el.classList.add('item-being-dragged');
         setupDrag(e, record.data, 'track', record, null);
     }
@@ -606,12 +596,10 @@
         dragManager.startX = e.clientX;
         dragManager.startY = e.clientY;
 
-        // Create Ghost
         const ghost = document.createElement('div');
         ghost.className = 'drag-ghost';
         ghost.innerText = itemData.name[state.lang];
         ghost.style.backgroundColor = itemData.color;
-        // Approx width based on track width
         const trackW = document.querySelector('.track').getBoundingClientRect().width;
         const widthPx = (trackW / TICKS) * itemData.len;
         ghost.style.width = widthPx + 'px';
@@ -621,13 +609,11 @@
 
         updateGhostPosition(e.clientX, e.clientY);
         
-        // If inventory item, visually select it
         if(type === 'inventory') {
             state.selectedInvItem = invItem;
             updateInventoryUI();
             showDetail(invItem.data);
         } else {
-            // Track item
             state.selectedInvItem = null;
             showDetail(record.data);
         }
@@ -637,11 +623,8 @@
         if (!dragManager.active) return;
         e.preventDefault();
         updateGhostPosition(e.clientX, e.clientY);
-        
-        // Real-time CPU Preview Update
         updateCPU(); 
 
-        // 1. Check Track Hover
         const gridPos = getGridFromClient(e.clientX, e.clientY);
         clearPreview();
         
@@ -650,18 +633,14 @@
             renderPreview(gridPos.track, gridPos.tick, dragManager.itemData.len, isValid);
             dragManager.currentHover = gridPos;
             dragManager.hoverType = 'track';
-            // Clear sell tooltip if exists
             if(dragManager.sellTooltip) { dragManager.sellTooltip.remove(); dragManager.sellTooltip = null; }
         } else {
-            // 2. Check Shop Hover (For Selling)
             const shopPanel = document.getElementById('shopPanel');
             const rect = shopPanel.getBoundingClientRect();
             if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
                 if (dragManager.sourceType === 'inventory') {
                     shopPanel.classList.add('drag-target-sell');
                     dragManager.hoverType = 'shop';
-                    
-                    // SHOW SELL PRICE TOOLTIP
                     if (!dragManager.sellTooltip) {
                         const tooltip = document.createElement('div');
                         tooltip.className = 'drag-sell-tooltip';
@@ -673,12 +652,10 @@
                     dragManager.sellTooltip.innerText = `${UI_TEXT[state.lang].sell}: +${price}G`;
                     dragManager.sellTooltip.style.left = (e.clientX + 20) + 'px';
                     dragManager.sellTooltip.style.top = (e.clientY - 20) + 'px';
-                    
                 }
             } else {
                 shopPanel.classList.remove('drag-target-sell');
                 dragManager.hoverType = 'outside';
-                // Clear sell tooltip
                 if(dragManager.sellTooltip) { dragManager.sellTooltip.remove(); dragManager.sellTooltip = null; }
             }
             dragManager.currentHover = null;
@@ -691,23 +668,18 @@
         const { itemData, sourceType, sourceRecord, sourceInvItem, hoverType, currentHover } = dragManager;
         let actionTaken = false;
 
-        // Cleanup visuals
         if (dragManager.ghostEl) dragManager.ghostEl.remove();
-        if (dragManager.sellTooltip) dragManager.sellTooltip.remove(); // Cleanup tooltip
+        if (dragManager.sellTooltip) dragManager.sellTooltip.remove(); 
         dragManager.sellTooltip = null;
         clearPreview();
         document.getElementById('shopPanel').classList.remove('drag-target-sell');
         if (sourceRecord && sourceRecord.el) sourceRecord.el.classList.remove('item-being-dragged');
 
-        // Logic
         if (hoverType === 'track' && currentHover) {
-            // Placing on Track
             if (checkPlacementValidity(currentHover.track, currentHover.tick, itemData)) {
-                // If moving within track, remove old first
                 if (sourceType === 'track') {
                     state.placedItems = state.placedItems.filter(p => p !== sourceRecord);
                 }
-                // Add new
                 state.placedItems.push({ 
                     id: Date.now(), data: itemData, 
                     track: currentHover.track, start: currentHover.tick 
@@ -716,12 +688,10 @@
                 restorePlacedItems();
             }
         } else if (hoverType === 'shop' && sourceType === 'inventory') {
-            // Selling from Inventory
-            state.selectedInvItem = sourceInvItem; // Ensure correct selection for helper
+            state.selectedInvItem = sourceInvItem; 
             sellSelectedItem(); 
             actionTaken = true;
         } else if (hoverType === 'outside' && sourceType === 'track') {
-            // Removing from Track (Dragging out)
             state.placedItems = state.placedItems.filter(p => p !== sourceRecord);
             restorePlacedItems();
             actionTaken = true;
@@ -729,7 +699,7 @@
 
         dragManager.active = false;
         dragManager.ghostEl = null;
-        updateCPU(); // Reset preview and overload state
+        updateCPU(); 
         updateUI();
     }
 
@@ -751,16 +721,12 @@
 
     function checkPlacementValidity(trackIdx, startTick, itemData) {
         if (startTick + itemData.len > TICKS) return false;
-        
-        // 1. CPU Check (Refinement 8: Drag feedback)
         if (dragManager.sourceType === 'inventory') {
             const currentCpu = state.placedItems.reduce((a,b)=>a+b.data.cpu, 0);
             if (currentCpu + itemData.cpu > config.maxCpu) {
-                return false; // Will render red preview
+                return false; 
             }
         }
-
-        // 2. Collision Check
         const others = state.placedItems.filter(p => p !== dragManager.sourceRecord);
         for (let item of others) {
             if (item.track === trackIdx) {
@@ -837,7 +803,6 @@
         document.getElementById('lblHelpControl').innerText = t.helpControlTitle;
         document.getElementById('txtHelpControl').innerHTML = t.helpControlTxt;
         
-        // Tutorial Text
         document.getElementById('lblTutTitle').innerText = t.tutTitle;
         document.getElementById('lblTutDesc').innerText = t.tutDesc;
         document.getElementById('btnSkipTut').innerText = t.skip;
@@ -892,10 +857,7 @@
         state.inventory = []; state.ng1PermanentStacks = 0; state.lives = 3; state.gold = 150;
         ["SB1", "EB1", "NG2"].forEach(id => addItemToInventory(id, 0)); 
         config.maxCpu = 12;
-        
-        // Clear board when entering standard game (Refinement 5)
         state.placedItems = [];
-        
         applyLevelConfig(0);
         updateUI();
     }
@@ -906,40 +868,34 @@
         config.target = cfg.target;
         config.activeTracks = cfg.tracks;
         
-        // Tutorial Level 1 Init logic
         if (idx === 0) {
             state.inventory = [];
             state.placedItems = [];
             state.poolIds = [];
-            state.gold = 0; // Level 1 has no economy interaction usually, but let's zero it
+            state.gold = 0; 
             config.maxCpu = cfg.startCpu;
             if(cfg.initialItems) {
                 cfg.initialItems.forEach(id => addItemToInventory(id, 0));
             }
         }
         
-        // Setup Pool adds for shop
         if (cfg.poolAdds) {
             cfg.poolAdds.forEach(id => {
                 if(!state.poolIds.includes(id)) state.poolIds.push(id);
-                // Force entry time so shop logic picks it up
                 if (!state.poolEntryTimes[id]) state.poolEntryTimes[id] = 0; 
             });
         }
         
-        // Level 3 CPU Logic Reset
         state.tutorialCpuBought = false;
-        
-        // Level 4 CPU Logic
-        if(cfg.repeatableCpu) {
-            state.cpuPurchasedRound = 0; // Resets price scale logic
-        }
+        if(cfg.repeatableCpu) { state.cpuPurchasedRound = 0; }
 
         updateUI();
-        initGrid(); 
+        initGrid(); // Re-render grid (will trigger track unlock anim logic)
         restorePlacedItems();
         
-        // If it's a shop level (idx > 0), ensure items are in shop
+        // Trigger Soft Tutorial Visuals
+        updateTutorialVisuals(true);
+
         if (idx > 0) {
             forceTutorialShop(idx);
         } else {
@@ -948,12 +904,10 @@
         }
     }
     
-    // Custom Shop Logic for Tutorial to ensure items appear
     function forceTutorialShop(idx) {
         state.currentShopItems = [];
         const cfg = TUTORIAL_CONFIG[idx];
         if (cfg.poolAdds && cfg.poolAdds.length > 0) {
-            // Force add the new item
             cfg.poolAdds.forEach(id => {
                 const data = DB.find(i => i.id === id);
                 if(data) {
@@ -999,7 +953,6 @@
         updateCpuButton();
         updateCPU();
         
-        // Hide Reroll in Tutorial (Refinement 4)
         if (state.isTutorial) {
             document.getElementById('btnReroll').style.display = 'none';
         } else {
@@ -1012,8 +965,6 @@
     function updateCpuButton() { 
         const btn = document.getElementById('btnBuyCpu');
         
-        // Hide CPU button until Level 3 in Tutorial (Refinement 3)
-        // Level 1=idx0, Level 2=idx1. Level 3=idx2.
         if (state.isTutorial && state.levelIndex < 2) {
             btn.style.display = 'none';
             return;
@@ -1021,7 +972,6 @@
             btn.style.display = 'flex';
         }
         
-        // Tutorial Level 3 Special Constraint (One time purchase)
         if (state.isTutorial && state.levelIndex === 2) {
             if (state.tutorialCpuBought) {
                 btn.disabled = true;
@@ -1036,7 +986,6 @@
             }
         }
         
-        // Standard Logic
         btn.disabled = false;
         document.getElementById('txtUpCpu').innerText = UI_TEXT[state.lang].upCpu;
         const cost = 30 + (Math.min(state.cpuPurchasedRound, 3) * state.roundBase); 
@@ -1044,19 +993,14 @@
     }
     
     function updateCPU() { 
-        // 1. Calculate Used
         const used = state.placedItems.reduce((a, b) => a + b.data.cpu, 0); 
         const max = config.maxCpu;
         const usedPct = Math.min(100, (used / max) * 100); 
         
-        // 2. Update Basic Bar (Default State)
         const bar = document.getElementById('cpuBar'); 
-        
-        // 3. Handle Preview Logic
         const previewBar = document.getElementById('cpuPreviewBar');
         if (!previewBar) return;
 
-        // Only show preview if dragging from inventory
         if (dragManager.active && dragManager.sourceType === 'inventory' && dragManager.itemData) {
             const itemCost = dragManager.itemData.cpu;
             const projectedTotal = used + itemCost;
@@ -1067,32 +1011,22 @@
             previewBar.style.display = 'block';
 
             if (projectedTotal > max) {
-                // OVERLOAD STATE
                 previewBar.className = "cpu-preview invalid";
-                // Force the main bar to also flash red
                 if (bar) bar.className = "cpu-fill overload"; 
-                
                 document.getElementById('cpuText').style.color = '#ff5252';
                 document.getElementById('cpuText').innerText = `${used} + ${itemCost}`;
             } else {
-                // VALID PREVIEW STATE
                 previewBar.className = "cpu-preview valid";
-                // Main bar stays normal
                 if (bar) bar.className = "cpu-fill " + (used >= max ? "danger" : "");
-                
                 document.getElementById('cpuText').style.color = '#ffd700'; 
                 document.getElementById('cpuText').innerText = `${used} + ${itemCost}`;
             }
         } else {
-            // NO DRAG STATE
             previewBar.style.display = 'none';
-            // Restore main bar to normal state
             if (bar) bar.className = "cpu-fill " + (used >= max ? "danger" : "");
-            
             document.getElementById('cpuText').style.color = '#ccc';
             document.getElementById('cpuText').innerText = `${used}`;
         }
-        
         if (bar) bar.style.width = usedPct + "%"; 
     }
 
@@ -1100,12 +1034,27 @@
         const rh = document.querySelector('.timeline-header'); 
         if(rh) { rh.innerHTML = ''; for(let i=0; i<8; i++) { let d = document.createElement('div'); d.className = 'ruler-beat'; d.innerText = `${Math.floor(i/4)+1}.${(i%4)+1}`; rh.appendChild(d); } }
         const ta = document.getElementById('trackArea');
+        
+        // Track Unlock Animation Logic
+        let previousTrackCount = 0;
+        if(ta) previousTrackCount = ta.querySelectorAll('.track:not(.locked)').length;
+
         if(ta) {
             ta.innerHTML = ''; 
             let ph = document.createElement('div'); ph.id = 'playhead'; ph.className = 'playhead'; ta.appendChild(ph);
             for(let i=0; i<TOTAL_TRACKS; i++) { 
                 let tr = document.createElement('div'); tr.className = 'track'; 
                 if (i >= config.activeTracks) tr.classList.add('locked'); 
+                
+                // If this is a newly unlocked track (and not just init)
+                // Logic: current active > previous known, and i is the last active track
+                // Simple logic: if i == config.activeTracks - 1, and it's Level 4 (Tutorial) or just unlocked
+                if (state.isTutorial && state.levelIndex === 3 && i === 1) {
+                    tr.classList.add('track-unlock-anim');
+                } else if (!state.isTutorial && i === config.activeTracks - 1 && config.activeTracks > 2 && state.levelIndex > 0) {
+                     tr.classList.add('track-unlock-anim');
+                }
+
                 for(let t=0; t<TICKS; t++) { let c = document.createElement('div'); c.className = 'grid-cell'; tr.appendChild(c); } 
                 ta.appendChild(tr); 
             }
@@ -1138,9 +1087,7 @@
         el.style.width = (record.data.len/TICKS*100) + "%";
         el.style.backgroundColor = record.data.color;
         el.innerText = record.data.name[state.lang];
-        // Drag Listener
         el.onmousedown = (e) => startDragPlaced(e, record);
-        // Right click delete
         el.oncontextmenu = (e) => { 
             if(state.isPlaying) return; 
             e.preventDefault(); el.remove(); 
@@ -1158,7 +1105,6 @@
             if(state.selectedInvItem === item) d.classList.add('selected'); 
             if(state.isPlaying) d.classList.add('disabled'); 
             d.innerHTML = `<b style="color:${item.data.color}">${item.data.name[state.lang]}</b><div class="inv-meta"><span>CPU:${item.data.cpu}</span><span>Len:${item.data.len}</span></div>`; 
-            // Drag Listener
             d.onmousedown = (e) => startDragInventory(e, item);
             list.appendChild(d); 
         });
@@ -1306,8 +1252,6 @@
         nextBtn.style.display = 'none'; finishBtn.style.display = 'none'; retryBtn.style.display = 'none'; dieBtn.style.display = 'none';
         
         let rewardVal = 0;
-        
-        // Handle Tutorial specific outcomes
         if (state.isTutorial) {
             if (isWin) {
                 const cfg = TUTORIAL_CONFIG[state.levelIndex];
@@ -1315,19 +1259,16 @@
                 outcomeEl.innerText = t.outcomeWin; outcomeEl.style.color = "var(--highlight)";
                 info.innerText = `${t.reward}: +${rewardVal}G`;
                 if (state.levelIndex >= TUTORIAL_CONFIG.length - 1) {
-                    // Tutorial Complete
                     nextBtn.style.display = 'none';
                     finishBtn.style.display = 'block'; 
                     finishBtn.innerText = t.enterGame; 
-                    finishBtn.onclick = showTutorialComplete; // Override
+                    finishBtn.onclick = showTutorialComplete; 
                 } else {
                     nextBtn.style.display = 'block';
                 }
             } else {
                 outcomeEl.innerText = t.outcomeLose; outcomeEl.style.color = "var(--lose-color)";
-                // Tutorial Fail Logic
                 if (state.levelIndex === 3) {
-                    // Level 4 fail reward
                     rewardVal = TUTORIAL_CONFIG[3].failReward || 0;
                     info.innerText = `${t.consolation}: +${rewardVal}G`;
                 } else {
@@ -1337,7 +1278,6 @@
                 retryBtn.style.display = 'block';
             }
         } else {
-            // Standard Game Logic
             if (!isWin) state.lives--;
             let hearts = ""; for(let i=0; i<3; i++) { if(i < state.lives) hearts += "❤️"; else hearts += "💔"; }
             let dots = ""; for(let i=0; i<LEVEL_CONFIG.length; i++) { let cls = "status-dot"; if(i < state.levelIndex) cls += " done"; if(i === state.levelIndex) cls += " current done"; dots += `<div class="${cls}"></div>`; }
@@ -1419,7 +1359,6 @@
         state.selectedInvItem = null; 
         updateInventoryUI();
         
-        // Show floating text feedback
         const shop = document.getElementById('shopPanel');
         const float = document.createElement('div');
         float.innerText = `+${price}G`;
@@ -1430,7 +1369,9 @@
     function applyNG1Discount(count) { const minDisc = 0.05 * count; const maxDisc = 0.10 * count; alert(`NG1 Burst! ${count} stacks consumed!`); state.currentShopItems.forEach(item => { if(!item.sold) { let extra = minDisc + Math.random() * (maxDisc - minDisc); const minPrice = Math.floor(item.data.price * 0.1); let newPrice = Math.floor(item.price * (1 - extra)); if (newPrice < minPrice) newPrice = minPrice; item.price = newPrice; item.isDiscount = true; item.discountPercent += Math.round(extra * 100); } }); renderShopFromState(); }
     
     function buyCpu() { 
-        // Tutorial Level 3 Constraint
+        // Tutorial Hook: Remove CPU guide
+        if(state.isTutorial && state.levelIndex === 2) removeGuide('btnBuyCpu');
+
         if (state.isTutorial && state.levelIndex === 2) {
              if (state.gold >= 30 && !state.tutorialCpuBought) {
                  updateGold(-30);
@@ -1487,7 +1428,10 @@
         renderShopFromState(); 
     }
     
-    function renderShopFromState() { const list = document.getElementById('shopList'); list.innerHTML = ''; state.currentShopItems.forEach(item => { let d = document.createElement('div'); d.className = 'shop-item'; d.onclick = () => { if(!state.isPlaying) showDetail(item.data); }; let btn = document.createElement('button'); btn.className = "btn-buy"; if (item.sold) { btn.disabled = true; btn.innerText = UI_TEXT[state.lang].purchased; } else { btn.innerHTML = `${item.price}G`; btn.onclick = (e) => { e.stopPropagation(); if(state.gold>=item.price){ updateGold(-item.price); addItemToInventory(item.data.id, item.price); item.sold=true; updateInventoryUI(); renderShopFromState(); } else { alert("No Gold"); } }; } let html = `<div class="shop-row-top"><b style="color:${item.data.color}">${item.data.name[state.lang]}</b></div><div class="shop-row-btm"><span>CPU:${item.data.cpu}</span><span>Len:${item.data.len}</span></div>`; if (item.isDiscount) html += `<div class="discount-tag">-${item.discountPercent}%</div>`; d.innerHTML = html; d.querySelector('.shop-row-top').appendChild(btn); list.appendChild(d); }); }
+    function renderShopFromState() { const list = document.getElementById('shopList'); list.innerHTML = ''; state.currentShopItems.forEach(item => { let d = document.createElement('div'); d.className = 'shop-item'; d.onclick = () => { if(!state.isPlaying) showDetail(item.data); }; let btn = document.createElement('button'); btn.className = "btn-buy"; if (item.sold) { btn.disabled = true; btn.innerText = UI_TEXT[state.lang].purchased; } else { btn.innerHTML = `${item.price}G`; btn.onclick = (e) => { e.stopPropagation(); if(state.gold>=item.price){ updateGold(-item.price); addItemToInventory(item.data.id, item.price); item.sold=true; updateInventoryUI(); renderShopFromState(); 
+    // Tutorial Hook: Remove item guide, Add inventory guide
+    if(state.isTutorial && state.levelIndex === 1) { removeGuide('shopList'); removeGuide('goldText'); addGuide('invPanel'); }
+    } else { alert("No Gold"); } }; } let html = `<div class="shop-row-top"><b style="color:${item.data.color}">${item.data.name[state.lang]}</b></div><div class="shop-row-btm"><span>CPU:${item.data.cpu}</span><span>Len:${item.data.len}</span></div>`; if (item.isDiscount) html += `<div class="discount-tag">-${item.discountPercent}%</div>`; d.innerHTML = html; d.querySelector('.shop-row-top').appendChild(btn); list.appendChild(d); }); }
     
     function calculateLogic() { 
         const items = state.placedItems; 
@@ -1525,25 +1469,18 @@
         return output; 
     }
 
-    // --- FIX: Optimized for Mac Safari/Chrome (No DOM Thrashing) ---
     function updateRealTimeState() { 
         updateCPU(); 
         const results = calculateLogic(); 
-        
         state.placedItems.forEach(p => { 
             const res = results.find(r => r.record === p); 
             const shouldGlow = res && res.triggered;
-            
-            // Determine target class string
             let targetClass = '';
             if (shouldGlow) {
                 if (p.data.type === "score") targetClass = 'glowing-score';
                 else if (p.data.type === "support") targetClass = 'glowing-support';
                 else if (p.data.type === "engine") targetClass = 'glowing-engine';
             }
-
-            // Only modify DOM if classList doesn't match target state
-            // This prevents "remove -> add" flickering on Mac
             ['glowing-score', 'glowing-support', 'glowing-engine'].forEach(cls => {
                 if (cls === targetClass) {
                     if (!p.el.classList.contains(cls)) p.el.classList.add(cls);
@@ -1554,7 +1491,17 @@
         }); 
     }
 
-    function showDetail(item) { document.getElementById('detailTitle').innerText = item.name[state.lang]; document.getElementById('detailTitle').style.color = item.color; document.getElementById('detailMeta').innerHTML = `<span>CPU: ${item.cpu}</span><span>${state.lang==='en'?'Len':'长度'}: ${item.len}</span><span>${state.lang==='en'?'Base':'基础'}: ${item.base}</span>`; let desc = item.desc[state.lang]; if (item.id === "NG1") { desc += `<br><span style="color:#ffd700; font-weight:bold;">[${UI_TEXT[state.lang].ng1Charge}: ${state.ng1PermanentStacks}]</span>`; } for (const key in DEFINITIONS[state.lang]) { const regex = new RegExp(`\\[${key}\\]`, "g"); desc = desc.replace(regex, `<span class="tooltip-ref" onmouseenter="showTooltip(event, '${key}')" onmouseleave="hideTooltip()">[${key}]</span>`); } document.getElementById('detailContent').innerHTML = desc; }
+    function showDetail(item) { 
+        // Tutorial Hook: Clear detail guide
+        if(state.isTutorial && state.levelIndex === 0) removeGuide('detailPanel');
+
+        document.getElementById('detailTitle').innerText = item.name[state.lang]; 
+        document.getElementById('detailTitle').style.color = item.color; 
+        document.getElementById('detailMeta').innerHTML = `<span>CPU: ${item.cpu}</span><span>${state.lang==='en'?'Len':'长度'}: ${item.len}</span><span>${state.lang==='en'?'Base':'基础'}: ${item.base}</span>`; 
+        let desc = item.desc[state.lang]; if (item.id === "NG1") { desc += `<br><span style="color:#ffd700; font-weight:bold;">[${UI_TEXT[state.lang].ng1Charge}: ${state.ng1PermanentStacks}]</span>`; } 
+        for (const key in DEFINITIONS[state.lang]) { const regex = new RegExp(`\\[${key}\\]`, "g"); desc = desc.replace(regex, `<span class="tooltip-ref" onmouseenter="showTooltip(event, '${key}')" onmouseleave="hideTooltip()">[${key}]</span>`); } 
+        document.getElementById('detailContent').innerHTML = desc; 
+    }
 </script>
 </body>
 </html>

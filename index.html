@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Soundwave - MVP V19.9 (Soft Tutorial & UI Polish)</title>
+    <title>Soundwave - MVP V20.0 (Dynamic Tutorial System)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         /* --- 基础样式 --- */
@@ -13,47 +13,31 @@
         
         .container { width: 98vw; max-width: 1600px; height: 95vh; display: grid; grid-template-columns: 220px 1fr 260px; grid-template-rows: 70px 1fr 180px; gap: 8px; background: #252525; padding: 10px; box-shadow: 0 0 50px rgba(0,0,0,0.8); border-radius: 8px; }
         
-        /* --- Header Layout Redesign --- */
-        .header { 
-            grid-column: 1 / -1; grid-row: 1 / 2; 
-            background: var(--panel-color); border: var(--border); border-radius: 4px; 
-            display: flex; align-items: center; justify-content: space-between; 
-            padding: 0 20px; position: relative; 
-        }
-        
-        /* Left: System Buttons */
+        /* Header */
+        .header { grid-column: 1 / -1; grid-row: 1 / 2; background: var(--panel-color); border: var(--border); border-radius: 4px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; position: relative; }
         .header-left { display: flex; gap: 8px; flex: 1; } 
         .btn-icon { border: none; padding: 6px 12px; font-size: 11px; font-weight: bold; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: background 0.2s; white-space: nowrap; color: white; background: #444; }
         .btn-icon:hover { background: #555; }
         .btn-clear { background: #d32f2f; } .btn-clear:hover { background: #ef5350; }
         
-        /* Center: Hero CPU Bar (Bigger, Brighter) */
         .header-center { flex: 2; display: flex; justify-content: center; align-items: center; }
         .stat-block-cpu { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 500px; }
         .cpu-label-row { display: flex; justify-content: space-between; width: 100%; margin-bottom: 4px; font-size: 12px; color: #ccc; font-weight: bold; padding: 0 5px; }
         .lbl-cpu-title { color: #4caf50; letter-spacing: 1px; text-transform: uppercase; }
         
-        .cpu-track { 
-            width: 100%; height: 24px; /* Taller */
-            background: #111; border-radius: 12px; overflow: hidden; 
-            border: 2px solid #555; box-shadow: inset 0 2px 8px rgba(0,0,0,0.6); 
-            position: relative; 
-        }
+        .cpu-track { width: 100%; height: 24px; background: #111; border-radius: 12px; overflow: hidden; border: 2px solid #555; box-shadow: inset 0 2px 8px rgba(0,0,0,0.6); position: relative; }
         .cpu-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #66bb6a, #a5d6a7); position: absolute; left: 0; top: 0; z-index: 1; transition: width 0.2s; }
         .cpu-fill.danger { background: linear-gradient(90deg, #ef5350, #e57373); }
         .cpu-fill.overload { background: #ff5252 !important; box-shadow: 0 0 20px #ff5252; animation: pulse-fast 0.15s infinite alternate; }
 
         .cpu-preview { height: 100%; position: absolute; top: 0; z-index: 2; display: none; }
-        /* Faster Animations */
         .cpu-preview.valid { background-color: #ffd700; box-shadow: 0 0 15px #ffd700; animation: pulse-slow 0.8s infinite ease-in-out; }
         .cpu-preview.invalid { background-color: #ff5252; box-shadow: 0 0 20px #ff5252; animation: pulse-fast 0.15s infinite alternate; }
 
         @keyframes pulse-slow { 0% { opacity: 0.3; } 50% { opacity: 0.9; } 100% { opacity: 0.3; } }
         @keyframes pulse-fast { 0% { opacity: 0.5; } 100% { opacity: 1; } }
 
-        /* Right: Target & Debug */
         .header-right { flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 20px; }
-        
         .stat-block-target { display: flex; flex-direction: column; align-items: flex-end; background: #222; padding: 5px 15px; border-radius: 6px; border: 1px solid #444; min-width: 100px; }
         .stat-label-target { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
         .stat-val-target { font-size: 22px; font-weight: bold; color: #fff; text-shadow: 0 0 5px rgba(255,255,255,0.1); }
@@ -63,7 +47,7 @@
         .debug-input { width: 30px; background: #333; color: white; border: 1px solid #555; padding: 2px; font-size: 10px; text-align: center; }
         .debug-btn { background: #555; color: white; border: none; padding: 2px 6px; font-size: 10px; cursor: pointer; }
 
-        /* --- Panels --- */
+        /* Panels */
         .inventory-panel { grid-column: 1 / 2; grid-row: 2 / 3; background: var(--panel-color); border: var(--border); display: flex; flex-direction: column; overflow: hidden; }
         .panel-header { background: #222; padding: 10px 15px; font-weight: bold; text-align: center; border-bottom: var(--border); font-size: 13px; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; }
         .inventory-list { flex: 1; padding: 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
@@ -166,33 +150,35 @@
 
         /* --- SOFT TUTORIAL GUIDE STYLES --- */
         @keyframes guide-pulse {
-            0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.4); border-color: rgba(255, 215, 0, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(255, 215, 0, 0); border-color: rgba(255, 215, 0, 1); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); border-color: rgba(255, 215, 0, 0.4); }
+            0% { box-shadow: 0 0 5px gold, inset 0 0 5px gold; border-color: gold; transform: scale(1); }
+            50% { box-shadow: 0 0 20px gold, inset 0 0 10px gold; border-color: #fff; transform: scale(1.02); }
+            100% { box-shadow: 0 0 5px gold, inset 0 0 5px gold; border-color: gold; transform: scale(1); }
         }
         
         .soft-guide {
             position: relative;
             z-index: 900;
             border: 2px solid gold !important;
-            animation: guide-pulse 2s infinite;
+            animation: guide-pulse 1.5s infinite;
         }
         
-        .soft-guide::after {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(255,215,0,0.05);
-            pointer-events: none;
+        .track-unlock-anim {
+            animation: unlock-flash 1s ease-out;
         }
-
-        /* Track Unlock Animation */
         @keyframes unlock-flash {
             0% { background-color: white; transform: scale(1.02); }
             100% { background-color: #1a1a1a; transform: scale(1); }
         }
-        .track-unlock-anim {
-            animation: unlock-flash 1s ease-out;
+        
+        /* Floating Text Anim */
+        .float-text {
+            position: fixed; pointer-events: none; z-index: 9999;
+            font-weight: bold; font-size: 16px;
+            animation: float-up 1s forwards;
+        }
+        @keyframes float-up {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-30px); }
         }
     </style>
 </head>
@@ -500,59 +486,128 @@
         ghostEl: null, previewEl: null, sellTooltip: null, currentHover: null, startX: 0, startY: 0
     };
 
-    // --- Tutorial System ---
+    // --- Tutorial State Management ---
     let tutorialState = {
-        guidesActive: [] 
+        l1: { aClicked: false, bClicked: false },
+        l2: { bought: false, clicked: false, effectActive: false },
+        l3: { kickBought: false, cpuBought: false, kickClicked: false, kickEffect: false },
+        l4: { cpuCount: 0 }
     };
 
-    function addGuide(elId) {
+    function resetTutorialStateForLevel(idx) {
+        if (idx === 0) tutorialState.l1 = { aClicked: false, bClicked: false };
+        if (idx === 1) tutorialState.l2 = { bought: false, clicked: false, effectActive: false };
+        if (idx === 2) { /* Do NOT reset L3 on retry as requested */ } 
+        // Initial setup for L3 if fresh
+        if (idx === 2 && !tutorialState.l3.kickBought) tutorialState.l3 = { kickBought: false, cpuBought: false, kickClicked: false, kickEffect: false };
+        if (idx === 3) tutorialState.l4 = { cpuCount: 0 };
+    }
+
+    function updateTutorialVisuals() {
         if (!state.isTutorial) return;
-        const el = document.getElementById(elId);
-        if (el && !el.classList.contains('soft-guide')) {
-            el.classList.add('soft-guide');
-            tutorialState.guidesActive.push(elId);
-        }
-    }
-
-    function removeGuide(elId) {
-        const el = document.getElementById(elId);
-        if (el) el.classList.remove('soft-guide');
-        tutorialState.guidesActive = tutorialState.guidesActive.filter(id => id !== elId);
-    }
-
-    function clearAllGuides() {
-        tutorialState.guidesActive.forEach(id => {
-            const el = document.getElementById(id);
-            if(el) el.classList.remove('soft-guide');
-        });
-        tutorialState.guidesActive = [];
-    }
-
-    function updateTutorialVisuals(isStart = false) {
-        if (!state.isTutorial) { clearAllGuides(); return; }
         
+        // Remove all previous guides to redraw
+        document.querySelectorAll('.soft-guide').forEach(el => el.classList.remove('soft-guide'));
+
         // Level 1: Basics
         if (state.levelIndex === 0) {
-            if (isStart) {
-                addGuide('targetContainer');
-                addGuide('invPanel'); 
-                addGuide('detailPanel');
+            // Target always glows
+            addGuide('targetContainer');
+            
+            // Inventory Items
+            // Find TUT1 and TUT2 in inventory
+            // We need to match by data ID.
+            const invItems = document.querySelectorAll('.inv-item');
+            invItems.forEach(el => {
+                if (el.innerText.includes("Sampler A") || el.innerText.includes("采样器 A")) {
+                    if (!tutorialState.l1.aClicked) el.classList.add('soft-guide');
+                }
+                if (el.innerText.includes("Sampler B") || el.innerText.includes("采样器 B")) {
+                    if (!tutorialState.l1.bClicked) el.classList.add('soft-guide');
+                }
+            });
+
+            // Detail Panel
+            // Glows if item clicked but not placed
+            // Logic implies: Clicked -> Detail Glows. Placed -> Detail Stops.
+            // Simplified: If currently inspecting A or B, glow detail
+            if (state.selectedInvItem) {
+                if (state.selectedInvItem.data.id === 'TUT1' && !tutorialState.l1.aPlaced) addGuide('detailPanel');
+                if (state.selectedInvItem.data.id === 'TUT2' && !tutorialState.l1.bPlaced) addGuide('detailPanel');
             }
         }
-        // Level 2: Shop/Gold
-        else if (state.levelIndex === 1) {
-            if (isStart) {
+
+        // Level 2: Shop & Effect
+        if (state.levelIndex === 1) {
+            addGuide('targetContainer');
+            
+            if (!tutorialState.l2.bought) {
                 addGuide('goldText');
-                addGuide('shopList'); // Highlight shop area
+                // Shop Item EB1
+                const shopItems = document.querySelectorAll('.shop-item');
+                shopItems.forEach(el => {
+                    if (el.innerText.includes("Rest Note") || el.innerText.includes("休止符")) el.classList.add('soft-guide');
+                });
+            } else {
+                // Bought. Check Inventory Rest Note
+                if (!tutorialState.l2.effectActive) {
+                    const invItems = document.querySelectorAll('.inv-item');
+                    let hasRestNote = false;
+                    invItems.forEach(el => {
+                        if (el.innerText.includes("Rest Note") || el.innerText.includes("休止符")) {
+                            if(!tutorialState.l2.clicked) el.classList.add('soft-guide');
+                            hasRestNote = true;
+                        }
+                    });
+                    
+                    // If clicked, detail glows
+                    if (tutorialState.l2.clicked) addGuide('detailPanel');
+                }
             }
         }
-        // Level 3: CPU Upgrade
-        else if (state.levelIndex === 2) {
-            if (isStart) {
+
+        // Level 3: Strong Beat
+        if (state.levelIndex === 2) {
+            addGuide('targetContainer');
+            
+            if (!tutorialState.l3.kickBought || !tutorialState.l3.cpuBought) {
+                if (!tutorialState.l3.kickBought || !tutorialState.l3.cpuBought) addGuide('goldText');
+                
+                if (!tutorialState.l3.cpuBought) addGuide('btnBuyCpu');
+                
+                if (!tutorialState.l3.kickBought) {
+                    const shopItems = document.querySelectorAll('.shop-item');
+                    shopItems.forEach(el => {
+                        if (el.innerText.includes("Kick Drum") || el.innerText.includes("底鼓")) el.classList.add('soft-guide');
+                    });
+                }
+            } else {
+                // Both bought. Gold stops.
+                // Inventory Kick Drum
+                if (!tutorialState.l3.kickEffect) {
+                    const invItems = document.querySelectorAll('.inv-item');
+                    invItems.forEach(el => {
+                        if (el.innerText.includes("Kick Drum") || el.innerText.includes("底鼓")) {
+                            if (!tutorialState.l3.kickClicked) el.classList.add('soft-guide');
+                        }
+                    });
+                    if (tutorialState.l3.kickClicked) addGuide('detailPanel');
+                }
+            }
+        }
+
+        // Level 4: Multi Track
+        if (state.levelIndex === 3) {
+            if (tutorialState.l4.cpuCount < 2) {
+                addGuide('goldText');
                 addGuide('btnBuyCpu');
             }
         }
-        // Level 4: Track Unlock (Handled via animation, not static guide)
+    }
+
+    function addGuide(id) {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('soft-guide');
     }
 
     // --- Init ---
@@ -564,6 +619,9 @@
         
         window.debugSetGold = () => { const val = parseInt(document.getElementById('dbgGold').value); if(!isNaN(val)) { state.gold = val; updateUI(); } };
         window.debugSetTarget = () => { const val = parseInt(document.getElementById('dbgTarget').value); if(!isNaN(val)) { config.target = val; updateUI(); } };
+        
+        // Loop visuals update
+        setInterval(updateTutorialVisuals, 200);
     });
 
     // --- Drag Logic ---
@@ -572,8 +630,19 @@
         if(e.button !== 0) return; 
         e.stopPropagation(); 
         
-        // Tutorial Hook: Clear Inventory Guide
-        if(state.isTutorial && state.levelIndex === 0) removeGuide('invPanel');
+        // Tutorial State Updates
+        if (state.isTutorial) {
+            if (state.levelIndex === 0) {
+                if (invItem.data.id === 'TUT1') tutorialState.l1.aClicked = true;
+                if (invItem.data.id === 'TUT2') tutorialState.l1.bClicked = true;
+            }
+            if (state.levelIndex === 1 && invItem.data.id === 'EB1') {
+                tutorialState.l2.clicked = true;
+            }
+            if (state.levelIndex === 2 && invItem.data.id === 'SB1') {
+                tutorialState.l3.kickClicked = true;
+            }
+        }
 
         setupDrag(e, invItem.data, 'inventory', null, invItem);
     }
@@ -686,6 +755,12 @@
                 });
                 actionTaken = true;
                 restorePlacedItems();
+                
+                // Tutorial placement check
+                if (state.isTutorial && state.levelIndex === 0) {
+                    if (itemData.id === 'TUT1') tutorialState.l1.aPlaced = true;
+                    if (itemData.id === 'TUT2') tutorialState.l1.bPlaced = true;
+                }
             }
         } else if (hoverType === 'shop' && sourceType === 'inventory') {
             state.selectedInvItem = sourceInvItem; 
@@ -864,6 +939,8 @@
 
     function startTutorialLevel(idx) {
         state.levelIndex = idx;
+        resetTutorialStateForLevel(idx);
+        
         const cfg = TUTORIAL_CONFIG[idx];
         config.target = cfg.target;
         config.activeTracks = cfg.tracks;
@@ -893,9 +970,6 @@
         initGrid(); // Re-render grid (will trigger track unlock anim logic)
         restorePlacedItems();
         
-        // Trigger Soft Tutorial Visuals
-        updateTutorialVisuals(true);
-
         if (idx > 0) {
             forceTutorialShop(idx);
         } else {
@@ -960,7 +1034,25 @@
         }
     }
 
-    function updateGold(amount) { state.gold += amount; document.getElementById('goldText').innerText = state.gold + " G"; }
+    function updateGold(amount, animationTargetId) { 
+        state.gold += amount; 
+        document.getElementById('goldText').innerText = state.gold + " G"; 
+        
+        if (amount < 0 && animationTargetId) {
+            const target = document.getElementById(animationTargetId);
+            if(target) {
+                const float = document.createElement('div');
+                float.innerText = `${amount}G`;
+                float.className = 'float-text';
+                float.style.color = '#ff5252';
+                const rect = target.getBoundingClientRect();
+                float.style.left = (rect.left + rect.width/2) + 'px';
+                float.style.top = rect.top + 'px';
+                document.body.appendChild(float);
+                setTimeout(()=>float.remove(), 1000);
+            }
+        }
+    }
     
     function updateCpuButton() { 
         const btn = document.getElementById('btnBuyCpu');
@@ -1035,10 +1127,6 @@
         if(rh) { rh.innerHTML = ''; for(let i=0; i<8; i++) { let d = document.createElement('div'); d.className = 'ruler-beat'; d.innerText = `${Math.floor(i/4)+1}.${(i%4)+1}`; rh.appendChild(d); } }
         const ta = document.getElementById('trackArea');
         
-        // Track Unlock Animation Logic
-        let previousTrackCount = 0;
-        if(ta) previousTrackCount = ta.querySelectorAll('.track:not(.locked)').length;
-
         if(ta) {
             ta.innerHTML = ''; 
             let ph = document.createElement('div'); ph.id = 'playhead'; ph.className = 'playhead'; ta.appendChild(ph);
@@ -1046,9 +1134,6 @@
                 let tr = document.createElement('div'); tr.className = 'track'; 
                 if (i >= config.activeTracks) tr.classList.add('locked'); 
                 
-                // If this is a newly unlocked track (and not just init)
-                // Logic: current active > previous known, and i is the last active track
-                // Simple logic: if i == config.activeTracks - 1, and it's Level 4 (Tutorial) or just unlocked
                 if (state.isTutorial && state.levelIndex === 3 && i === 1) {
                     tr.classList.add('track-unlock-anim');
                 } else if (!state.isTutorial && i === config.activeTracks - 1 && config.activeTracks > 2 && state.levelIndex > 0) {
@@ -1276,6 +1361,8 @@
                     info.innerText = `Try Again`;
                 }
                 retryBtn.style.display = 'block';
+                // Tutorial L1/L2/L4 reset state on fail
+                if(state.levelIndex !== 2) resetTutorialStateForLevel(state.levelIndex);
             }
         } else {
             if (!isWin) state.lives--;
@@ -1369,14 +1456,13 @@
     function applyNG1Discount(count) { const minDisc = 0.05 * count; const maxDisc = 0.10 * count; alert(`NG1 Burst! ${count} stacks consumed!`); state.currentShopItems.forEach(item => { if(!item.sold) { let extra = minDisc + Math.random() * (maxDisc - minDisc); const minPrice = Math.floor(item.data.price * 0.1); let newPrice = Math.floor(item.price * (1 - extra)); if (newPrice < minPrice) newPrice = minPrice; item.price = newPrice; item.isDiscount = true; item.discountPercent += Math.round(extra * 100); } }); renderShopFromState(); }
     
     function buyCpu() { 
-        // Tutorial Hook: Remove CPU guide
-        if(state.isTutorial && state.levelIndex === 2) removeGuide('btnBuyCpu');
-
+        // Tutorial L3 Logic
         if (state.isTutorial && state.levelIndex === 2) {
              if (state.gold >= 30 && !state.tutorialCpuBought) {
-                 updateGold(-30);
+                 updateGold(-30, 'btnBuyCpu');
                  config.maxCpu++;
                  state.tutorialCpuBought = true;
+                 tutorialState.l3.cpuBought = true; // Tut State
                  updateUI();
                  updateCPU();
              } else if (state.gold < 30) {
@@ -1384,9 +1470,17 @@
              }
              return;
         }
+        
+        // Tut L4 Logic
+        if (state.isTutorial && state.levelIndex === 3) {
+            tutorialState.l4.cpuCount++;
+        }
 
         const cost = 30 + (Math.min(state.cpuPurchasedRound, 3) * state.roundBase); 
-        if(state.gold >= cost) { updateGold(-cost); config.maxCpu++; state.cpuPurchasedRound++; updateUI(); updateCPU(); } else { alert("No Gold"); } 
+        if(state.gold >= cost) { 
+            updateGold(-cost, 'btnBuyCpu'); 
+            config.maxCpu++; state.cpuPurchasedRound++; updateUI(); updateCPU(); 
+        } else { alert("No Gold"); } 
     }
     
     function rerollShop() { 
@@ -1428,9 +1522,17 @@
         renderShopFromState(); 
     }
     
-    function renderShopFromState() { const list = document.getElementById('shopList'); list.innerHTML = ''; state.currentShopItems.forEach(item => { let d = document.createElement('div'); d.className = 'shop-item'; d.onclick = () => { if(!state.isPlaying) showDetail(item.data); }; let btn = document.createElement('button'); btn.className = "btn-buy"; if (item.sold) { btn.disabled = true; btn.innerText = UI_TEXT[state.lang].purchased; } else { btn.innerHTML = `${item.price}G`; btn.onclick = (e) => { e.stopPropagation(); if(state.gold>=item.price){ updateGold(-item.price); addItemToInventory(item.data.id, item.price); item.sold=true; updateInventoryUI(); renderShopFromState(); 
-    // Tutorial Hook: Remove item guide, Add inventory guide
-    if(state.isTutorial && state.levelIndex === 1) { removeGuide('shopList'); removeGuide('goldText'); addGuide('invPanel'); }
+    function renderShopFromState() { const list = document.getElementById('shopList'); list.innerHTML = ''; state.currentShopItems.forEach(item => { let d = document.createElement('div'); d.className = 'shop-item'; d.onclick = () => { if(!state.isPlaying) showDetail(item.data); }; let btn = document.createElement('button'); btn.className = "btn-buy"; if (item.sold) { btn.disabled = true; btn.innerText = UI_TEXT[state.lang].purchased; } else { btn.innerHTML = `${item.price}G`; btn.onclick = (e) => { e.stopPropagation(); if(state.gold>=item.price){ 
+        
+        updateGold(-item.price, 'goldText'); // Animation source
+        addItemToInventory(item.data.id, item.price); 
+        item.sold=true; 
+        
+        // Tutorial State Updates
+        if (state.isTutorial && state.levelIndex === 1 && item.data.id === 'EB1') tutorialState.l2.bought = true;
+        if (state.isTutorial && state.levelIndex === 2 && item.data.id === 'SB1') tutorialState.l3.kickBought = true;
+
+        updateInventoryUI(); renderShopFromState(); 
     } else { alert("No Gold"); } }; } let html = `<div class="shop-row-top"><b style="color:${item.data.color}">${item.data.name[state.lang]}</b></div><div class="shop-row-btm"><span>CPU:${item.data.cpu}</span><span>Len:${item.data.len}</span></div>`; if (item.isDiscount) html += `<div class="discount-tag">-${item.discountPercent}%</div>`; d.innerHTML = html; d.querySelector('.shop-row-top').appendChild(btn); list.appendChild(d); }); }
     
     function calculateLogic() { 
@@ -1469,18 +1571,32 @@
         return output; 
     }
 
+    // --- FIX: Optimized for Mac Safari/Chrome (No DOM Thrashing) ---
     function updateRealTimeState() { 
         updateCPU(); 
         const results = calculateLogic(); 
+        
+        // Tutorial State Effect Check
+        if (state.isTutorial) {
+            results.forEach(r => {
+                if (r.bonus > 0 || r.buffsGiven.length > 0 || r.buffsReceived.length > 0) { // Simple check for 'Active'
+                    if (state.levelIndex === 1 && r.record.data.id === 'EB1') tutorialState.l2.effectActive = true;
+                    if (state.levelIndex === 2 && r.record.data.id === 'SB1') tutorialState.l3.kickEffect = true;
+                }
+            });
+        }
+
         state.placedItems.forEach(p => { 
             const res = results.find(r => r.record === p); 
             const shouldGlow = res && res.triggered;
+            
             let targetClass = '';
             if (shouldGlow) {
                 if (p.data.type === "score") targetClass = 'glowing-score';
                 else if (p.data.type === "support") targetClass = 'glowing-support';
                 else if (p.data.type === "engine") targetClass = 'glowing-engine';
             }
+
             ['glowing-score', 'glowing-support', 'glowing-engine'].forEach(cls => {
                 if (cls === targetClass) {
                     if (!p.el.classList.contains(cls)) p.el.classList.add(cls);
@@ -1492,8 +1608,12 @@
     }
 
     function showDetail(item) { 
-        // Tutorial Hook: Clear detail guide
-        if(state.isTutorial && state.levelIndex === 0) removeGuide('detailPanel');
+        // Tutorial State
+        if (state.isTutorial) {
+            if (state.levelIndex === 0) {
+                if (item.id === 'TUT1') tutorialState.l1.aPlaced = true; // Use placed var to stop glow, though it's technically 'clicked'
+            }
+        }
 
         document.getElementById('detailTitle').innerText = item.name[state.lang]; 
         document.getElementById('detailTitle').style.color = item.color; 

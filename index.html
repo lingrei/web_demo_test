@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Soundwave - MVP V20.4 (Sell Logic & Tut Guide)</title>
+    <title>Soundwave - MVP V20.6 (Tutorial Shop Logic Fix)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         /* --- 基础样式 --- */
@@ -63,12 +63,23 @@
         .timeline-header { display: flex; height: 20px; border-bottom: 1px solid #444; margin-bottom: 0; flex-shrink: 0; }
         .ruler-beat { flex: 1; border-right: 1px solid #333; font-size: 10px; color: #666; padding-left: 4px; line-height: 20px; }
         .track-area { flex: 1; display: flex; flex-direction: column; gap: 0; border: 1px solid #333; height: 100%; position: relative; overflow: hidden; }
-        .track { flex: 1; background: #1a1a1a; border-bottom: 1px solid #333; display: flex; position: relative; align-items: center; }
+        .track { flex: 1; background: #1a1a1a; border-bottom: 1px solid #333; display: flex; position: relative; align-items: center; transition: background-color 0.3s; }
         .track:last-child { border-bottom: none; }
         .track.locked { background: repeating-linear-gradient(45deg, #111, #111 10px, #1a1a1a 10px, #1a1a1a 20px); pointer-events: none; opacity: 0.5; }
-        .grid-cell { flex: 1; height: 100%; border-right: 1px solid #252525; }
+        
+        .grid-cell { flex: 1; height: 100%; border-right: 1px solid #252525; transition: background-color 0.3s; }
         .grid-cell:nth-child(4n) { border-right: 1px solid #444; } 
         .grid-cell:nth-child(16n) { border-right: 1px solid #666; }
+
+        /* Track Dragging Feedback */
+        .track-area.dragging-mode .track:not(.locked) {
+            background-color: #252525; 
+        }
+        .track-area.dragging-mode .track:not(.locked) .grid-cell {
+            background-color: rgba(255, 255, 255, 0.03); 
+            border-right-color: #333;
+        }
+
         .playhead { position: absolute; top: 0; bottom: 0; left: 0; width: 2px; background-color: var(--playhead-color); z-index: 9999; box-shadow: 0 0 10px var(--playhead-color); pointer-events: none; display: none; }
         
         .placed-item { position: absolute; height: 50%; background: var(--item-blue); border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: black; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.2); cursor: grab; transition: transform 0.1s; z-index: 5; overflow: hidden; white-space: nowrap; }
@@ -81,8 +92,17 @@
         .placed-item.glowing-support { box-shadow: inset 0 0 10px var(--c-support); border: 2px solid var(--c-support); background-color: rgba(0,229,255,0.3) !important; }
         .placed-item.glowing-engine { box-shadow: inset 0 0 10px var(--c-engine); border: 2px solid var(--c-engine); background-color: rgba(213,0,249,0.3) !important; }
 
-        .shop-panel { grid-column: 3 / 4; grid-row: 2 / 3; background: var(--panel-color); border: var(--border); display: flex; flex-direction: column; transition: background-color 0.2s; position: relative; }
+        .shop-panel { grid-column: 3 / 4; grid-row: 2 / 3; background: var(--panel-color); border: var(--border); display: flex; flex-direction: column; transition: all 0.3s; position: relative; }
+        
         .shop-panel.drag-target-sell { background-color: rgba(244, 67, 54, 0.2); border: 2px dashed #f44336; }
+        
+        /* Sell Hint */
+        .shop-panel.sell-hint {
+            border-color: rgba(244, 67, 54, 0.5);
+            background-color: rgba(244, 67, 54, 0.05);
+            box-shadow: inset 0 0 15px rgba(244, 67, 54, 0.1);
+        }
+
         .shop-list { flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
         .shop-item { background: #222; padding: 8px; border: 1px solid #444; border-radius: 4px; display: flex; flex-direction: column; gap: 4px; cursor: pointer; transition: background 0.2s; position: relative; }
         .shop-item:active { background: #333; }
@@ -148,9 +168,7 @@
         .btn-confirm:hover { background: #43a047; }
         .hidden { display: none !important; }
 
-        /* --- SOFT TUTORIAL GUIDE STYLES (V20.3: Strong vs Gentle) --- */
-        
-        /* 1. Strong Pulse (For Target & Buttons) - Has Scale */
+        /* --- SOFT TUTORIAL GUIDE STYLES --- */
         @keyframes guide-pulse-strong {
             0% { box-shadow: 0 0 3px rgba(255,215,0,0.4); border-color: rgba(255,215,0,0.4); transform: scale(1); }
             50% { box-shadow: 0 0 15px rgba(255,215,0,0.9); border-color: rgba(255,215,0,1); transform: scale(1.02); }
@@ -163,7 +181,6 @@
             animation: guide-pulse-strong 2s infinite ease-in-out; 
         }
 
-        /* 2. Gentle Pulse (For Lists/Descriptions) - NO SCALE, Slower */
         @keyframes guide-pulse-gentle {
             0% { box-shadow: inset 0 0 2px rgba(255,215,0,0.2); border-color: rgba(255,215,0,0.3); }
             50% { box-shadow: inset 0 0 12px rgba(255,215,0,0.6); border-color: rgba(255,215,0,0.9); }
@@ -173,7 +190,7 @@
             position: relative;
             z-index: 900;
             border: 2px solid gold !important;
-            animation: guide-pulse-gentle 3s infinite ease-in-out; /* 3s cycle, very slow */
+            animation: guide-pulse-gentle 3s infinite ease-in-out; 
         }
         
         .track-unlock-anim {
@@ -550,8 +567,14 @@
             // Detail Panel Glow Logic
             // If clicked (inspected) but NOT placed yet, glow detail.
             if (state.selectedInvItem) {
-                if (state.selectedInvItem.data.id === 'TUT1' && !tutorialState.l1.aPlaced) addGuideGentle('detailPanel');
-                if (state.selectedInvItem.data.id === 'TUT2' && !tutorialState.l1.bPlaced) addGuideGentle('detailPanel');
+                if (state.selectedInvItem.data.id === 'TUT1' && !tutorialState.l1.aPlaced) {
+                    addGuideGentle('detailPanel');
+                    addGuideGentle('trackArea'); // Hint track area
+                }
+                if (state.selectedInvItem.data.id === 'TUT2' && !tutorialState.l1.bPlaced) {
+                    addGuideGentle('detailPanel');
+                    addGuideGentle('trackArea');
+                }
             }
         }
 
@@ -580,6 +603,7 @@
                     // Detail Panel: Only glow if Rest Note selected AND not active
                     if (state.selectedInvItem && state.selectedInvItem.data.id === 'EB1') {
                          addGuideGentle('detailPanel');
+                         addGuideGentle('trackArea');
                     }
                 }
             }
@@ -618,6 +642,7 @@
                     // Detail Panel: Only glow if Kick Drum selected AND not active
                     if (state.selectedInvItem && state.selectedInvItem.data.id === 'SB1') {
                         addGuideGentle('detailPanel');
+                        addGuideGentle('trackArea');
                     }
                 }
             }
@@ -702,6 +727,12 @@
         ghost.style.height = '40px'; 
         document.body.appendChild(ghost);
         dragManager.ghostEl = ghost;
+        
+        // Global visual hints for drag
+        document.getElementById('trackArea').classList.add('dragging-mode');
+        if (type === 'inventory') {
+            document.getElementById('shopPanel').classList.add('sell-hint');
+        }
 
         updateGhostPosition(e.clientX, e.clientY);
         
@@ -769,6 +800,10 @@
         dragManager.sellTooltip = null;
         clearPreview();
         document.getElementById('shopPanel').classList.remove('drag-target-sell');
+        // Remove hints
+        document.getElementById('trackArea').classList.remove('dragging-mode');
+        document.getElementById('shopPanel').classList.remove('sell-hint');
+        
         if (sourceRecord && sourceRecord.el) sourceRecord.el.classList.remove('item-being-dragged');
 
         if (hoverType === 'track' && currentHover) {

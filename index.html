@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Soundwave - MVP V20.1 (Tutorial Polish)</title>
+    <title>Soundwave - MVP V20.2 (Fixes & Glow)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         /* --- 基础样式 --- */
@@ -148,18 +148,18 @@
         .btn-confirm:hover { background: #43a047; }
         .hidden { display: none !important; }
 
-        /* --- SOFT TUTORIAL GUIDE STYLES (Refined for V20.1) --- */
+        /* --- SOFT TUTORIAL GUIDE STYLES (V20.2: Breathing & Dynamic) --- */
         @keyframes guide-pulse {
-            0% { box-shadow: 0 0 2px gold; border-color: rgba(255, 215, 0, 0.3); }
-            50% { box-shadow: 0 0 8px gold; border-color: rgba(255, 215, 0, 1); }
-            100% { box-shadow: 0 0 2px gold; border-color: rgba(255, 215, 0, 0.3); }
+            0% { box-shadow: 0 0 2px gold; border-color: rgba(255, 215, 0, 0.4); transform: scale(1); }
+            50% { box-shadow: 0 0 12px gold; border-color: rgba(255, 215, 0, 1); transform: scale(1.03); }
+            100% { box-shadow: 0 0 2px gold; border-color: rgba(255, 215, 0, 0.4); transform: scale(1); }
         }
         
         .soft-guide {
             position: relative;
             z-index: 900;
             border: 2px solid gold !important;
-            animation: guide-pulse 3s infinite ease-in-out; /* Slower, smoother */
+            animation: guide-pulse 1.5s infinite ease-in-out; /* Breathing cycle */
         }
         
         .track-unlock-anim {
@@ -496,15 +496,17 @@
 
     function resetTutorialStateForLevel(idx) {
         if (idx === 0) tutorialState.l1 = { aClicked: false, bClicked: false, aPlaced: false, bPlaced: false };
-        // L2: Partial Reset. Keep bought. Reset click/effect.
+        // L2: Reset clicks/effects but NOT bought status if already bought
         if (idx === 1) { 
             tutorialState.l2.clicked = false; 
             tutorialState.l2.effectActive = false; 
+            // bought state persists
         }
-        // L3: Partial Reset. Keep Bought. Reset click/effect.
+        // L3: Reset clicks/effects but NOT bought status
         if (idx === 2) { 
             tutorialState.l3.kickClicked = false; 
             tutorialState.l3.kickEffect = false;
+            // kickBought and cpuBought persist
         }
         if (idx === 3) tutorialState.l4 = { cpuCount: 0 };
     }
@@ -522,6 +524,8 @@
             // Inventory Items Glow Logic (Independent)
             const invItems = document.querySelectorAll('.inv-item');
             invItems.forEach(el => {
+                // Find matching data ID from DOM element... or match by text/color? 
+                // Better approach: use data attributes or just check name text
                 if (el.innerText.includes("Sampler A") || el.innerText.includes("采样器 A")) {
                     if (!tutorialState.l1.aClicked) el.classList.add('soft-guide');
                 }
@@ -531,9 +535,11 @@
             });
 
             // Detail Panel Glow Logic
-            // If clicked (inspected) but NOT placed yet, glow detail.
-            if (tutorialState.l1.aClicked && !tutorialState.l1.aPlaced) addGuide('detailPanel');
-            if (tutorialState.l1.bClicked && !tutorialState.l1.bPlaced) addGuide('detailPanel');
+            // Glows if selected item is A/B and NOT placed yet.
+            if (state.selectedInvItem) {
+                if (state.selectedInvItem.data.id === 'TUT1' && !tutorialState.l1.aPlaced) addGuide('detailPanel');
+                if (state.selectedInvItem.data.id === 'TUT2' && !tutorialState.l1.bPlaced) addGuide('detailPanel');
+            }
         }
 
         // Level 2: Shop & Effect
@@ -553,13 +559,15 @@
                     const invItems = document.querySelectorAll('.inv-item');
                     invItems.forEach(el => {
                         if (el.innerText.includes("Rest Note") || el.innerText.includes("休止符")) {
-                            // If bought but not clicked yet, glow Inventory Item
-                            if(!tutorialState.l2.clicked) el.classList.add('soft-guide');
+                            // GLOW UNTIL EFFECT ACTIVE (User Feedback)
+                            el.classList.add('soft-guide');
                         }
                     });
                     
-                    // If clicked (inspected) but effect not active yet, glow Detail
-                    if (tutorialState.l2.clicked) addGuide('detailPanel');
+                    // Detail Panel: Only glow if Rest Note selected AND not active
+                    if (state.selectedInvItem && state.selectedInvItem.data.id === 'EB1') {
+                         addGuide('detailPanel');
+                    }
                 }
             }
         }
@@ -584,15 +592,20 @@
                     });
                 }
             } else {
-                // Phase 2: Utilization (Inv glows until effect active)
+                // Phase 2: Utilization
                 if (!tutorialState.l3.kickEffect) {
                     const invItems = document.querySelectorAll('.inv-item');
                     invItems.forEach(el => {
                         if (el.innerText.includes("Kick Drum") || el.innerText.includes("底鼓")) {
-                            if (!tutorialState.l3.kickClicked) el.classList.add('soft-guide');
+                            // GLOW UNTIL EFFECT ACTIVE
+                            el.classList.add('soft-guide');
                         }
                     });
-                    if (tutorialState.l3.kickClicked) addGuide('detailPanel');
+                    
+                    // Detail Panel: Only glow if Kick Drum selected AND not active
+                    if (state.selectedInvItem && state.selectedInvItem.data.id === 'SB1') {
+                        addGuide('detailPanel');
+                    }
                 }
             }
         }
@@ -757,7 +770,7 @@
                 actionTaken = true;
                 restorePlacedItems();
                 
-                // Tutorial placement check (L1 Logic)
+                // Tutorial placement check (L1 Logic: FIX - Set placed here, not on click)
                 if (state.isTutorial && state.levelIndex === 0) {
                     if (itemData.id === 'TUT1') tutorialState.l1.aPlaced = true;
                     if (itemData.id === 'TUT2') tutorialState.l1.bPlaced = true;
@@ -1612,9 +1625,14 @@
         // Tutorial State
         if (state.isTutorial) {
             if (state.levelIndex === 0) {
-                // Clicking marks as clicked, doesn't mean placed.
-                // Glow stops when clicked
-                // Detail glows after click
+                if (item.id === 'TUT1') tutorialState.l1.aClicked = true;
+                if (item.id === 'TUT2') tutorialState.l1.bClicked = true;
+            }
+            if (state.levelIndex === 1 && item.id === 'EB1') {
+                tutorialState.l2.clicked = true;
+            }
+            if (state.levelIndex === 2 && item.id === 'SB1') {
+                tutorialState.l3.kickClicked = true;
             }
         }
 

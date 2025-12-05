@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Soundwave - MVP V21.3 (Result Guidance)</title>
+    <title>Soundwave - MVP V21.4 (Result Fix)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         /* --- 基础样式 --- */
@@ -214,11 +214,11 @@
             animation: guide-pulse-gentle 3s infinite ease-in-out; 
         }
 
-        /* --- NEW: Result Row Highlight (Strongest Attention) --- */
+        /* --- Result Row Highlight (NO SCALE) --- */
         @keyframes row-pulse {
-            0% { background-color: rgba(255, 215, 0, 0.1); box-shadow: inset 0 0 5px gold; transform: scale(1); border: 2px solid transparent; }
-            50% { background-color: rgba(255, 215, 0, 0.3); box-shadow: inset 0 0 20px gold; transform: scale(1.02); border: 2px solid gold; }
-            100% { background-color: rgba(255, 215, 0, 0.1); box-shadow: inset 0 0 5px gold; transform: scale(1); border: 2px solid transparent; }
+            0% { background-color: rgba(255, 215, 0, 0.1); box-shadow: inset 0 0 5px gold; border-color: transparent; }
+            50% { background-color: rgba(255, 215, 0, 0.3); box-shadow: inset 0 0 20px gold; border-color: gold; }
+            100% { background-color: rgba(255, 215, 0, 0.1); box-shadow: inset 0 0 5px gold; border-color: transparent; }
         }
         .res-row-guide {
             animation: row-pulse 1.5s infinite ease-in-out;
@@ -764,7 +764,7 @@
         document.body.appendChild(ghost);
         dragManager.ghostEl = ghost;
         
-        // Tutorial 1 Drag Hint
+        // Tutorial 1 Drag Hint (Only L1)
         if (state.isTutorial && state.levelIndex === 0) {
             document.getElementById('trackArea').classList.add('dragging-mode');
         }

@@ -1190,7 +1190,7 @@
         
         btn.disabled = false;
         document.getElementById('txtUpCpu').innerText = UI_TEXT[state.lang].upCpu;
-        const cost = 30 + (Math.min(state.cpuPurchasedRound, 3) * state.roundBase); 
+        const cost = 30 + (Math.min(state.cpuPurchasedRound, 2) * state.roundBase); 
         document.getElementById('cpuPriceText').innerText = `${cost}G`; 
     }
     
@@ -1616,7 +1616,7 @@
             tutorialState.l4.cpuCount++;
         }
 
-        const cost = 30 + (Math.min(state.cpuPurchasedRound, 3) * state.roundBase); 
+        const cost = 30 + (Math.min(state.cpuPurchasedRound, 2) * state.roundBase); 
         if(state.gold >= cost) { 
             updateGold(-cost, 'btnBuyCpu'); 
             config.maxCpu++; state.cpuPurchasedRound++; updateUI(); updateCPU(); 

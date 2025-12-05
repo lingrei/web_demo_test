@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Soundwave - MVP V21.2 (Highlight Fix)</title>
+    <title>Soundwave - MVP V21.3 (Result Guidance)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         /* --- 基础样式 --- */
@@ -90,16 +90,14 @@
         .grid-cell.cell-strong { background-color: rgba(0, 0, 0, 0.2); } 
         .grid-cell.cell-weak { background-color: rgba(255, 255, 255, 0.02); }
 
-        /* Tutorial 1: Dragging Highlight - FIX: Both become lighter/white-ish */
+        /* Tutorial 1 Only: Dragging Highlight */
         .track-area.dragging-mode .track:not(.locked) {
-            background-color: #222; /* Lift base */
+            background-color: #222; 
         }
         .track-area.dragging-mode .grid-cell.cell-strong {
-            /* Override dark with light overlay for visibility */
             background-color: rgba(255, 255, 255, 0.05); 
         }
         .track-area.dragging-mode .grid-cell.cell-weak {
-            /* Make weak even lighter */
             background-color: rgba(255, 255, 255, 0.08);
         }
 
@@ -214,6 +212,20 @@
             z-index: 900;
             border: 2px solid gold !important;
             animation: guide-pulse-gentle 3s infinite ease-in-out; 
+        }
+
+        /* --- NEW: Result Row Highlight (Strongest Attention) --- */
+        @keyframes row-pulse {
+            0% { background-color: rgba(255, 215, 0, 0.1); box-shadow: inset 0 0 5px gold; transform: scale(1); border: 2px solid transparent; }
+            50% { background-color: rgba(255, 215, 0, 0.3); box-shadow: inset 0 0 20px gold; transform: scale(1.02); border: 2px solid gold; }
+            100% { background-color: rgba(255, 215, 0, 0.1); box-shadow: inset 0 0 5px gold; transform: scale(1); border: 2px solid transparent; }
+        }
+        .res-row-guide {
+            animation: row-pulse 1.5s infinite ease-in-out;
+            z-index: 10;
+            position: relative;
+            font-weight: bold;
+            color: #fff;
         }
         
         .track-unlock-anim {
@@ -1496,11 +1508,22 @@
         let html = `<table class="result-table"><thead><tr><th>${t.item}</th><th>${t.base}</th><th>${t.cond}</th><th>${t.mult}</th><th>${t.final}</th><th>${t.note}</th></tr></thead><tbody>`;
         const results = calculateLogic();
         results.forEach(r => {
+            let rowClass = "";
+            // RESULT ROW HIGHLIGHT LOGIC
+            if (state.isTutorial) {
+                const id = r.record.data.id;
+                const targetIds = ['EB1', 'SB1', 'EB2']; 
+                // Highlight if effective (triggered/bonus/buffs)
+                if (targetIds.includes(id) && (r.bonus > 0 || r.buffsGiven.length > 0)) {
+                     rowClass = "res-row-guide";
+                }
+            }
+
             const score = Math.floor((r.base + r.bonus) * r.mult * r.finalMultiplier);
             let notesHTML = "";
             if(r.bonus > 0) notesHTML += `<span class="buff-tag tag-${r.record.data.type}">${r.record.data.name[state.lang]} ${t.effect} +${r.bonus}</span>`;
             if(r.buffsReceived.length > 0) notesHTML += r.buffsReceived.map(b => `<span class="buff-tag tag-${b.type}">${b.text}</span>`).join("");
-            html += `<tr><td>${r.record.data.name[state.lang]}</td><td>${r.base}</td><td>${r.bonus.toFixed(0)}</td><td>x${(r.mult * r.finalMultiplier).toFixed(2)}</td><td class="score-val">${score}</td><td style="font-size:10px; color:#aaa;">${notesHTML}</td></tr>`;
+            html += `<tr class="${rowClass}"><td>${r.record.data.name[state.lang]}</td><td>${r.base}</td><td>${r.bonus.toFixed(0)}</td><td>x${(r.mult * r.finalMultiplier).toFixed(2)}</td><td class="score-val">${score}</td><td style="font-size:10px; color:#aaa;">${notesHTML}</td></tr>`;
         });
         if(ng1Added > 0) html += `<tr><td colspan="6" style="text-align:center; color:#ffd700;">${t.ng1Charge} +${ng1Added} ${t.stacks}</td></tr>`;
         html += `</tbody></table>`;

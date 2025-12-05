@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Soundwave - MVP V20.0 (Dynamic Tutorial System)</title>
+    <title>Soundwave - MVP V20.1 (Tutorial Polish)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         /* --- 基础样式 --- */
@@ -148,18 +148,18 @@
         .btn-confirm:hover { background: #43a047; }
         .hidden { display: none !important; }
 
-        /* --- SOFT TUTORIAL GUIDE STYLES --- */
+        /* --- SOFT TUTORIAL GUIDE STYLES (Refined for V20.1) --- */
         @keyframes guide-pulse {
-            0% { box-shadow: 0 0 5px gold, inset 0 0 5px gold; border-color: gold; transform: scale(1); }
-            50% { box-shadow: 0 0 20px gold, inset 0 0 10px gold; border-color: #fff; transform: scale(1.02); }
-            100% { box-shadow: 0 0 5px gold, inset 0 0 5px gold; border-color: gold; transform: scale(1); }
+            0% { box-shadow: 0 0 2px gold; border-color: rgba(255, 215, 0, 0.3); }
+            50% { box-shadow: 0 0 8px gold; border-color: rgba(255, 215, 0, 1); }
+            100% { box-shadow: 0 0 2px gold; border-color: rgba(255, 215, 0, 0.3); }
         }
         
         .soft-guide {
             position: relative;
             z-index: 900;
             border: 2px solid gold !important;
-            animation: guide-pulse 1.5s infinite;
+            animation: guide-pulse 3s infinite ease-in-out; /* Slower, smoother */
         }
         
         .track-unlock-anim {
@@ -488,18 +488,24 @@
 
     // --- Tutorial State Management ---
     let tutorialState = {
-        l1: { aClicked: false, bClicked: false },
+        l1: { aClicked: false, bClicked: false, aPlaced: false, bPlaced: false },
         l2: { bought: false, clicked: false, effectActive: false },
         l3: { kickBought: false, cpuBought: false, kickClicked: false, kickEffect: false },
         l4: { cpuCount: 0 }
     };
 
     function resetTutorialStateForLevel(idx) {
-        if (idx === 0) tutorialState.l1 = { aClicked: false, bClicked: false };
-        if (idx === 1) tutorialState.l2 = { bought: false, clicked: false, effectActive: false };
-        if (idx === 2) { /* Do NOT reset L3 on retry as requested */ } 
-        // Initial setup for L3 if fresh
-        if (idx === 2 && !tutorialState.l3.kickBought) tutorialState.l3 = { kickBought: false, cpuBought: false, kickClicked: false, kickEffect: false };
+        if (idx === 0) tutorialState.l1 = { aClicked: false, bClicked: false, aPlaced: false, bPlaced: false };
+        // L2: Partial Reset. Keep bought. Reset click/effect.
+        if (idx === 1) { 
+            tutorialState.l2.clicked = false; 
+            tutorialState.l2.effectActive = false; 
+        }
+        // L3: Partial Reset. Keep Bought. Reset click/effect.
+        if (idx === 2) { 
+            tutorialState.l3.kickClicked = false; 
+            tutorialState.l3.kickEffect = false;
+        }
         if (idx === 3) tutorialState.l4 = { cpuCount: 0 };
     }
 
@@ -511,12 +517,9 @@
 
         // Level 1: Basics
         if (state.levelIndex === 0) {
-            // Target always glows
             addGuide('targetContainer');
             
-            // Inventory Items
-            // Find TUT1 and TUT2 in inventory
-            // We need to match by data ID.
+            // Inventory Items Glow Logic (Independent)
             const invItems = document.querySelectorAll('.inv-item');
             invItems.forEach(el => {
                 if (el.innerText.includes("Sampler A") || el.innerText.includes("采样器 A")) {
@@ -527,14 +530,10 @@
                 }
             });
 
-            // Detail Panel
-            // Glows if item clicked but not placed
-            // Logic implies: Clicked -> Detail Glows. Placed -> Detail Stops.
-            // Simplified: If currently inspecting A or B, glow detail
-            if (state.selectedInvItem) {
-                if (state.selectedInvItem.data.id === 'TUT1' && !tutorialState.l1.aPlaced) addGuide('detailPanel');
-                if (state.selectedInvItem.data.id === 'TUT2' && !tutorialState.l1.bPlaced) addGuide('detailPanel');
-            }
+            // Detail Panel Glow Logic
+            // If clicked (inspected) but NOT placed yet, glow detail.
+            if (tutorialState.l1.aClicked && !tutorialState.l1.aPlaced) addGuide('detailPanel');
+            if (tutorialState.l1.bClicked && !tutorialState.l1.bPlaced) addGuide('detailPanel');
         }
 
         // Level 2: Shop & Effect
@@ -542,25 +541,24 @@
             addGuide('targetContainer');
             
             if (!tutorialState.l2.bought) {
+                // If not bought, glow Gold + Shop Item
                 addGuide('goldText');
-                // Shop Item EB1
                 const shopItems = document.querySelectorAll('.shop-item');
                 shopItems.forEach(el => {
                     if (el.innerText.includes("Rest Note") || el.innerText.includes("休止符")) el.classList.add('soft-guide');
                 });
             } else {
-                // Bought. Check Inventory Rest Note
+                // Bought. Check Effect status.
                 if (!tutorialState.l2.effectActive) {
                     const invItems = document.querySelectorAll('.inv-item');
-                    let hasRestNote = false;
                     invItems.forEach(el => {
                         if (el.innerText.includes("Rest Note") || el.innerText.includes("休止符")) {
+                            // If bought but not clicked yet, glow Inventory Item
                             if(!tutorialState.l2.clicked) el.classList.add('soft-guide');
-                            hasRestNote = true;
                         }
                     });
                     
-                    // If clicked, detail glows
+                    // If clicked (inspected) but effect not active yet, glow Detail
                     if (tutorialState.l2.clicked) addGuide('detailPanel');
                 }
             }
@@ -570,20 +568,23 @@
         if (state.levelIndex === 2) {
             addGuide('targetContainer');
             
-            if (!tutorialState.l3.kickBought || !tutorialState.l3.cpuBought) {
-                if (!tutorialState.l3.kickBought || !tutorialState.l3.cpuBought) addGuide('goldText');
+            // Phase 1: Buying (Gold glows until BOTH bought)
+            const needKick = !tutorialState.l3.kickBought;
+            const needCpu = !tutorialState.l3.cpuBought;
+            
+            if (needKick || needCpu) {
+                addGuide('goldText');
                 
-                if (!tutorialState.l3.cpuBought) addGuide('btnBuyCpu');
+                if (needCpu) addGuide('btnBuyCpu');
                 
-                if (!tutorialState.l3.kickBought) {
+                if (needKick) {
                     const shopItems = document.querySelectorAll('.shop-item');
                     shopItems.forEach(el => {
                         if (el.innerText.includes("Kick Drum") || el.innerText.includes("底鼓")) el.classList.add('soft-guide');
                     });
                 }
             } else {
-                // Both bought. Gold stops.
-                // Inventory Kick Drum
+                // Phase 2: Utilization (Inv glows until effect active)
                 if (!tutorialState.l3.kickEffect) {
                     const invItems = document.querySelectorAll('.inv-item');
                     invItems.forEach(el => {
@@ -596,10 +597,10 @@
             }
         }
 
-        // Level 4: Multi Track
+        // Level 4: Multi Track / CPU Spam
         if (state.levelIndex === 3) {
-            if (tutorialState.l4.cpuCount < 2) {
-                addGuide('goldText');
+            addGuide('goldText');
+            if (tutorialState.l4.cpuCount < 3) {
                 addGuide('btnBuyCpu');
             }
         }
@@ -630,7 +631,7 @@
         if(e.button !== 0) return; 
         e.stopPropagation(); 
         
-        // Tutorial State Updates
+        // Tutorial State Updates: Clicked Tracking
         if (state.isTutorial) {
             if (state.levelIndex === 0) {
                 if (invItem.data.id === 'TUT1') tutorialState.l1.aClicked = true;
@@ -756,7 +757,7 @@
                 actionTaken = true;
                 restorePlacedItems();
                 
-                // Tutorial placement check
+                // Tutorial placement check (L1 Logic)
                 if (state.isTutorial && state.levelIndex === 0) {
                     if (itemData.id === 'TUT1') tutorialState.l1.aPlaced = true;
                     if (itemData.id === 'TUT2') tutorialState.l1.bPlaced = true;
@@ -967,7 +968,7 @@
         if(cfg.repeatableCpu) { state.cpuPurchasedRound = 0; }
 
         updateUI();
-        initGrid(); // Re-render grid (will trigger track unlock anim logic)
+        initGrid(); 
         restorePlacedItems();
         
         if (idx > 0) {
@@ -1611,7 +1612,9 @@
         // Tutorial State
         if (state.isTutorial) {
             if (state.levelIndex === 0) {
-                if (item.id === 'TUT1') tutorialState.l1.aPlaced = true; // Use placed var to stop glow, though it's technically 'clicked'
+                // Clicking marks as clicked, doesn't mean placed.
+                // Glow stops when clicked
+                // Detail glows after click
             }
         }
 

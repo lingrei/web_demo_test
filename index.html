@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Soundwave - MVP V20.3 (Visual Polish)</title>
+    <title>Soundwave - MVP V20.4 (Sell Logic & Tut Guide)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         /* --- 基础样式 --- */
@@ -148,7 +148,7 @@
         .btn-confirm:hover { background: #43a047; }
         .hidden { display: none !important; }
 
-        /* --- SOFT TUTORIAL GUIDE STYLES (V20.2: Strong vs Gentle) --- */
+        /* --- SOFT TUTORIAL GUIDE STYLES (V20.3: Strong vs Gentle) --- */
         
         /* 1. Strong Pulse (For Target & Buttons) - Has Scale */
         @keyframes guide-pulse-strong {
@@ -625,7 +625,7 @@
 
         // Level 4: Multi Track / CPU Spam
         if (state.levelIndex === 3) {
-            if (tutorialState.l4.cpuCount < 3) {
+            if (tutorialState.l4.cpuCount < 3) { // Changed to 3 as requested
                 addGuideGentle('goldText');
                 addGuide('btnBuyCpu');
             }
@@ -1471,6 +1471,15 @@
         updateGold(price); 
         state.inventory = state.inventory.filter(x => x !== item); 
         state.selectedInvItem = null; 
+        
+        // Remove placed items of same ID
+        const itemId = item.data.id;
+        const initialCount = state.placedItems.length;
+        state.placedItems = state.placedItems.filter(p => p.data.id !== itemId);
+        if (state.placedItems.length !== initialCount) {
+            restorePlacedItems(); 
+        }
+
         updateInventoryUI();
         
         const shop = document.getElementById('shopPanel');
@@ -1635,7 +1644,7 @@
     }
 
     function showDetail(item) { 
-        // Tutorial State L1: Mark as inspected to potentially glow detail panel
+        // Tutorial State
         if (state.isTutorial) {
             if (state.levelIndex === 0) {
                 if (item.id === 'TUT1') tutorialState.l1.aClicked = true;

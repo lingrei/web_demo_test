@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Soundwave - MVP V20.6 (Tutorial Shop Logic Fix)</title>
+    <title>Soundwave - MVP V21.0 (Final Polish)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         /* --- 基础样式 --- */
@@ -62,22 +62,44 @@
         .daw-container { grid-column: 2 / 3; grid-row: 2 / 3; display: flex; flex-direction: column; background: #151515; border: var(--border); padding: 5px; height: 100%; box-sizing: border-box; }
         .timeline-header { display: flex; height: 20px; border-bottom: 1px solid #444; margin-bottom: 0; flex-shrink: 0; }
         .ruler-beat { flex: 1; border-right: 1px solid #333; font-size: 10px; color: #666; padding-left: 4px; line-height: 20px; }
+        
+        /* Track Area & Grid Visuals */
         .track-area { flex: 1; display: flex; flex-direction: column; gap: 0; border: 1px solid #333; height: 100%; position: relative; overflow: hidden; }
-        .track { flex: 1; background: #1a1a1a; border-bottom: 1px solid #333; display: flex; position: relative; align-items: center; transition: background-color 0.3s; }
+        
+        .track { 
+            flex: 1; 
+            background: #1a1a1a; /* Base dark background */
+            border-bottom: 1px solid #333; 
+            display: flex; 
+            position: relative; 
+            align-items: center; 
+            transition: background-color 0.3s; 
+        }
         .track:last-child { border-bottom: none; }
         .track.locked { background: repeating-linear-gradient(45deg, #111, #111 10px, #1a1a1a 10px, #1a1a1a 20px); pointer-events: none; opacity: 0.5; }
         
-        .grid-cell { flex: 1; height: 100%; border-right: 1px solid #252525; transition: background-color 0.3s; }
-        .grid-cell:nth-child(4n) { border-right: 1px solid #444; } 
-        .grid-cell:nth-child(16n) { border-right: 1px solid #666; }
-
-        /* Track Dragging Feedback */
-        .track-area.dragging-mode .track:not(.locked) {
-            background-color: #252525; 
+        /* Grid Cell Styling */
+        .grid-cell { 
+            flex: 1; height: 100%; 
+            border-right: 1px solid #2a2a2a; /* Subtler inner lines */
+            transition: background-color 0.3s; 
         }
-        .track-area.dragging-mode .track:not(.locked) .grid-cell {
-            background-color: rgba(255, 255, 255, 0.03); 
-            border-right-color: #333;
+        .grid-cell:nth-child(4n) { border-right: 1px solid #444; } /* Beat lines */
+        .grid-cell:nth-child(16n) { border-right: 1px solid #666; } /* Bar lines */
+
+        /* Beat Colors: Strong (Odd) vs Weak (Even) */
+        .grid-cell.cell-strong { background-color: rgba(255, 255, 255, 0.03); } /* Subtle light for strong beats */
+        .grid-cell.cell-weak { background-color: transparent; } /* Darker for weak beats */
+
+        /* Tutorial 1 Only: Dragging Highlight */
+        .track-area.dragging-mode .track:not(.locked) {
+            background-color: #222; /* Slightly lighter base */
+        }
+        .track-area.dragging-mode .grid-cell.cell-strong {
+            background-color: rgba(255, 255, 255, 0.06); /* Slightly brighter on drag */
+        }
+        .track-area.dragging-mode .grid-cell.cell-weak {
+            background-color: rgba(255, 255, 255, 0.02);
         }
 
         .playhead { position: absolute; top: 0; bottom: 0; left: 0; width: 2px; background-color: var(--playhead-color); z-index: 9999; box-shadow: 0 0 10px var(--playhead-color); pointer-events: none; display: none; }
@@ -569,11 +591,9 @@
             if (state.selectedInvItem) {
                 if (state.selectedInvItem.data.id === 'TUT1' && !tutorialState.l1.aPlaced) {
                     addGuideGentle('detailPanel');
-                    addGuideGentle('trackArea'); // Hint track area
                 }
                 if (state.selectedInvItem.data.id === 'TUT2' && !tutorialState.l1.bPlaced) {
                     addGuideGentle('detailPanel');
-                    addGuideGentle('trackArea');
                 }
             }
         }
@@ -603,7 +623,7 @@
                     // Detail Panel: Only glow if Rest Note selected AND not active
                     if (state.selectedInvItem && state.selectedInvItem.data.id === 'EB1') {
                          addGuideGentle('detailPanel');
-                         addGuideGentle('trackArea');
+                         // Hint Track Removed per request (Only Level 1)
                     }
                 }
             }
@@ -642,7 +662,6 @@
                     // Detail Panel: Only glow if Kick Drum selected AND not active
                     if (state.selectedInvItem && state.selectedInvItem.data.id === 'SB1') {
                         addGuideGentle('detailPanel');
-                        addGuideGentle('trackArea');
                     }
                 }
             }
@@ -650,7 +669,7 @@
 
         // Level 4: Multi Track / CPU Spam
         if (state.levelIndex === 3) {
-            if (tutorialState.l4.cpuCount < 3) { // Changed to 3 as requested
+            if (tutorialState.l4.cpuCount < 3) { 
                 addGuideGentle('goldText');
                 addGuide('btnBuyCpu');
             }
@@ -669,6 +688,11 @@
     
     function addGuideGentleEl(el) {
         if(el) el.classList.add('soft-guide-gentle');
+    }
+    
+    // Only allow sell in Level 4+ or standard game
+    function canSell() {
+        return !state.isTutorial || state.levelIndex >= 3;
     }
 
     // --- Init ---
@@ -728,9 +752,13 @@
         document.body.appendChild(ghost);
         dragManager.ghostEl = ghost;
         
-        // Global visual hints for drag
-        document.getElementById('trackArea').classList.add('dragging-mode');
-        if (type === 'inventory') {
+        // Tutorial 1 Drag Hint
+        if (state.isTutorial && state.levelIndex === 0) {
+            document.getElementById('trackArea').classList.add('dragging-mode');
+        }
+        
+        // Sell Hint (Only Level 4+)
+        if (type === 'inventory' && canSell()) {
             document.getElementById('shopPanel').classList.add('sell-hint');
         }
 
@@ -765,7 +793,8 @@
             const shopPanel = document.getElementById('shopPanel');
             const rect = shopPanel.getBoundingClientRect();
             if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
-                if (dragManager.sourceType === 'inventory') {
+                // Only show sell hint if allowed
+                if (dragManager.sourceType === 'inventory' && canSell()) {
                     shopPanel.classList.add('drag-target-sell');
                     dragManager.hoverType = 'shop';
                     if (!dragManager.sellTooltip) {
@@ -800,7 +829,7 @@
         dragManager.sellTooltip = null;
         clearPreview();
         document.getElementById('shopPanel').classList.remove('drag-target-sell');
-        // Remove hints
+        
         document.getElementById('trackArea').classList.remove('dragging-mode');
         document.getElementById('shopPanel').classList.remove('sell-hint');
         
@@ -825,9 +854,12 @@
                 }
             }
         } else if (hoverType === 'shop' && sourceType === 'inventory') {
-            state.selectedInvItem = sourceInvItem; 
-            sellSelectedItem(); 
-            actionTaken = true;
+            // SELL LOGIC
+            if (canSell()) {
+                state.selectedInvItem = sourceInvItem; 
+                sellSelectedItem(); 
+                actionTaken = true;
+            }
         } else if (hoverType === 'outside' && sourceType === 'track') {
             state.placedItems = state.placedItems.filter(p => p !== sourceRecord);
             restorePlacedItems();
@@ -1045,9 +1077,13 @@
         const cfg = TUTORIAL_CONFIG[idx];
         if (cfg.poolAdds && cfg.poolAdds.length > 0) {
             cfg.poolAdds.forEach(id => {
-                const data = DB.find(i => i.id === id);
-                if(data) {
-                    state.currentShopItems.push({ data: data, price: data.price, isDiscount: false, discountPercent: 0, sold: false });
+                // CHECK IF OWNED
+                const alreadyOwned = state.inventory.some(inv => inv.data.id === id);
+                if (!alreadyOwned) {
+                    const data = DB.find(i => i.id === id);
+                    if(data) {
+                        state.currentShopItems.push({ data: data, price: data.price, isDiscount: false, discountPercent: 0, sold: false });
+                    }
                 }
             });
         }
@@ -1202,7 +1238,17 @@
                      tr.classList.add('track-unlock-anim');
                 }
 
-                for(let t=0; t<TICKS; t++) { let c = document.createElement('div'); c.className = 'grid-cell'; tr.appendChild(c); } 
+                for(let t=0; t<TICKS; t++) { 
+                    let c = document.createElement('div'); 
+                    c.className = 'grid-cell'; 
+                    
+                    // Visual Beat Logic
+                    const beatIndex = Math.floor(t / 4);
+                    if (beatIndex % 2 === 0) c.classList.add('cell-strong'); // 1.x, 2.x (Odd beats in musical terms)
+                    else c.classList.add('cell-weak');
+
+                    tr.appendChild(c); 
+                } 
                 ta.appendChild(tr); 
             }
         }

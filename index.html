@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Soundwave - MVP V20.2 (Fixes & Glow)</title>
+    <title>Soundwave - MVP V20.3 (Visual Polish)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         /* --- 基础样式 --- */
@@ -148,18 +148,32 @@
         .btn-confirm:hover { background: #43a047; }
         .hidden { display: none !important; }
 
-        /* --- SOFT TUTORIAL GUIDE STYLES (V20.2: Breathing & Dynamic) --- */
-        @keyframes guide-pulse {
-            0% { box-shadow: 0 0 2px gold; border-color: rgba(255, 215, 0, 0.4); transform: scale(1); }
-            50% { box-shadow: 0 0 12px gold; border-color: rgba(255, 215, 0, 1); transform: scale(1.03); }
-            100% { box-shadow: 0 0 2px gold; border-color: rgba(255, 215, 0, 0.4); transform: scale(1); }
-        }
+        /* --- SOFT TUTORIAL GUIDE STYLES (V20.2: Strong vs Gentle) --- */
         
+        /* 1. Strong Pulse (For Target & Buttons) - Has Scale */
+        @keyframes guide-pulse-strong {
+            0% { box-shadow: 0 0 3px rgba(255,215,0,0.4); border-color: rgba(255,215,0,0.4); transform: scale(1); }
+            50% { box-shadow: 0 0 15px rgba(255,215,0,0.9); border-color: rgba(255,215,0,1); transform: scale(1.02); }
+            100% { box-shadow: 0 0 3px rgba(255,215,0,0.4); border-color: rgba(255,215,0,0.4); transform: scale(1); }
+        }
         .soft-guide {
             position: relative;
             z-index: 900;
             border: 2px solid gold !important;
-            animation: guide-pulse 1.5s infinite ease-in-out; /* Breathing cycle */
+            animation: guide-pulse-strong 2s infinite ease-in-out; 
+        }
+
+        /* 2. Gentle Pulse (For Lists/Descriptions) - NO SCALE, Slower */
+        @keyframes guide-pulse-gentle {
+            0% { box-shadow: inset 0 0 2px rgba(255,215,0,0.2); border-color: rgba(255,215,0,0.3); }
+            50% { box-shadow: inset 0 0 12px rgba(255,215,0,0.6); border-color: rgba(255,215,0,0.9); }
+            100% { box-shadow: inset 0 0 2px rgba(255,215,0,0.2); border-color: rgba(255,215,0,0.3); }
+        }
+        .soft-guide-gentle {
+            position: relative;
+            z-index: 900;
+            border: 2px solid gold !important;
+            animation: guide-pulse-gentle 3s infinite ease-in-out; /* 3s cycle, very slow */
         }
         
         .track-unlock-anim {
@@ -496,13 +510,13 @@
 
     function resetTutorialStateForLevel(idx) {
         if (idx === 0) tutorialState.l1 = { aClicked: false, bClicked: false, aPlaced: false, bPlaced: false };
-        // L2: Reset clicks/effects but NOT bought status if already bought
+        // L2: Partial Reset. Keep bought. Reset click/effect.
         if (idx === 1) { 
             tutorialState.l2.clicked = false; 
             tutorialState.l2.effectActive = false; 
             // bought state persists
         }
-        // L3: Reset clicks/effects but NOT bought status
+        // L3: Partial Reset. Keep Bought. Reset click/effect.
         if (idx === 2) { 
             tutorialState.l3.kickClicked = false; 
             tutorialState.l3.kickEffect = false;
@@ -516,6 +530,7 @@
         
         // Remove all previous guides to redraw
         document.querySelectorAll('.soft-guide').forEach(el => el.classList.remove('soft-guide'));
+        document.querySelectorAll('.soft-guide-gentle').forEach(el => el.classList.remove('soft-guide-gentle'));
 
         // Level 1: Basics
         if (state.levelIndex === 0) {
@@ -524,21 +539,19 @@
             // Inventory Items Glow Logic (Independent)
             const invItems = document.querySelectorAll('.inv-item');
             invItems.forEach(el => {
-                // Find matching data ID from DOM element... or match by text/color? 
-                // Better approach: use data attributes or just check name text
                 if (el.innerText.includes("Sampler A") || el.innerText.includes("采样器 A")) {
-                    if (!tutorialState.l1.aClicked) el.classList.add('soft-guide');
+                    if (!tutorialState.l1.aClicked) addGuideGentleEl(el);
                 }
                 if (el.innerText.includes("Sampler B") || el.innerText.includes("采样器 B")) {
-                    if (!tutorialState.l1.bClicked) el.classList.add('soft-guide');
+                    if (!tutorialState.l1.bClicked) addGuideGentleEl(el);
                 }
             });
 
             // Detail Panel Glow Logic
-            // Glows if selected item is A/B and NOT placed yet.
+            // If clicked (inspected) but NOT placed yet, glow detail.
             if (state.selectedInvItem) {
-                if (state.selectedInvItem.data.id === 'TUT1' && !tutorialState.l1.aPlaced) addGuide('detailPanel');
-                if (state.selectedInvItem.data.id === 'TUT2' && !tutorialState.l1.bPlaced) addGuide('detailPanel');
+                if (state.selectedInvItem.data.id === 'TUT1' && !tutorialState.l1.aPlaced) addGuideGentle('detailPanel');
+                if (state.selectedInvItem.data.id === 'TUT2' && !tutorialState.l1.bPlaced) addGuideGentle('detailPanel');
             }
         }
 
@@ -548,10 +561,10 @@
             
             if (!tutorialState.l2.bought) {
                 // If not bought, glow Gold + Shop Item
-                addGuide('goldText');
+                addGuideGentle('goldText');
                 const shopItems = document.querySelectorAll('.shop-item');
                 shopItems.forEach(el => {
-                    if (el.innerText.includes("Rest Note") || el.innerText.includes("休止符")) el.classList.add('soft-guide');
+                    if (el.innerText.includes("Rest Note") || el.innerText.includes("休止符")) addGuideGentleEl(el);
                 });
             } else {
                 // Bought. Check Effect status.
@@ -559,14 +572,14 @@
                     const invItems = document.querySelectorAll('.inv-item');
                     invItems.forEach(el => {
                         if (el.innerText.includes("Rest Note") || el.innerText.includes("休止符")) {
-                            // GLOW UNTIL EFFECT ACTIVE (User Feedback)
-                            el.classList.add('soft-guide');
+                            // GLOW UNTIL EFFECT ACTIVE
+                            addGuideGentleEl(el);
                         }
                     });
                     
                     // Detail Panel: Only glow if Rest Note selected AND not active
                     if (state.selectedInvItem && state.selectedInvItem.data.id === 'EB1') {
-                         addGuide('detailPanel');
+                         addGuideGentle('detailPanel');
                     }
                 }
             }
@@ -581,14 +594,14 @@
             const needCpu = !tutorialState.l3.cpuBought;
             
             if (needKick || needCpu) {
-                addGuide('goldText');
+                addGuideGentle('goldText');
                 
-                if (needCpu) addGuide('btnBuyCpu');
+                if (needCpu) addGuide('btnBuyCpu'); // Button uses Strong
                 
                 if (needKick) {
                     const shopItems = document.querySelectorAll('.shop-item');
                     shopItems.forEach(el => {
-                        if (el.innerText.includes("Kick Drum") || el.innerText.includes("底鼓")) el.classList.add('soft-guide');
+                        if (el.innerText.includes("Kick Drum") || el.innerText.includes("底鼓")) addGuideGentleEl(el);
                     });
                 }
             } else {
@@ -598,13 +611,13 @@
                     invItems.forEach(el => {
                         if (el.innerText.includes("Kick Drum") || el.innerText.includes("底鼓")) {
                             // GLOW UNTIL EFFECT ACTIVE
-                            el.classList.add('soft-guide');
+                            addGuideGentleEl(el);
                         }
                     });
                     
                     // Detail Panel: Only glow if Kick Drum selected AND not active
                     if (state.selectedInvItem && state.selectedInvItem.data.id === 'SB1') {
-                        addGuide('detailPanel');
+                        addGuideGentle('detailPanel');
                     }
                 }
             }
@@ -612,8 +625,8 @@
 
         // Level 4: Multi Track / CPU Spam
         if (state.levelIndex === 3) {
-            addGuide('goldText');
             if (tutorialState.l4.cpuCount < 3) {
+                addGuideGentle('goldText');
                 addGuide('btnBuyCpu');
             }
         }
@@ -622,6 +635,15 @@
     function addGuide(id) {
         const el = document.getElementById(id);
         if (el) el.classList.add('soft-guide');
+    }
+    
+    function addGuideGentle(id) {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('soft-guide-gentle');
+    }
+    
+    function addGuideGentleEl(el) {
+        if(el) el.classList.add('soft-guide-gentle');
     }
 
     // --- Init ---
@@ -646,16 +668,7 @@
         
         // Tutorial State Updates: Clicked Tracking
         if (state.isTutorial) {
-            if (state.levelIndex === 0) {
-                if (invItem.data.id === 'TUT1') tutorialState.l1.aClicked = true;
-                if (invItem.data.id === 'TUT2') tutorialState.l1.bClicked = true;
-            }
-            if (state.levelIndex === 1 && invItem.data.id === 'EB1') {
-                tutorialState.l2.clicked = true;
-            }
-            if (state.levelIndex === 2 && invItem.data.id === 'SB1') {
-                tutorialState.l3.kickClicked = true;
-            }
+            // Level 1 logic handled in showDetail now to ensure correct seq
         }
 
         setupDrag(e, invItem.data, 'inventory', null, invItem);
@@ -770,7 +783,7 @@
                 actionTaken = true;
                 restorePlacedItems();
                 
-                // Tutorial placement check (L1 Logic: FIX - Set placed here, not on click)
+                // Tutorial placement check
                 if (state.isTutorial && state.levelIndex === 0) {
                     if (itemData.id === 'TUT1') tutorialState.l1.aPlaced = true;
                     if (itemData.id === 'TUT2') tutorialState.l1.bPlaced = true;
@@ -1622,7 +1635,7 @@
     }
 
     function showDetail(item) { 
-        // Tutorial State
+        // Tutorial State L1: Mark as inspected to potentially glow detail panel
         if (state.isTutorial) {
             if (state.levelIndex === 0) {
                 if (item.id === 'TUT1') tutorialState.l1.aClicked = true;

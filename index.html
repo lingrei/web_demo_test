@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Soundwave - MVP V21.5 (CPU Cap 50)</title>
+    <title>Soundwave - MVP V23.5 (Final Polish)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         /* --- 基础样式 --- */
         :root { --bg-color: #1e1e1e; --panel-color: #2d2d2d; --highlight: #4caf50; --text-color: #eee; --gold-color: #ffd700; --cpu-used: #ff9800; --item-blue: #64b5f6; --border: 1px solid #444; --playhead-color: #ff5252; --lose-color: #ff5252; }
-        :root { --c-score: #ffd700; --c-support: #00e5ff; --c-engine: #d500f9; }
+        :root { --c-score: #ffd700; --c-support: #00e5ff; --c-engine: #d500f9; --c-neg: #ff5252; }
 
         body { background-color: var(--bg-color); color: var(--text-color); font-family: 'Segoe UI', sans-serif; margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; user-select: none; }
         
@@ -44,7 +44,7 @@
 
         .debug-panel { display: flex; gap: 4px; align-items: center; opacity: 0.3; transition: opacity 0.2s; }
         .debug-panel:hover { opacity: 1; }
-        .debug-input { width: 30px; background: #333; color: white; border: 1px solid #555; padding: 2px; font-size: 10px; text-align: center; }
+        .debug-input { width: 40px; background: #333; color: white; border: 1px solid #555; padding: 2px; font-size: 10px; text-align: center; }
         .debug-btn { background: #555; color: white; border: none; padding: 2px 6px; font-size: 10px; cursor: pointer; }
 
         /* Panels */
@@ -63,8 +63,9 @@
         .timeline-header { display: flex; height: 20px; border-bottom: 1px solid #444; margin-bottom: 0; flex-shrink: 0; }
         .ruler-beat { flex: 1; border-right: 1px solid #333; font-size: 10px; color: #666; padding-left: 4px; line-height: 20px; }
         
-        /* Track Area & Grid Visuals */
+        /* Track Area */
         .track-area { flex: 1; display: flex; flex-direction: column; gap: 0; border: 1px solid #333; height: 100%; position: relative; overflow: hidden; }
+        .combat-overlay { position: absolute; top:0; left:0; width:100%; height:100%; pointer-events: none; z-index: 100; }
         
         .track { 
             flex: 1; 
@@ -76,8 +77,30 @@
             transition: background-color 0.3s; 
         }
         .track:last-child { border-bottom: none; }
-        .track.locked { background: repeating-linear-gradient(45deg, #111, #111 10px, #1a1a1a 10px, #1a1a1a 20px); pointer-events: none; opacity: 0.5; }
         
+        /* Lock States */
+        .track.hard-locked { 
+            background: repeating-linear-gradient(45deg, #151515, #151515 10px, #222 10px, #222 20px); 
+            opacity: 0.7; pointer-events: none; filter: grayscale(1); 
+        }
+        .track-lock-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 50; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.3s; border: 2px dashed #444;
+        }
+        .lock-icon { font-size: 24px; color: #888; transition: all 0.2s; }
+        .track-lock-overlay:hover .lock-icon { color: white; transform: scale(1.2); }
+        .track-lock-overlay.shake-hint .lock-icon { animation: shake-lock 2s infinite; color: var(--gold-color); text-shadow: 0 0 10px var(--gold-color); }
+        @keyframes shake-lock { 0% { transform: rotate(0deg); } 10% { transform: rotate(-10deg); } 20% { transform: rotate(10deg); } 30% { transform: rotate(-10deg); } 40% { transform: rotate(10deg); } 50% { transform: rotate(0deg); } 100% { transform: rotate(0deg); } }
+        
+        .track-lock-overlay.unlocking { animation: lock-break 0.6s forwards; }
+        @keyframes lock-break { 
+            0% { opacity: 1; background-color: rgba(255,255,255,0.2); } 
+            50% { transform: scale(1.05); background-color: rgba(255,255,255,0.5); opacity: 0.8; } 
+            100% { transform: scale(1.1); opacity: 0; display: none; } 
+        }
+
         .grid-cell { 
             flex: 1; height: 100%; 
             border-right: 1px solid #2a2a2a; 
@@ -85,21 +108,17 @@
         }
         .grid-cell:nth-child(4n) { border-right: 1px solid #444; } 
         .grid-cell:nth-child(16n) { border-right: 1px solid #666; }
-
-        /* Beat Colors: Strong (Darker) / Weak (Lighter) */
-        .grid-cell.cell-strong { background-color: rgba(0, 0, 0, 0.2); } 
+        .grid-cell.cell-strong { background-color: rgba(0, 0, 0, 0.4); } 
         .grid-cell.cell-weak { background-color: rgba(255, 255, 255, 0.02); }
 
-        /* Tutorial 1 Only: Dragging Highlight */
-        .track-area.dragging-mode .track:not(.locked) {
-            background-color: #222; 
-        }
-        .track-area.dragging-mode .grid-cell.cell-strong {
-            background-color: rgba(255, 255, 255, 0.05); 
-        }
-        .track-area.dragging-mode .grid-cell.cell-weak {
-            background-color: rgba(255, 255, 255, 0.08);
-        }
+        .flash-weak-fix { animation: flash-gold 0.5s; }
+        @keyframes flash-gold { 0% { background-color: rgba(255,215,0,0.5); } 100% { background-color: transparent; } }
+        .flash-track-purple { animation: flash-purple 0.5s; }
+        @keyframes flash-purple { 0% { background-color: rgba(213,0,249,0.3); } 100% { background-color: #1a1a1a; } }
+
+        .track-area.dragging-mode .track:not(.locked) { background-color: #222; }
+        .track-area.dragging-mode .grid-cell.cell-strong { background-color: rgba(255, 255, 255, 0.05); }
+        .track-area.dragging-mode .grid-cell.cell-weak { background-color: rgba(255, 255, 255, 0.08); }
 
         .playhead { position: absolute; top: 0; bottom: 0; left: 0; width: 2px; background-color: var(--playhead-color); z-index: 9999; box-shadow: 0 0 10px var(--playhead-color); pointer-events: none; display: none; }
         
@@ -114,15 +133,8 @@
         .placed-item.glowing-engine { box-shadow: inset 0 0 10px var(--c-engine); border: 2px solid var(--c-engine); background-color: rgba(213,0,249,0.3) !important; }
 
         .shop-panel { grid-column: 3 / 4; grid-row: 2 / 3; background: var(--panel-color); border: var(--border); display: flex; flex-direction: column; transition: all 0.3s; position: relative; }
-        
         .shop-panel.drag-target-sell { background-color: rgba(244, 67, 54, 0.2); border: 2px dashed #f44336; }
-        
-        /* Sell Hint */
-        .shop-panel.sell-hint {
-            border-color: rgba(244, 67, 54, 0.5);
-            background-color: rgba(244, 67, 54, 0.05);
-            box-shadow: inset 0 0 15px rgba(244, 67, 54, 0.1);
-        }
+        .shop-panel.sell-hint { border-color: rgba(244, 67, 54, 0.5); background-color: rgba(244, 67, 54, 0.05); box-shadow: inset 0 0 15px rgba(244, 67, 54, 0.1); }
 
         .shop-list { flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
         .shop-item { background: #222; padding: 8px; border: 1px solid #444; border-radius: 4px; display: flex; flex-direction: column; gap: 4px; cursor: pointer; transition: background 0.2s; position: relative; }
@@ -146,15 +158,19 @@
         .info-box { background: var(--panel-color); border: var(--border); padding: 10px 15px; border-radius: 4px; overflow-y: auto; transition: filter 0.3s; }
         .info-left { flex: 2; border-left: 4px solid var(--highlight); } 
         .info-right { flex: 1; display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid #2196f3; padding-left: 15px; }
-        .detail-title { font-size: 16px; color: white; margin-bottom: 5px; font-weight: bold; }
+        .detail-title { font-size: 16px; color: white; margin-bottom: 5px; font-weight: bold; display: flex; align-items: center; gap: 5px; }
         .detail-meta { font-size: 11px; color: #aaa; margin-bottom: 8px; display: flex; gap: 15px; }
         .detail-desc { font-size: 13px; color: #ccc; line-height: 1.4; background: #222; padding: 8px; border-radius: 4px; }
         
-        .submit-btn { width: 100%; padding: 10px; background: white; color: black; font-size: 18px; font-weight: bold; border: none; border-radius: 20px; cursor: pointer; transition: transform 0.1s; margin-top: 5px; }
+        .action-row { display: flex; gap: 10px; margin-top: 5px; }
+        .submit-btn { flex: 2; padding: 10px; background: white; color: black; font-size: 18px; font-weight: bold; border: none; border-radius: 20px; cursor: pointer; transition: transform 0.1s; }
         .submit-btn:hover { transform: scale(1.02); box-shadow: 0 0 15px white; }
         .submit-btn:disabled { background: #555; color: #888; transform: none; box-shadow: none; cursor: wait; }
+        
+        .sim-btn { flex: 1; padding: 10px; background: #444; color: #aaa; font-size: 12px; font-weight: bold; border: 1px solid #555; border-radius: 10px; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; }
+        .sim-btn:hover:not(:disabled) { background: #555; color: white; border-color: #666; }
+        .sim-btn b { color: var(--gold-color); font-size: 14px; }
 
-        /* --- DRAG & DROP STYLES --- */
         .drag-ghost { position: fixed; pointer-events: none; z-index: 9999; opacity: 0.9; box-shadow: 0 10px 20px rgba(0,0,0,0.5); border: 2px solid white; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: black; white-space: nowrap; overflow: hidden; transform: translate(-50%, -50%); }
         .drag-preview-valid { background-color: rgba(76, 175, 80, 0.4) !important; border: 2px dashed #4caf50; z-index: 10; pointer-events: none; }
         .drag-preview-invalid { background-color: rgba(244, 67, 54, 0.3) !important; border: 2px dashed #f44336; z-index: 10; pointer-events: none; }
@@ -162,101 +178,72 @@
         .skip-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(211, 47, 47, 0.9); color: white; display: none; justify-content: center; align-items: center; cursor: pointer; z-index: 100; font-weight: bold; font-size: 24px; }
         .drag-sell-tooltip { position: fixed; z-index: 10000; background: #222; border: 2px solid gold; padding: 5px 10px; border-radius: 6px; font-weight: bold; font-size: 14px; color: gold; box-shadow: 0 0 15px rgba(255, 215, 0, 0.5); pointer-events: none; transform: translate(15px, -15px); }
 
-        /* Modals & Tooltips */
         .tooltip-ref { color: #4fc3f7; font-weight: bold; cursor: help; border-bottom: 1px dashed #4fc3f7; position: relative; }
         #tooltip { position: fixed; background: #111; border: 1px solid #666; padding: 8px; border-radius: 4px; color: #eee; font-size: 12px; z-index: 9999; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.5); max-width: 250px; pointer-events: none; }
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; display: none; justify-content: center; align-items: center; }
-        .modal-content { background: #333; padding: 30px; border-radius: 8px; width: 900px; max-height: 90vh; overflow-y: auto; box-shadow: 0 0 30px black; text-align: center; }
-        .result-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
-        .result-table th { text-align: left; border-bottom: 1px solid #666; padding: 5px; color: #aaa; }
-        .result-table td { padding: 8px 5px; border-bottom: 1px solid #444; }
-        .buff-tag { display: inline-block; background: #222; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-right: 4px; border: 1px solid #444; }
-        .tag-score { color: var(--c-score); border-color: var(--c-score); }
-        .tag-support { color: var(--c-support); border-color: var(--c-support); }
-        .tag-engine { color: var(--c-engine); border-color: var(--c-engine); }
+        .modal-content { background: #333; padding: 30px; border-radius: 8px; width: 900px; max-height: 90vh; overflow-y: auto; box-shadow: 0 0 30px black; text-align: center; position: relative; }
         
-        .campaign-status-modal { margin-bottom: 15px; font-size: 16px; color: #aaa; letter-spacing: 1px; display: flex; justify-content: center; gap: 20px; }
-        .status-item { display: flex; align-items: center; gap: 5px; }
-        .status-dots { display: flex; gap: 4px; }
-        .status-dot { width: 12px; height: 12px; border-radius: 50%; background: #444; }
-        .status-dot.done { background: var(--highlight); }
-        .status-dot.current { border: 2px solid white; transform: scale(1.2); }
-        .help-section { text-align: left; margin-bottom: 20px; border-bottom: 1px solid #555; padding-bottom: 15px; }
-
         .btn-large-option { width: 45%; padding: 15px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; margin: 0 10px; transition: all 0.2s; color: white; background: #444; border: 1px solid #555; }
         .btn-large-option:hover { background: #555; transform: scale(1.05); }
         .btn-confirm { background: #4caf50; border-color: #4caf50; }
         .btn-confirm:hover { background: #43a047; }
-        .hidden { display: none !important; }
 
-        /* --- SOFT TUTORIAL GUIDE STYLES --- */
-        @keyframes guide-pulse-strong {
-            0% { box-shadow: 0 0 3px rgba(255,215,0,0.4); border-color: rgba(255,215,0,0.4); transform: scale(1); }
-            50% { box-shadow: 0 0 15px rgba(255,215,0,0.9); border-color: rgba(255,215,0,1); transform: scale(1.02); }
-            100% { box-shadow: 0 0 3px rgba(255,215,0,0.4); border-color: rgba(255,215,0,0.4); transform: scale(1); }
-        }
-        .soft-guide {
-            position: relative;
-            z-index: 900;
-            border: 2px solid gold !important;
-            animation: guide-pulse-strong 2s infinite ease-in-out; 
-        }
+        .tag-icon { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 3px; font-size: 11px; font-weight: bold; margin: 0 2px; vertical-align: text-bottom; color: #111; cursor: help; }
+        .tag-strong { background: #ffd700; box-shadow: 0 0 5px gold; }
+        .tag-empty { border: 1px solid #888; color: #ccc; background: transparent; }
+        .tag-sync { background: #00e5ff; }
+        .tag-track { background: #76ff03; }
 
-        @keyframes guide-pulse-gentle {
-            0% { box-shadow: inset 0 0 2px rgba(255,215,0,0.2); border-color: rgba(255,215,0,0.3); }
-            50% { box-shadow: inset 0 0 12px rgba(255,215,0,0.6); border-color: rgba(255,215,0,0.9); }
-            100% { box-shadow: inset 0 0 2px rgba(255,215,0,0.2); border-color: rgba(255,215,0,0.3); }
-        }
-        .soft-guide-gentle {
-            position: relative;
-            z-index: 900;
-            border: 2px solid gold !important;
-            animation: guide-pulse-gentle 3s infinite ease-in-out; 
-        }
-
-        /* --- Result Row Highlight (NO SCALE) --- */
-        @keyframes row-pulse {
-            0% { background-color: rgba(255, 215, 0, 0.1); box-shadow: inset 0 0 5px gold; border-color: transparent; }
-            50% { background-color: rgba(255, 215, 0, 0.3); box-shadow: inset 0 0 20px gold; border-color: gold; }
-            100% { background-color: rgba(255, 215, 0, 0.1); box-shadow: inset 0 0 5px gold; border-color: transparent; }
-        }
-        .res-row-guide {
-            animation: row-pulse 1.5s infinite ease-in-out;
-            z-index: 10;
-            position: relative;
-            font-weight: bold;
-            color: #fff;
-        }
+        .floating-text { position: fixed; font-weight: bold; pointer-events: none; z-index: 10001; animation: float-anim 1.5s forwards; text-shadow: 0 2px 2px rgba(0,0,0,0.8); white-space: nowrap; font-size: 24px; }
+        .ft-score { color: #ffd700; font-size: 32px; }
+        .ft-buff { color: #00e5ff; font-size: 20px; }
+        .ft-neg { color: #ff5252; font-size: 20px; }
+        @keyframes float-anim { 0% { opacity: 0; transform: translateY(0) scale(0.5); } 10% { opacity: 1; transform: translateY(-20px) scale(1.2); } 100% { opacity: 0; transform: translateY(-60px) scale(1); } }
         
-        .track-unlock-anim {
-            animation: unlock-flash 1s ease-out;
-        }
-        @keyframes unlock-flash {
-            0% { background-color: white; transform: scale(1.02); }
-            100% { background-color: #1a1a1a; transform: scale(1); }
-        }
+        /* RESULT GRID 2.0 */
+        .result-daw-container { position: relative; background: #111; padding: 10px; border-radius: 4px; border: 1px solid #444; margin: 20px 0; overflow: hidden; }
+        .res-grid-row { display: flex; height: 40px; margin-bottom: 15px; position: relative; border: 1px solid #333; }
+        .res-grid-bg { position: absolute; top:0; left:0; width:100%; height:100%; display: flex; z-index: 0; pointer-events: none; }
+        .res-grid-cell { flex: 1; border-right: 1px solid #2a2a2a; }
+        .res-grid-cell:nth-child(4n) { border-right: 1px solid #444; }
         
-        /* Floating Text Anim */
-        .float-text {
-            position: fixed; pointer-events: none; z-index: 9999;
-            font-weight: bold; font-size: 16px;
-            animation: float-up 1s forwards;
-        }
-        @keyframes float-up {
-            0% { opacity: 1; transform: translateY(0); }
-            100% { opacity: 0; transform: translateY(-30px); }
-        }
+        .res-item { position: absolute; height: 100%; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; color: #111; cursor: help; border: 2px solid rgba(255,255,255,0.1); transition: all 0.2s; z-index: 10; }
+        .res-item:hover { z-index: 15; transform: scale(1.05); border-color: white; box-shadow: 0 0 15px rgba(255,255,255,0.3); }
+        .res-item.highlight-source { border-color: #00e5ff; box-shadow: 0 0 15px #00e5ff; z-index: 12; }
+        .res-item.highlight-target { border-color: #d500f9; box-shadow: 0 0 15px #d500f9; z-index: 12; }
+        .res-connections { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; }
+        
+        @keyframes guide-pulse-gentle { 0% { box-shadow: inset 0 0 2px rgba(255,215,0,0.2); border-color: rgba(255,215,0,0.3); } 50% { box-shadow: inset 0 0 12px rgba(255,215,0,0.6); border-color: rgba(255,215,0,0.9); } 100% { box-shadow: inset 0 0 2px rgba(255,215,0,0.2); border-color: rgba(255,215,0,0.3); } }
+        .soft-guide-gentle { position: relative; z-index: 900; border: 2px solid gold !important; animation: guide-pulse-gentle 3s infinite ease-in-out; }
+        .soft-guide { border: 2px solid gold !important; animation: guide-pulse-strong 2s infinite ease-in-out; }
+        @keyframes guide-pulse-strong { 0% { box-shadow: 0 0 3px rgba(255,215,0,0.4); } 50% { box-shadow: 0 0 15px rgba(255,215,0,0.9); } 100% { box-shadow: 0 0 3px rgba(255,215,0,0.4); } }
+        
+        .result-tooltip { position: fixed; background: rgba(0,0,0,0.95); border: 1px solid #666; padding: 10px; border-radius: 4px; color: #fff; z-index: 10002; pointer-events: none; text-align: left; font-size: 12px; min-width: 150px; box-shadow: 0 5px 20px black; }
+        .rt-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
+        .rt-total { border-top: 1px solid #444; margin-top: 5px; padding-top: 5px; font-weight: bold; color: gold; font-size: 14px; }
+        
+        .status-hearts.shake { animation: shake 0.5s; display: inline-block; color: #ff5252; }
+        @keyframes shake { 0% { transform: translate(1px, 1px) rotate(0deg); } 10% { transform: translate(-1px, -2px) rotate(-1deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 30% { transform: translate(3px, 2px) rotate(0deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } 50% { transform: translate(-1px, 2px) rotate(-1deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } 70% { transform: translate(3px, 1px) rotate(-1deg); } 80% { transform: translate(-1px, -1px) rotate(1deg); } 90% { transform: translate(1px, 2px) rotate(0deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); } }
+        
+        .float-text { position: fixed; pointer-events: none; z-index: 9999; font-weight: bold; font-size: 16px; animation: float-up 1s forwards; }
+        @keyframes float-up { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-30px); } }
+        
+        /* Unlock Anim */
+        .unlock-flash-anim { animation: unlock-pop 0.5s ease-out; background-color: #333 !important; opacity: 1 !important; }
+        @keyframes unlock-pop { 0% { background-color: white; transform: scale(1.05); } 100% { background-color: #333; transform: scale(1); } }
     </style>
 </head>
 <body>
 
 <div id="tooltip"></div>
+<div id="resultTooltip" class="result-tooltip" style="display:none;"></div>
 
 <div class="container" id="mainContainer">
     <div class="header">
         <div class="header-left">
             <button class="btn-icon btn-lang" onclick="toggleLanguage()">🌐 CN/EN</button>
             <button class="btn-icon btn-help" onclick="showHelpModal()">❓ HELP</button>
+            <button class="btn-icon" onclick="showHistory()">📜 <span id="txtHistory">HISTORY</span></button>
             <button class="btn-icon btn-clear" onclick="clearAllItems()">🗑️ <span id="txtClear">CLEAR</span></button>
         </div>
         
@@ -284,9 +271,9 @@
             
             <div class="debug-panel">
                 <input type="number" id="dbgGold" class="debug-input" placeholder="G">
-                <button class="debug-btn" onclick="debugSetGold()">$</button>
+                <button class="debug-btn" onclick="window.debugSetGold()">$</button>
                 <input type="number" id="dbgTarget" class="debug-input" placeholder="Tgt">
-                <button class="debug-btn" onclick="debugSetTarget()">T</button>
+                <button class="debug-btn" onclick="window.debugSetTarget()">T</button>
             </div>
         </div> 
     </div>
@@ -298,7 +285,9 @@
 
     <div class="daw-container">
         <div class="timeline-header"></div>
-        <div class="track-area" id="trackArea"></div>
+        <div class="track-area" id="trackArea">
+            <svg id="combatConnections" class="combat-overlay"></svg>
+        </div>
     </div>
 
     <div class="shop-panel" id="shopPanel">
@@ -328,7 +317,13 @@
                 <b id="lblLevel">Level:</b> <span id="levelNum">1</span><br>
                 <b id="lblTracks">Tracks:</b> <span id="trackNum">2</span>
             </div>
-            <button class="submit-btn" id="mainSubmitBtn" onclick="runPlaybackSequence()">SUBMIT</button>
+            <div class="action-row">
+                <button class="sim-btn" id="simBtn" onclick="runSimulation()">
+                    <span>SIMULATE</span>
+                    <b id="simCostText">50G</b>
+                </button>
+                <button class="submit-btn" id="mainSubmitBtn" onclick="runPlaybackSequence(false)">SUBMIT</button>
+            </div>
         </div>
     </div>
 </div>
@@ -382,21 +377,29 @@
 </div>
 
 <div class="modal" id="resultModal">
-    <div class="modal-content" style="width: 900px;">
-        <h2 id="resTitle">REPORT</h2>
+    <div class="modal-content" style="width: 1000px;">
+        <h2 id="resTitle">INSIGHT</h2>
         <div id="campaignStatusContainer" class="campaign-status-modal"></div>
+        
         <h3 id="resOutcome" style="font-size:28px; margin: 5px 0;"></h3>
-        <div style="display:flex; justify-content:space-around; margin-bottom:20px;">
+        
+        <div style="display:flex; justify-content:space-around; margin-bottom:10px;">
             <div><span id="lblResTarget">Target</span>: <span id="resTargetDisplay" style="font-size:24px;"></span></div>
             <div><span id="lblResTotal">Total</span>: <span id="resTotalScore" style="font-size:32px; color:gold; font-weight:bold;"></span></div>
         </div>
-        <div id="resTableContainer" style="max-height: 400px; overflow-y: auto; margin-bottom: 10px;"></div>
+
+        <div class="result-daw-container" id="resGridContainer">
+            <svg id="resConnections" class="res-connections"></svg>
+            <div id="resTrackArea" style="position:relative;"></div>
+        </div>
+
         <div id="resRewardInfo" style="text-align:center; color:#4caf50; font-weight:bold; margin:10px 0;"></div>
         <div style="margin-top:20px; display:flex; gap:20px; justify-content:center;">
             <button class="submit-btn" style="width:200px; display:none;" id="nextLevelBtn" onclick="nextLevel()">NEXT LEVEL</button>
             <button class="submit-btn" style="width:200px; display:none;" id="finishGameBtn" onclick="showVictory()">VICTORY</button>
             <button class="submit-btn" style="width:200px; display:none; background:#d32f2f;" id="retryLevelBtn" onclick="retryLevel()">RETRY</button>
             <button class="submit-btn" style="width:200px; display:none; background:#000;" id="dieBtn" onclick="showGameOver()">ACCEPT FATE</button>
+            <button class="submit-btn" style="width:200px;" id="simCloseBtn" onclick="closeResult()">BACK</button>
         </div>
     </div>
 </div>
@@ -424,7 +427,6 @@
     let TOTAL_DURATION = 16; 
     let TICK_DURATION = TOTAL_DURATION / TICKS;
     
-    // --- AUDIO ASSETS ---
     const AUDIO_SOURCES = {
         bgm: "LEV1_LOOP.mp3",
         SB1: "On_Beat_1.mp3", SB2: "On_Beat_2.mp3", SB3: "On_Beat_3.mp3", SB4: "On_Beat_4.mp3", SB5: "On_Beat_5.mp3",
@@ -433,15 +435,14 @@
         TUT1: "On_Beat_2.mp3", TUT2: "On_Beat_3.mp3"
     };
 
-    // --- I18N Data ---
     const UI_TEXT = {
         en: {
-            clear: "CLEAR", help: "HELP", cpu: "★ CPU", target: "TARGET", funds: "FUNDS (G)",
+            clear: "CLEAR", help: "HELP", history: "HISTORY", cpu: "★ CPU", target: "TARGET", funds: "FUNDS (G)",
             inventory: "INVENTORY", shop: "SHOP", upCpu: "UP CPU", sell: "SELL", reroll: "REROLL",
             ready: "Ready", readyDesc: "<b>Drag & Drop</b> items from Inventory to Tracks.<br>Drag off-track to remove.<br>Drag to Shop to sell.",
-            level: "Level:", tracks: "Tracks:", submit: "SUBMIT",
+            level: "Level:", tracks: "Tracks:", submit: "SUBMIT", simulate: "SIMULATE",
             startTitle: "Music Roguelike Deckbuilder", startGame: "START GAME",
-            report: "REPORT", resTarget: "Target", resTotal: "Total",
+            report: "INSIGHT", resTarget: "Target", resTotal: "Total",
             nextLevel: "NEXT LEVEL", victory: "VICTORY", retry: "RETRY", acceptFate: "ACCEPT FATE",
             youWin: "YOU WIN!", winMsg: "You have completed all levels.", playAgain: "PLAY AGAIN",
             gameOver: "GAME OVER", loseMsg: "Ran out of lives.", tryAgain: "TRY AGAIN",
@@ -450,19 +451,17 @@
             item: "Item", base: "Base", cond: "Cond", mult: "Mult", final: "Final", note: "Note", effect: "Effect", sold: "Sold",
             helpTitle: "HOW TO PLAY", helpControlTitle: "CONTROLS",
             helpControlTxt: "• <b>Drag Inventory -> Track</b>: Place Item<br>• <b>Drag Track -> Track</b>: Move Item<br>• <b>Drag Track -> Outside</b>: Remove Item (Refund CPU)<br>• <b>Drag Inventory -> Shop</b>: Sell Item<br>• <b>Right Click</b>: Quick Remove",
-            
-            // Tutorial Texts
             tutTitle: "Tutorial", tutDesc: "Recommended for new players.", skip: "Skip", playTut: "Play Tutorial",
             tutComp: "Tutorial Complete!", tutCompDesc: "You are now ready for the real challenge.", enterGame: "ENTER GAME",
-            soldOutQAQ: "Sold Out QAQ"
+            soldOutQAQ: "Sold Out QAQ", simReport: "SIMULATION REPORT"
         },
         cn: {
-            clear: "清空", help: "帮助", cpu: "★ CPU", target: "目标 Groove", funds: "资金 (G)",
+            clear: "清空", help: "帮助", history: "历史", cpu: "★ CPU", target: "目标 Groove", funds: "资金 (G)",
             inventory: "库存", shop: "商店", upCpu: "升级 CPU", sell: "出售", reroll: "刷新",
             ready: "准备就绪", readyDesc: "<b>操作指南:</b><br>• <b>拖拽</b>: 库存 -> 音轨 (放置)<br>• <b>拖拽</b>: 音轨 -> 音轨 (移动)<br>• <b>拖出</b>: 移出音轨 (移除)<br>• <b>拖拽至商店</b>: 出售道具",
-            level: "当前关卡:", tracks: "轨道数量:", submit: "结算",
+            level: "当前关卡:", tracks: "轨道数量:", submit: "结算", simulate: "付费模拟",
             startTitle: "音乐构筑 Roguelike MVP 演示", startGame: "开始游戏",
-            report: "结算报告", resTarget: "目标", resTotal: "总分",
+            report: "数据透视", resTarget: "目标", resTotal: "总分",
             nextLevel: "下一关", victory: "加冕时刻", retry: "重试", acceptFate: "接受结局",
             youWin: "恭喜通关!", winMsg: "你已经完成了所有挑战。", playAgain: "再次开始",
             gameOver: "游戏结束", loseMsg: "你的生命值已耗尽。", tryAgain: "重头再来",
@@ -471,51 +470,40 @@
             item: "道具", base: "基础", cond: "条件", mult: "倍率", final: "最终", note: "备注", effect: "效果", sold: "已售出",
             helpTitle: "玩法说明", helpControlTitle: "操作方式",
             helpControlTxt: "• <b>左键拖拽 (库存->音轨)</b>: 放置道具<br>• <b>左键拖拽 (音轨->音轨)</b>: 移动位置<br>• <b>拖拽至音轨外</b>: 移除道具 (返还CPU)<br>• <b>拖拽至商店区域</b>: 出售道具<br>• <b>右键点击</b>: 快速移除",
-            
-            // Tutorial Texts
             tutTitle: "新手教程", tutDesc: "强烈建议新玩家游玩。", skip: "跳过", playTut: "进入教程",
             tutComp: "教程结束!", tutCompDesc: "恭喜完成! 现在进入正式挑战。", enterGame: "进入正式关卡",
-            soldOutQAQ: "商店卖断货了 QAQ"
+            soldOutQAQ: "商店卖断货了 QAQ", simReport: "模拟运行报告"
         }
     };
 
     const DEFINITIONS = {
-        en: { 
-            "Strong Beat": "The start of the 1st and 3rd beat of a bar.", 
-            "Weak Beat": "The 2nd and 4th beat of a bar.", 
-            "Same Track": "items placed on the same horizontal track.", 
-            "Sync": "Refers to items triggered at the exact same time (vertical column) on different tracks.", 
-            "Empty Slot": "An unoccupied Grid unit on the timeline. (1 Beat = 4 Grids).", 
-            "Empty Slots": "An unoccupied Grid unit on the timeline. (1 Beat = 4 Grids).",
-            "Consume": "Reduces the Groove of target items and uses the reduced amount to calculate self Groove." 
-        },
-        cn: { 
-            "强拍": "每小节的第1拍与第3拍。", 
-            "弱拍": "每小节的第2拍与第4拍。", 
-            "同轨": "处于同一音轨上的道具。", 
-            "同步": "垂直方向上，与该道具在同一时间点被触发的其他道具。", 
-            "空拍": "DAW中最小的空间单位。1拍 = 4格。",
-            "吞噬": "减少目标道具的分数，并将其作为自身分数的计算依据。" 
-        }
+        en: { "Strong Beat": "The start of the 1st and 3rd beat of a bar. (Darker Grid Area)", "Weak Beat": "The 2nd and 4th beat of a bar.", "Same Track": "items placed on the same horizontal track.", "Sync": "Refers to items triggered at the exact same time (vertical column) on different tracks.", "Empty Slot": "An unoccupied Grid unit on the timeline. (1 Beat = 4 Grids).", "Empty Slots": "An unoccupied Grid unit on the timeline. (1 Beat = 4 Grids).", "Consume": "Reduces the Groove of target items." },
+        cn: { "强拍": "每小节的第1拍与第3拍 (黑色网格区域)。", "弱拍": "每小节的第2拍与第4拍。", "同轨": "处于同一音轨上的道具。", "同步": "垂直方向上，与该道具在同一时间点被触发的其他道具。", "空拍": "DAW中最小的空间单位。1拍 = 4格。", "吞噬": "减少目标道具的分数，并将其作为自身分数的计算依据。" }
+    };
+
+    const TAG_ICONS = {
+        strong: '<span class="tag-icon tag-strong">⚡</span>',
+        empty: '<span class="tag-icon tag-empty">⬜</span>',
+        sync: '<span class="tag-icon tag-sync">↕️</span>',
+        track: '<span class="tag-icon tag-track">↔️</span>'
     };
 
     const DB = [
-        { id: "SB1", name: {en: "Kick Drum", cn: "底鼓"}, desc: {en: "Gain 20 Groove on trigger. If placed on a [Strong Beat], gain an additional 10 Groove.", cn: "触发时获得 20 Groove。<br>若放置在 [强拍] 上，额外获得 10 Groove。"}, len: 4, cpu: 1, base: 20, type: "score", color: "#ffecb3", price: 100, rarity: 1 },
-        { id: "SB2", name: {en: "Sidechain", cn: "侧链"}, desc: {en: "Increase Groove of all [Sync] items by +50%. If placed on a [Strong Beat], increase this effect by an additional +25%.", cn: "使所有 [同步] 道具 Groove +50%。<br>若放置在 [强拍] 上，该增幅效果额外 +25%。"}, len: 4, cpu: 1, base: 0, type: "support", color: "#b2ebf2", price: 75, rarity: 1 },
-        { id: "SB3", name: {en: "Accent", cn: "重音标记"}, desc: {en: "[Same Track] Increase Groove of the Next item by +100%. If placed on a [Strong Beat], the Next item is treated as being triggered on a [Strong Beat]", cn: "[同轨] 使 下一个 道具 [Groove] +100%。<br>若放置在 [强拍] 上，下一个 道具将被视为 在[强拍]触发。"}, len: 4, cpu: 2, base: 0, type: "support", color: "#80deea", price: 100, rarity: 2 },
-        { id: "SB4", name: {en: "Master Clock", cn: "主时钟"}, desc: {en: "If [Strong Beat] effects have triggered at least 5 times before this item triggers: Multiply the Groove of all subsequent [Strong Beat] items by 1.5x.", cn: "若 触发前 已触发至少 5次  [强拍] 效果：<br>后续 触发的所有 [强拍] 道具 [Groove] x 1.5。"}, len: 4, cpu: 4, base: 0, type: "engine", color: "#e1bee7", price: 150, rarity: 3 },
-        { id: "SB5", name: {en: "Quantizer", cn: "量化器"}, desc: {en: "If placed on the start of a [Strong Beat], all [Weak Beat] positions on the timeline are treated as [Strong Beat].", cn: "若放置在 [强拍] 的起始点上，全场所有的 [弱拍] 均被视为 [强拍]。"}, len: 8, cpu: 4, base: 0, type: "engine", color: "#ce93d8", price: 150, rarity: 3 },
-        { id: "EB1", name: {en: "Rest Note", cn: "休止符"}, desc: {en: "Gain 14 Groove on trigger. If the Previous item on the [Same Track] is ≥ 4 [Empty Slots] away, gain an additional 20 Groove.", cn: "触发时获得 14 [Groove]。<br>若 [同轨]前一个 道具与自身间隔 ≥ 4 [空拍]，额外获得 20 [Groove]。"}, len: 2, cpu: 1, base: 14, type: "score", color: "#ffe082", price: 100, rarity: 1 },
-        { id: "EB2", name: {en: "Pre-Delay", cn: "预延时"}, desc: {en: "[Same Track] Increase Groove of the Next item by +35%. For every 1 [Empty Slot] between self and the next item, increase this effect by +12.5% (Max 125%).", cn: "[同轨] 使 下一个 道具 [Groove] +35%。<br>自身与下一个道具每间隔 1 [空拍]，该增幅效果 +12.5%（上限125%）。"}, len: 2, cpu: 1, base: 0, type: "support", color: "#4dd0e1", price: 100, rarity: 1 },
-        { id: "EB3", name: {en: "Isolation Booth", cn: "隔离室"}, desc: {en: "Increase Groove of all [Sync] scoring items by +10. For every 1 [Empty Slot] between self and [Same Track] neighbors (Previous/Next), increase the Groove of [Sync] items by +7.5% (Max 240%).", cn: "使所有 [同步] 道具 [Groove] +10。<br>自身 每与 [同轨] 前后道具间隔 1 [空拍]，使 [同步] 道具的 [Groove] +7.5%（上限240%）。"}, len: 4, cpu: 2, base: 0, type: "support", color: "#00bcd4", price: 100, rarity: 2 },
-        { id: "EB4", name: {en: "Atmosphere", cn: "氛围采样"}, desc: {en: "Gain 30 Groove on trigger. Gain +5% Groove for every 1 [Empty Slot] that appeared before this trigger.", cn: "触发时获得 30 [Groove]。<br>触发前 每出现 1 [空拍]，自身 [Groove] +5%。"}, len: 4, cpu: 3, base: 30, type: "score", color: "#ffd54f", price: 150, rarity: 3 },
-        { id: "EB5", name: {en: "Time Stretch", cn: "时间拉伸"}, desc: {en: "1 [Empty Slot] counts as 2 [Empty Slots] for all [Empty Slot] effects calculations.", cn: "计算所有 [空拍] 效果时，1 [空拍] 将被视为 2 [空拍]。"}, len: 8, cpu: 4, base: 0, type: "engine", color: "#ba68c8", price: 150, rarity: 3 },
-        { id: "EB6", name: {en: "Pad", cn: "铺底音色"}, desc: {en: "Gain 30 Groove over duration. During duration: Gain +5% Groove for every 1 [Empty Slot] currently on the timeline.", cn: "持续期间获得 30 [Groove]。<br>持续期间 全场每存在 1 [空拍]，自身 [Groove] +5%。"}, len: 8, cpu: 2, base: 30, type: "score", color: "#ffca28", price: 100, rarity: 2 },
-        { id: "NG1", name: {en: "Viral Hit", cn: "网红单曲"}, desc: {en: "Gain 30 Groove on trigger. On Sold: Based on the cumulative number of times this item was played, immediately apply a discount to all items in the Shop.", cn: "触发时获得 30 [Groove]。<br>离场: 卖出此道具时，基于其累计上场次数，立即 使商店所有道具打折。"}, len: 8, cpu: 1, base: 30, type: "score", color: "#cfd8dc", price: 75, rarity: 1 },
-        { id: "NG2", name: {en: "Layering", cn: "叠层"}, desc: {en: "Gain 20 Groove on trigger. If triggered in [Sync] with other items, gain an additional 10 Groove.", cn: "触发时获得 20 [Groove]。<br>若有其他道具 [同步] 触发，额外获得 10 [Groove]。"}, len: 4, cpu: 1, base: 20, type: "score", color: "#b0bec5", price: 75, rarity: 1 },
-        { id: "NG3", name: {en: "Solo Fader", cn: "独奏推子"}, desc: {en: "[Same Track] Increase Groove of Previous and Next items by +35%. If triggered with no [Sync] items, increase this effect by an additional +35%.", cn: "[同轨] 使 前一个 和 下一个 道具 [Groove] +35%。<br>若触发时 无 其他道具 [同步] 触发，该增幅效果额外 +35%。"}, len: 2, cpu: 1, base: 0, type: "support", color: "#90a4ae", price: 100, rarity: 2 },
-        { id: "NG4", name: {en: "Noise Gate", cn: "降噪门"}, desc: {en: "[Consume] Reduce the Groove of all [Sync] items by 50%. Gain Groove equal to (40 + [Consumed] amount) x 1.5.", cn: "[吞噬]: 使所有 [同步] 道具的 [Groove] 减半。<br>自身获得 [Groove] = (40 + [吞噬] 的数值) x 1.5。"}, len: 4, cpu: 2, base: 40, type: "score", color: "#78909c", price: 150, rarity: 3 },
-        
+        { id: "SB1", name: {en: "Kick Drum", cn: "底鼓"}, desc: {en: "Gain 20 Groove. If placed on a [Strong Beat], gain +10.", cn: "获得 20 Groove。若放置在 [强拍] (Start on Strong Beat) 上，额外 +10。"}, len: 4, cpu: 1, base: 20, type: "score", color: "#ffecb3", price: 100, rarity: 1 },
+        { id: "SB2", name: {en: "Sidechain", cn: "侧链"}, desc: {en: "All [Sync] items +50%. If on [Strong Beat], effect +25%.", cn: "所有 [同步] 道具 +50%。若在 [强拍]，效果 +25%。"}, len: 4, cpu: 1, base: 0, type: "support", color: "#b2ebf2", price: 75, rarity: 1 },
+        { id: "SB3", name: {en: "Accent", cn: "重音标记"}, desc: {en: "[Same Track] Next item +100%. If on [Strong Beat], Next item counts as [Strong Beat].", cn: "[同轨] 下一个道具 +100%。若在 [强拍]，下一个视为 [强拍]触发。"}, len: 4, cpu: 2, base: 0, type: "support", color: "#80deea", price: 100, rarity: 2 },
+        { id: "SB4", name: {en: "Master Clock", cn: "主时钟"}, desc: {en: "If 5+ [Strong Beat] triggered before: Next [Strong Beat] items x1.5.", cn: "若此前已触发 5+ [强拍]：后续 [强拍] 道具 x1.5。"}, len: 4, cpu: 4, base: 0, type: "engine", color: "#e1bee7", price: 150, rarity: 3 },
+        { id: "SB5", name: {en: "Quantizer", cn: "量化器"}, desc: {en: "If on start of [Strong Beat], all [Weak Beat] positions count as [Strong Beat].", cn: "若在 [强拍] 起始点 (Start of Strong Beat)，全场 [弱拍] 均视为 [强拍]。"}, len: 8, cpu: 4, base: 0, type: "engine", color: "#ce93d8", price: 150, rarity: 3 },
+        { id: "EB1", name: {en: "Rest Note", cn: "休止符"}, desc: {en: "Gain 14 Groove. If [Same Track] Previous is ≥ 4 [Empty Slots] away, +20.", cn: "获得 14 Groove。若 [同轨]前一个 间隔 ≥ 4 [空拍]，+20。"}, len: 2, cpu: 1, base: 14, type: "score", color: "#ffe082", price: 100, rarity: 1 },
+        { id: "EB2", name: {en: "Pre-Delay", cn: "预延时"}, desc: {en: "[Same Track] Next item +35%. Per 1 [Empty Slot] gap, +12.5%.", cn: "[同轨] 下一个 +35%。每间隔 1 [空拍]，+12.5%。"}, len: 2, cpu: 1, base: 0, type: "support", color: "#4dd0e1", price: 100, rarity: 1 },
+        { id: "EB3", name: {en: "Isolation Booth", cn: "隔离室"}, desc: {en: "[Sync] items +10. Per 1 [Empty Slot] gap (Prev/Next), [Sync] +7.5%.", cn: "[同步] 道具 +10。每与前后间隔 1 [空拍]，[同步] +7.5%。"}, len: 4, cpu: 2, base: 0, type: "support", color: "#00bcd4", price: 100, rarity: 2 },
+        { id: "EB4", name: {en: "Atmosphere", cn: "氛围采样"}, desc: {en: "Gain 30 Groove. +5% per previous [Empty Slot].", cn: "获得 30 Groove。此前每 1 [空拍]，+5%。"}, len: 4, cpu: 3, base: 30, type: "score", color: "#ffd54f", price: 150, rarity: 3 },
+        { id: "EB5", name: {en: "Time Stretch", cn: "时间拉伸"}, desc: {en: "1 [Empty Slot] counts as 2.", cn: "1 [空拍] 视为 2。"}, len: 8, cpu: 4, base: 0, type: "engine", color: "#ba68c8", price: 150, rarity: 3 },
+        { id: "EB6", name: {en: "Pad", cn: "铺底音色"}, desc: {en: "Gain 30 over time. +5% per concurrent [Empty Slot].", cn: "持续获得 30。全场每 1 [空拍]，+5%。"}, len: 8, cpu: 2, base: 30, type: "score", color: "#ffca28", price: 100, rarity: 2 },
+        { id: "NG1", name: {en: "Viral Hit", cn: "网红单曲"}, desc: {en: "Gain 30 Groove. On Sold: Shop discount based on play count.", cn: "获得 30 Groove。卖出时：基于播放次数全场打折。"}, len: 8, cpu: 1, base: 30, type: "score", color: "#cfd8dc", price: 75, rarity: 1 },
+        { id: "NG2", name: {en: "Layering", cn: "叠层"}, desc: {en: "Gain 20 Groove. If [Sync] triggered, +10.", cn: "获得 20 Groove。若 [同步] 触发，+10。"}, len: 4, cpu: 1, base: 20, type: "score", color: "#b0bec5", price: 75, rarity: 1 },
+        { id: "NG3", name: {en: "Solo Fader", cn: "独奏推子"}, desc: {en: "[Same Track] Prev/Next +35%. If no [Sync], +35% more.", cn: "[同轨] 前后 +35%。若无 [同步]，额外 +35%。"}, len: 2, cpu: 1, base: 0, type: "support", color: "#90a4ae", price: 100, rarity: 2 },
+        { id: "NG4", name: {en: "Noise Gate", cn: "降噪门"}, desc: {en: "[Consume]: [Sync] items -50%. Gain (40 + Consumed) x 1.5.", cn: "[吞噬]: [同步] 道具 -50%。获得 (40 + 吞噬量) x 1.5。"}, len: 4, cpu: 2, base: 40, type: "score", color: "#78909c", price: 150, rarity: 3 },
         { id: "TUT1", name: {en: "Sampler A", cn: "采样器 A"}, desc: {en: "Gain 20 Groove.", cn: "获得 20 Groove。"}, len: 4, cpu: 1, base: 20, type: "score", color: "#ddd", price: 0, rarity: 1 },
         { id: "TUT2", name: {en: "Sampler B", cn: "采样器 B"}, desc: {en: "Gain 30 Groove.", cn: "获得 30 Groove。"}, len: 8, cpu: 1, base: 30, type: "score", color: "#bbb", price: 0, rarity: 1 }
     ];
@@ -542,812 +530,121 @@
         levelIndex: 0, selectedInvItem: null, shopLocked: false, isPlaying: false,
         gold: 150, cpuPurchasedRound: 0, roundBase: 10, currentShopItems: [],
         ng1PermanentStacks: 0, lastRoundReward: 0, lives: 3,
-        lang: 'en',
-        isTutorial: false,
-        tutorialCpuBought: false 
+        lang: 'en', isTutorial: false, tutorialCpuBought: false,
+        lastResultData: null, isSimulation: false, unlockedTracks: 1 
     };
 
-    let dragManager = {
-        active: false, itemData: null, sourceType: null, sourceRecord: null, sourceInvItem: null,
-        ghostEl: null, previewEl: null, sellTooltip: null, currentHover: null, startX: 0, startY: 0
-    };
-
-    // --- Tutorial State Management ---
-    let tutorialState = {
-        l1: { aClicked: false, bClicked: false, aPlaced: false, bPlaced: false },
-        l2: { bought: false, clicked: false, effectActive: false },
-        l3: { kickBought: false, cpuBought: false, kickClicked: false, kickEffect: false },
-        l4: { cpuCount: 0 }
-    };
-
-    function resetTutorialStateForLevel(idx) {
-        if (idx === 0) tutorialState.l1 = { aClicked: false, bClicked: false, aPlaced: false, bPlaced: false };
-        // L2: Partial Reset. Keep bought. Reset click/effect.
-        if (idx === 1) { 
-            tutorialState.l2.clicked = false; 
-            tutorialState.l2.effectActive = false; 
-            // bought state persists
-        }
-        // L3: Partial Reset. Keep Bought. Reset click/effect.
-        if (idx === 2) { 
-            tutorialState.l3.kickClicked = false; 
-            tutorialState.l3.kickEffect = false;
-            // kickBought and cpuBought persist
-        }
-        if (idx === 3) tutorialState.l4 = { cpuCount: 0 };
-    }
-
-    function updateTutorialVisuals() {
-        if (!state.isTutorial) return;
-        
-        // Remove all previous guides to redraw
-        document.querySelectorAll('.soft-guide').forEach(el => el.classList.remove('soft-guide'));
-        document.querySelectorAll('.soft-guide-gentle').forEach(el => el.classList.remove('soft-guide-gentle'));
-
-        // Level 1: Basics
-        if (state.levelIndex === 0) {
-            addGuide('targetContainer');
-            
-            // Inventory Items Glow Logic (Independent)
-            const invItems = document.querySelectorAll('.inv-item');
-            invItems.forEach(el => {
-                if (el.innerText.includes("Sampler A") || el.innerText.includes("采样器 A")) {
-                    if (!tutorialState.l1.aClicked) addGuideGentleEl(el);
-                }
-                if (el.innerText.includes("Sampler B") || el.innerText.includes("采样器 B")) {
-                    if (!tutorialState.l1.bClicked) addGuideGentleEl(el);
-                }
-            });
-
-            // Detail Panel Glow Logic
-            // If clicked (inspected) but NOT placed yet, glow detail.
-            if (state.selectedInvItem) {
-                if (state.selectedInvItem.data.id === 'TUT1' && !tutorialState.l1.aPlaced) {
-                    addGuideGentle('detailPanel');
-                }
-                if (state.selectedInvItem.data.id === 'TUT2' && !tutorialState.l1.bPlaced) {
-                    addGuideGentle('detailPanel');
-                }
-            }
-        }
-
-        // Level 2: Shop & Effect
-        if (state.levelIndex === 1) {
-            addGuide('targetContainer');
-            
-            if (!tutorialState.l2.bought) {
-                // If not bought, glow Gold + Shop Item
-                addGuideGentle('goldText');
-                const shopItems = document.querySelectorAll('.shop-item');
-                shopItems.forEach(el => {
-                    if (el.innerText.includes("Rest Note") || el.innerText.includes("休止符")) addGuideGentleEl(el);
-                });
-            } else {
-                // Bought. Check Effect status.
-                if (!tutorialState.l2.effectActive) {
-                    const invItems = document.querySelectorAll('.inv-item');
-                    invItems.forEach(el => {
-                        if (el.innerText.includes("Rest Note") || el.innerText.includes("休止符")) {
-                            // GLOW UNTIL EFFECT ACTIVE
-                            addGuideGentleEl(el);
-                        }
-                    });
-                    
-                    // Detail Panel: Only glow if Rest Note selected AND not active
-                    if (state.selectedInvItem && state.selectedInvItem.data.id === 'EB1') {
-                         addGuideGentle('detailPanel');
-                    }
-                }
-            }
-        }
-
-        // Level 3: Strong Beat
-        if (state.levelIndex === 2) {
-            addGuide('targetContainer');
-            
-            // Phase 1: Buying (Gold glows until BOTH bought)
-            const needKick = !tutorialState.l3.kickBought;
-            const needCpu = !tutorialState.l3.cpuBought;
-            
-            if (needKick || needCpu) {
-                addGuideGentle('goldText');
-                
-                if (needCpu) addGuide('btnBuyCpu'); // Button uses Strong
-                
-                if (needKick) {
-                    const shopItems = document.querySelectorAll('.shop-item');
-                    shopItems.forEach(el => {
-                        if (el.innerText.includes("Kick Drum") || el.innerText.includes("底鼓")) addGuideGentleEl(el);
-                    });
-                }
-            } else {
-                // Phase 2: Utilization
-                if (!tutorialState.l3.kickEffect) {
-                    const invItems = document.querySelectorAll('.inv-item');
-                    invItems.forEach(el => {
-                        if (el.innerText.includes("Kick Drum") || el.innerText.includes("底鼓")) {
-                            // GLOW UNTIL EFFECT ACTIVE
-                            addGuideGentleEl(el);
-                        }
-                    });
-                    
-                    // Detail Panel: Only glow if Kick Drum selected AND not active
-                    if (state.selectedInvItem && state.selectedInvItem.data.id === 'SB1') {
-                        addGuideGentle('detailPanel');
-                    }
-                }
-            }
-        }
-
-        // Level 4: Multi Track / CPU Spam
-        if (state.levelIndex === 3) {
-            if (tutorialState.l4.cpuCount < 3) { 
-                addGuideGentle('goldText');
-                addGuide('btnBuyCpu');
-            }
-        }
-    }
-
-    function addGuide(id) {
-        const el = document.getElementById(id);
-        if (el) el.classList.add('soft-guide');
-    }
+    let dragManager = { active: false, itemData: null, sourceType: null, sourceRecord: null, sourceInvItem: null, ghostEl: null, previewEl: null, sellTooltip: null, currentHover: null, startX: 0, startY: 0 };
+    let tutorialState = { l1: { aClicked: false, bClicked: false, aPlaced: false, bPlaced: false }, l2: { bought: false, clicked: false, effectActive: false }, l3: { kickBought: false, cpuBought: false, kickClicked: false, kickEffect: false }, l4: { cpuCount: 0 } };
     
-    function addGuideGentle(id) {
-        const el = document.getElementById(id);
-        if (el) el.classList.add('soft-guide-gentle');
-    }
-    
-    function addGuideGentleEl(el) {
-        if(el) el.classList.add('soft-guide-gentle');
-    }
-    
-    // Only allow sell in Level 4+ or standard game
-    function canSell() {
-        return !state.isTutorial || state.levelIndex >= 3;
-    }
+    function resetTutorialStateForLevel(idx) { if (idx === 0) tutorialState.l1 = { aClicked: false, bClicked: false, aPlaced: false, bPlaced: false }; if (idx === 1) { tutorialState.l2.clicked = false; tutorialState.l2.effectActive = false; } if (idx === 2) { tutorialState.l3.kickClicked = false; tutorialState.l3.kickEffect = false; } if (idx === 3) tutorialState.l4 = { cpuCount: 0 }; }
 
     // --- Init ---
     window.addEventListener('DOMContentLoaded', () => { 
-        initGrid(); 
-        updateAllText(); 
-        window.addEventListener('mousemove', onGlobalDragMove);
-        window.addEventListener('mouseup', onGlobalDragEnd);
-        
         window.debugSetGold = () => { const val = parseInt(document.getElementById('dbgGold').value); if(!isNaN(val)) { state.gold = val; updateUI(); } };
         window.debugSetTarget = () => { const val = parseInt(document.getElementById('dbgTarget').value); if(!isNaN(val)) { config.target = val; updateUI(); } };
-        
-        // Loop visuals update
+        initGrid(); updateAllText(); 
+        window.addEventListener('mousemove', onGlobalDragMove);
+        window.addEventListener('mouseup', onGlobalDragEnd);
         setInterval(updateTutorialVisuals, 200);
     });
 
-    // --- Drag Logic ---
-    function startDragInventory(e, invItem) {
-        if(state.isPlaying) return;
-        if(e.button !== 0) return; 
-        e.stopPropagation(); 
+    // --- Logic ---
+    function calculateLogic() { 
+        const items = state.placedItems; 
+        const sorted = [...items].sort((a,b) => a.start - b.start); 
+        let output = sorted.map(p => ({ 
+            record: p, base: p.data.base, bonus: 0, mult: 1.0, finalMultiplier: 1.0, 
+            triggered: false, buffsReceived: [], buffsGiven: [], logs: [], forceStrong: false 
+        })); 
         
-        // Tutorial State Updates: Clicked Tracking
-        if (state.isTutorial) {
-            // Level 1 logic handled in showDetail now to ensure correct seq
-        }
+        let globalWeakIsStrong = false; let globalGapMult = 1;          
+        output.forEach(entry => { 
+            const d = entry.record.data; const s = entry.record.start; 
+            if (d.id === "SB5" && (s % 8 === 0)) { globalWeakIsStrong = true; entry.triggered = true; entry.logs.push({srcId:'Global', type:'rule', val:'Quantizer Active'}); } 
+            if (d.id === "EB5") { globalGapMult = 2; entry.triggered = true; entry.logs.push({srcId:'Global', type:'rule', val:'Time Stretch Active'}); } 
+        }); 
 
-        setupDrag(e, invItem.data, 'inventory', null, invItem);
-    }
+        let strongBeatCount = 0; let sb4Triggered = false; 
+        output.forEach((entry, idx) => { 
+            const p = entry.record; const d = p.data; const s = p.start; const e = s + d.len; 
+            const beatIdx = Math.floor(s / 4); let isNaturalStrong = (beatIdx % 2 === 0); let isStrong = isNaturalStrong || globalWeakIsStrong || entry.forceStrong; 
+            if (isStrong && (d.id.startsWith("SB") || d.id.startsWith("NG"))) strongBeatCount++; 
+            if (isStrong) entry.logs.push({srcId:'System', type:'cond', val:'Strong Beat'});
 
-    function startDragPlaced(e, record) {
-        if(state.isPlaying) return;
-        if(e.button !== 0) return;
-        e.stopPropagation();
-        
-        record.el.classList.add('item-being-dragged');
-        setupDrag(e, record.data, 'track', record, null);
-    }
+            const trackItems = output.filter(x => x.record.track === p.track); const tIdx = trackItems.indexOf(entry); const prev = tIdx > 0 ? trackItems[tIdx-1] : null; const next = tIdx < trackItems.length-1 ? trackItems[tIdx+1] : null; const concurrent = output.filter(x => x !== entry && x.record.start === s); 
+            const calcGap = (t1, t2) => Math.max(0, t2 - t1) * globalGapMult; 
 
-    function setupDrag(e, itemData, type, record, invItem) {
-        dragManager.active = true;
-        dragManager.itemData = itemData;
-        dragManager.sourceType = type;
-        dragManager.sourceRecord = record;
-        dragManager.sourceInvItem = invItem;
-        dragManager.startX = e.clientX;
-        dragManager.startY = e.clientY;
-
-        const ghost = document.createElement('div');
-        ghost.className = 'drag-ghost';
-        ghost.innerText = itemData.name[state.lang];
-        ghost.style.backgroundColor = itemData.color;
-        const trackW = document.querySelector('.track').getBoundingClientRect().width;
-        const widthPx = (trackW / TICKS) * itemData.len;
-        ghost.style.width = widthPx + 'px';
-        ghost.style.height = '40px'; 
-        document.body.appendChild(ghost);
-        dragManager.ghostEl = ghost;
-        
-        // Tutorial 1 Drag Hint (Only L1)
-        if (state.isTutorial && state.levelIndex === 0) {
-            document.getElementById('trackArea').classList.add('dragging-mode');
-        }
-        
-        // Sell Hint (Only Level 4+)
-        if (type === 'inventory' && canSell()) {
-            document.getElementById('shopPanel').classList.add('sell-hint');
-        }
-
-        updateGhostPosition(e.clientX, e.clientY);
-        
-        if(type === 'inventory') {
-            state.selectedInvItem = invItem;
-            updateInventoryUI();
-            showDetail(invItem.data);
-        } else {
-            state.selectedInvItem = null;
-            showDetail(record.data);
-        }
-    }
-
-    function onGlobalDragMove(e) {
-        if (!dragManager.active) return;
-        e.preventDefault();
-        updateGhostPosition(e.clientX, e.clientY);
-        updateCPU(); 
-
-        const gridPos = getGridFromClient(e.clientX, e.clientY);
-        clearPreview();
-        
-        if (gridPos) {
-            const isValid = checkPlacementValidity(gridPos.track, gridPos.tick, dragManager.itemData);
-            renderPreview(gridPos.track, gridPos.tick, dragManager.itemData.len, isValid);
-            dragManager.currentHover = gridPos;
-            dragManager.hoverType = 'track';
-            if(dragManager.sellTooltip) { dragManager.sellTooltip.remove(); dragManager.sellTooltip = null; }
-        } else {
-            const shopPanel = document.getElementById('shopPanel');
-            const rect = shopPanel.getBoundingClientRect();
-            if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
-                // Only show sell hint if allowed
-                if (dragManager.sourceType === 'inventory' && canSell()) {
-                    shopPanel.classList.add('drag-target-sell');
-                    dragManager.hoverType = 'shop';
-                    if (!dragManager.sellTooltip) {
-                        const tooltip = document.createElement('div');
-                        tooltip.className = 'drag-sell-tooltip';
-                        document.body.appendChild(tooltip);
-                        dragManager.sellTooltip = tooltip;
-                    }
-                    const item = dragManager.sourceInvItem;
-                    const price = item.boughtPrice === 0 ? 25 : Math.floor(item.boughtPrice * 0.25);
-                    dragManager.sellTooltip.innerText = `${UI_TEXT[state.lang].sell}: +${price}G`;
-                    dragManager.sellTooltip.style.left = (e.clientX + 20) + 'px';
-                    dragManager.sellTooltip.style.top = (e.clientY - 20) + 'px';
-                }
-            } else {
-                shopPanel.classList.remove('drag-target-sell');
-                dragManager.hoverType = 'outside';
-                if(dragManager.sellTooltip) { dragManager.sellTooltip.remove(); dragManager.sellTooltip = null; }
-            }
-            dragManager.currentHover = null;
-        }
-    }
-
-    function onGlobalDragEnd(e) {
-        if (!dragManager.active) return;
-
-        const { itemData, sourceType, sourceRecord, sourceInvItem, hoverType, currentHover } = dragManager;
-        let actionTaken = false;
-
-        if (dragManager.ghostEl) dragManager.ghostEl.remove();
-        if (dragManager.sellTooltip) dragManager.sellTooltip.remove(); 
-        dragManager.sellTooltip = null;
-        clearPreview();
-        document.getElementById('shopPanel').classList.remove('drag-target-sell');
-        
-        document.getElementById('trackArea').classList.remove('dragging-mode');
-        document.getElementById('shopPanel').classList.remove('sell-hint');
-        
-        if (sourceRecord && sourceRecord.el) sourceRecord.el.classList.remove('item-being-dragged');
-
-        if (hoverType === 'track' && currentHover) {
-            if (checkPlacementValidity(currentHover.track, currentHover.tick, itemData)) {
-                if (sourceType === 'track') {
-                    state.placedItems = state.placedItems.filter(p => p !== sourceRecord);
-                }
-                state.placedItems.push({ 
-                    id: Date.now(), data: itemData, 
-                    track: currentHover.track, start: currentHover.tick 
-                });
-                actionTaken = true;
-                restorePlacedItems();
-                
-                // Tutorial placement check
-                if (state.isTutorial && state.levelIndex === 0) {
-                    if (itemData.id === 'TUT1') tutorialState.l1.aPlaced = true;
-                    if (itemData.id === 'TUT2') tutorialState.l1.bPlaced = true;
-                }
-            }
-        } else if (hoverType === 'shop' && sourceType === 'inventory') {
-            // SELL LOGIC
-            if (canSell()) {
-                state.selectedInvItem = sourceInvItem; 
-                sellSelectedItem(); 
-                actionTaken = true;
-            }
-        } else if (hoverType === 'outside' && sourceType === 'track') {
-            state.placedItems = state.placedItems.filter(p => p !== sourceRecord);
-            restorePlacedItems();
-            actionTaken = true;
-        }
-
-        dragManager.active = false;
-        dragManager.ghostEl = null;
-        updateCPU(); 
-        updateUI();
-    }
-
-    function getGridFromClient(cx, cy) {
-        const tracks = document.querySelectorAll('.track');
-        for (let i = 0; i < tracks.length; i++) {
-            const rect = tracks[i].getBoundingClientRect();
-            if (cy >= rect.top && cy <= rect.bottom && cx >= rect.left && cx <= rect.right) {
-                if (i >= config.activeTracks) return null;
-                const xInTrack = cx - rect.left;
-                const widthPerTick = rect.width / TICKS;
-                let tick = Math.floor(xInTrack / widthPerTick);
-                if (tick < 0) tick = 0; if (tick >= TICKS) tick = TICKS - 1;
-                return { track: i, tick: tick };
-            }
-        }
-        return null;
-    }
-
-    function checkPlacementValidity(trackIdx, startTick, itemData) {
-        if (startTick + itemData.len > TICKS) return false;
-        if (dragManager.sourceType === 'inventory') {
-            const currentCpu = state.placedItems.reduce((a,b)=>a+b.data.cpu, 0);
-            if (currentCpu + itemData.cpu > config.maxCpu) {
-                return false; 
-            }
-        }
-        const others = state.placedItems.filter(p => p !== dragManager.sourceRecord);
-        for (let item of others) {
-            if (item.track === trackIdx) {
-                const aStart = item.start;
-                const aEnd = item.start + item.data.len;
-                const bStart = startTick;
-                const bEnd = startTick + itemData.len;
-                if (Math.max(aStart, bStart) < Math.min(aEnd, bEnd)) return false;
-            }
-        }
-        return true;
-    }
-
-    function renderPreview(trackIdx, startTick, len, isValid) {
-        const tracks = document.querySelectorAll('.track');
-        const trackEl = tracks[trackIdx];
-        if (!trackEl) return;
-        const preview = document.createElement('div');
-        preview.className = isValid ? 'drag-preview-valid' : 'drag-preview-invalid';
-        preview.style.position = 'absolute';
-        preview.style.height = '100%';
-        preview.style.left = (startTick / TICKS * 100) + '%';
-        preview.style.width = (len / TICKS * 100) + '%';
-        trackEl.appendChild(preview);
-        dragManager.previewEl = preview;
-    }
-
-    function clearPreview() {
-        if (dragManager.previewEl) { dragManager.previewEl.remove(); dragManager.previewEl = null; }
-    }
-
-    function updateGhostPosition(x, y) {
-        if (dragManager.ghostEl) {
-            dragManager.ghostEl.style.left = x + 'px';
-            dragManager.ghostEl.style.top = y + 'px';
-        }
-    }
-
-    // --- Standard Game Functions ---
-    function toggleLanguage() { state.lang = (state.lang === 'en') ? 'cn' : 'en'; updateAllText(); }
-    function showHelpModal() { document.getElementById('helpModal').style.display = 'flex'; }
-    function closeHelpModal() { document.getElementById('helpModal').style.display = 'none'; }
-    
-    function updateAllText() {
-        const t = UI_TEXT[state.lang];
-        document.getElementById('txtClear').innerText = t.clear;
-        document.getElementById('lblCpu').innerText = t.cpu;
-        document.getElementById('lblTarget').innerText = t.target;
-        document.getElementById('lblInventory').innerText = t.inventory;
-        document.getElementById('lblShop').innerText = t.shop;
-        document.getElementById('txtUpCpu').innerText = t.upCpu;
-        document.getElementById('btnReroll').innerText = `${t.reroll} (10G)`;
-        document.getElementById('detailTitle').innerText = t.ready;
-        document.getElementById('detailContent').innerHTML = t.readyDesc;
-        document.getElementById('lblLevel').innerText = t.level;
-        document.getElementById('lblTracks').innerText = t.tracks;
-        document.getElementById('mainSubmitBtn').innerText = t.submit;
-        document.getElementById('txtStartMsg').innerText = t.startTitle;
-        document.getElementById('btnStartGame').innerText = t.startGame;
-        document.getElementById('resTitle').innerText = t.report;
-        document.getElementById('lblResTarget').innerText = t.resTarget;
-        document.getElementById('lblResTotal').innerText = t.resTotal;
-        document.getElementById('nextLevelBtn').innerText = t.nextLevel;
-        document.getElementById('finishGameBtn').innerText = t.victory;
-        document.getElementById('retryLevelBtn').innerText = t.retry;
-        document.getElementById('dieBtn').innerText = t.acceptFate;
-        document.getElementById('txtWinTitle').innerText = t.youWin;
-        document.getElementById('txtWinMsg').innerText = t.winMsg;
-        document.getElementById('btnRestart1').innerText = t.playAgain;
-        document.getElementById('txtLoseTitle').innerText = t.gameOver;
-        document.getElementById('txtLoseMsg').innerText = t.loseMsg;
-        document.getElementById('btnRestart2').innerText = t.tryAgain;
-        document.getElementById('lblHelpTitle').innerText = t.helpTitle;
-        document.getElementById('lblHelpControl').innerText = t.helpControlTitle;
-        document.getElementById('txtHelpControl').innerHTML = t.helpControlTxt;
-        
-        document.getElementById('lblTutTitle').innerText = t.tutTitle;
-        document.getElementById('lblTutDesc').innerText = t.tutDesc;
-        document.getElementById('btnSkipTut').innerText = t.skip;
-        document.getElementById('btnPlayTut').innerText = t.playTut;
-        document.getElementById('lblTutCompDesc').innerText = t.tutCompDesc;
-        document.querySelector('#tutorialCompleteModal h2').innerText = t.tutComp;
-        document.querySelector('#tutorialCompleteModal button').innerText = t.enterGame;
-
-        updateInventoryUI(); renderShopFromState();
-        updateCpuButton();
-        if(state.selectedInvItem) showDetail(state.selectedInvItem.data);
-    }
-
-    function showTooltip(e, key) {
-        const tip = document.getElementById('tooltip');
-        const defs = DEFINITIONS[state.lang];
-        if(tip && defs[key]) {
-            tip.style.display = 'block';
-            tip.style.left = (e.clientX + 10) + 'px';
-            tip.style.top = (e.clientY + 10) + 'px';
-            tip.innerHTML = `<span class="tooltip-key">[${key}]</span>${defs[key]}`;
-        }
-    }
-    function hideTooltip() { const tip = document.getElementById('tooltip'); if(tip) tip.style.display = 'none'; }
-
-    // --- Start & Flow Logic ---
-    function showLangSelect() {
-        document.getElementById('startScreen').style.display = 'none';
-        document.getElementById('langSelectModal').style.display = 'flex';
-    }
-
-    function selectLang(lang) {
-        state.lang = lang;
-        updateAllText();
-        document.getElementById('langSelectModal').style.display = 'none';
-        document.getElementById('tutorialQueryModal').style.display = 'flex';
-    }
-
-    function skipTutorial() {
-        document.getElementById('tutorialQueryModal').style.display = 'none';
-        startStandardGame();
-    }
-
-    function playTutorial() {
-        document.getElementById('tutorialQueryModal').style.display = 'none';
-        state.isTutorial = true;
-        startTutorialLevel(0);
-    }
-
-    function startStandardGame() {
-        state.isTutorial = false;
-        state.inventory = []; state.ng1PermanentStacks = 0; state.lives = 3; state.gold = 150;
-        ["SB1", "EB1", "NG2"].forEach(id => addItemToInventory(id, 0)); 
-        config.maxCpu = 12;
-        state.placedItems = [];
-        applyLevelConfig(0);
-        updateUI();
-    }
-
-    function startTutorialLevel(idx) {
-        state.levelIndex = idx;
-        resetTutorialStateForLevel(idx);
-        
-        const cfg = TUTORIAL_CONFIG[idx];
-        config.target = cfg.target;
-        config.activeTracks = cfg.tracks;
-        
-        if (idx === 0) {
-            state.inventory = [];
-            state.placedItems = [];
-            state.poolIds = [];
-            state.gold = 0; 
-            config.maxCpu = cfg.startCpu;
-            if(cfg.initialItems) {
-                cfg.initialItems.forEach(id => addItemToInventory(id, 0));
-            }
-        }
-        
-        if (cfg.poolAdds) {
-            cfg.poolAdds.forEach(id => {
-                if(!state.poolIds.includes(id)) state.poolIds.push(id);
-                if (!state.poolEntryTimes[id]) state.poolEntryTimes[id] = 0; 
-            });
-        }
-        
-        state.tutorialCpuBought = false;
-        if(cfg.repeatableCpu) { state.cpuPurchasedRound = 0; }
-
-        updateUI();
-        initGrid(); 
-        restorePlacedItems();
-        
-        if (idx > 0) {
-            forceTutorialShop(idx);
-        } else {
-            state.currentShopItems = [];
-            renderShopFromState();
-        }
-    }
-    
-    function forceTutorialShop(idx) {
-        state.currentShopItems = [];
-        const cfg = TUTORIAL_CONFIG[idx];
-        if (cfg.poolAdds && cfg.poolAdds.length > 0) {
-            cfg.poolAdds.forEach(id => {
-                // CHECK IF OWNED
-                const alreadyOwned = state.inventory.some(inv => inv.data.id === id);
-                if (!alreadyOwned) {
-                    const data = DB.find(i => i.id === id);
-                    if(data) {
-                        state.currentShopItems.push({ data: data, price: data.price, isDiscount: false, discountPercent: 0, sold: false });
-                    }
-                }
-            });
-        }
-        renderShopFromState();
-    }
-
-    function addItemToInventory(id, price) {
-        const data = DB.find(i => i.id === id);
-        if(data) state.inventory.push({ uid: Date.now()+Math.random(), id: id, boughtPrice: price, data: data });
-    }
-
-    function applyLevelConfig(idx) {
-        if (idx >= LEVEL_CONFIG.length) return;
-        state.levelIndex = idx;
-        const cfg = LEVEL_CONFIG[idx];
-        config.target = cfg.target;
-        config.activeTracks = cfg.tracks;
-        state.cpuPurchasedRound = 0;
-        state.roundBase = 10 + (idx * 2);
-        if (cfg.poolAdds) {
-            cfg.poolAdds.forEach(id => {
-                if(!state.poolIds.includes(id)) state.poolIds.push(id);
-                if (!state.poolEntryTimes[id]) state.poolEntryTimes[id] = idx;
-            });
-        }
-        updateUI();
-        initGrid(); 
-        restorePlacedItems();
-        rerollShop(); 
-    }
-
-    function updateUI() {
-        document.getElementById('levelNum').innerText = `${state.levelIndex + 1}`;
-        document.getElementById('trackNum').innerText = config.activeTracks;
-        document.getElementById('maxCpuText').innerText = `Max: ${config.maxCpu}`;
-        document.getElementById('targetText').innerText = config.target;
-        document.getElementById('goldText').innerText = state.gold + " G"; 
-        updateInventoryUI();
-        updateCpuButton();
-        updateCPU();
-        
-        if (state.isTutorial) {
-            document.getElementById('btnReroll').style.display = 'none';
-        } else {
-            document.getElementById('btnReroll').style.display = 'block';
-        }
-    }
-
-    function updateGold(amount, animationTargetId) { 
-        state.gold += amount; 
-        document.getElementById('goldText').innerText = state.gold + " G"; 
-        
-        if (amount < 0 && animationTargetId) {
-            const target = document.getElementById(animationTargetId);
-            if(target) {
-                const float = document.createElement('div');
-                float.innerText = `${amount}G`;
-                float.className = 'float-text';
-                float.style.color = '#ff5252';
-                const rect = target.getBoundingClientRect();
-                float.style.left = (rect.left + rect.width/2) + 'px';
-                float.style.top = rect.top + 'px';
-                document.body.appendChild(float);
-                setTimeout(()=>float.remove(), 1000);
-            }
-        }
-    }
-    
-    function updateCpuButton() { 
-        const btn = document.getElementById('btnBuyCpu');
-        
-        if (state.isTutorial && state.levelIndex < 2) {
-            btn.style.display = 'none';
-            return;
-        } else {
-            btn.style.display = 'flex';
-        }
-        
-        if (state.isTutorial && state.levelIndex === 2) {
-            if (state.tutorialCpuBought) {
-                btn.disabled = true;
-                document.getElementById('txtUpCpu').innerText = UI_TEXT[state.lang].soldOutQAQ;
-                document.getElementById('cpuPriceText').innerText = "";
-                return;
-            } else {
-                btn.disabled = false;
-                document.getElementById('txtUpCpu').innerText = UI_TEXT[state.lang].upCpu;
-                document.getElementById('cpuPriceText').innerText = "30G";
-                return;
-            }
-        }
-        
-        btn.disabled = false;
-        document.getElementById('txtUpCpu').innerText = UI_TEXT[state.lang].upCpu;
-        const cost = 30 + (Math.min(state.cpuPurchasedRound, 2) * state.roundBase); 
-        document.getElementById('cpuPriceText').innerText = `${cost}G`; 
-    }
-    
-    function updateCPU() { 
-        const used = state.placedItems.reduce((a, b) => a + b.data.cpu, 0); 
-        const max = config.maxCpu;
-        const usedPct = Math.min(100, (used / max) * 100); 
-        
-        const bar = document.getElementById('cpuBar'); 
-        const previewBar = document.getElementById('cpuPreviewBar');
-        if (!previewBar) return;
-
-        if (dragManager.active && dragManager.sourceType === 'inventory' && dragManager.itemData) {
-            const itemCost = dragManager.itemData.cpu;
-            const projectedTotal = used + itemCost;
-            const previewWidthPct = (itemCost / max) * 100;
-            
-            previewBar.style.left = usedPct + "%";
-            previewBar.style.width = previewWidthPct + "%";
-            previewBar.style.display = 'block';
-
-            if (projectedTotal > max) {
-                previewBar.className = "cpu-preview invalid";
-                if (bar) bar.className = "cpu-fill overload"; 
-                document.getElementById('cpuText').style.color = '#ff5252';
-                document.getElementById('cpuText').innerText = `${used} + ${itemCost}`;
-            } else {
-                previewBar.className = "cpu-preview valid";
-                if (bar) bar.className = "cpu-fill " + (used >= max ? "danger" : "");
-                document.getElementById('cpuText').style.color = '#ffd700'; 
-                document.getElementById('cpuText').innerText = `${used} + ${itemCost}`;
-            }
-        } else {
-            previewBar.style.display = 'none';
-            if (bar) bar.className = "cpu-fill " + (used >= max ? "danger" : "");
-            document.getElementById('cpuText').style.color = '#ccc';
-            document.getElementById('cpuText').innerText = `${used}`;
-        }
-        if (bar) bar.style.width = usedPct + "%"; 
-    }
-
-    function initGrid() {
-        const rh = document.querySelector('.timeline-header'); 
-        if(rh) { rh.innerHTML = ''; for(let i=0; i<8; i++) { let d = document.createElement('div'); d.className = 'ruler-beat'; d.innerText = `${Math.floor(i/4)+1}.${(i%4)+1}`; rh.appendChild(d); } }
-        const ta = document.getElementById('trackArea');
-        
-        if(ta) {
-            ta.innerHTML = ''; 
-            let ph = document.createElement('div'); ph.id = 'playhead'; ph.className = 'playhead'; ta.appendChild(ph);
-            for(let i=0; i<TOTAL_TRACKS; i++) { 
-                let tr = document.createElement('div'); tr.className = 'track'; 
-                if (i >= config.activeTracks) tr.classList.add('locked'); 
-                
-                if (state.isTutorial && state.levelIndex === 3 && i === 1) {
-                    tr.classList.add('track-unlock-anim');
-                } else if (!state.isTutorial && i === config.activeTracks - 1 && config.activeTracks > 2 && state.levelIndex > 0) {
-                     tr.classList.add('track-unlock-anim');
-                }
-
-                for(let t=0; t<TICKS; t++) { 
-                    let c = document.createElement('div'); 
-                    c.className = 'grid-cell'; 
-                    
-                    // Visual Beat Logic (V21.2 Fix: Stronger Dark / Weaker Light)
-                    const beatIndex = Math.floor(t / 4);
-                    if (beatIndex % 2 === 0) c.classList.add('cell-strong'); 
-                    else c.classList.add('cell-weak');
-
-                    tr.appendChild(c); 
+            if (d.id === "SB1") { if (isStrong) { entry.bonus += 10; entry.triggered = true; entry.logs.push({srcId:'Self', type:'cond', val:'+10 (Strong)'}); } } 
+            else if (d.id === "SB2") { 
+                if (concurrent.length > 0) concurrent.forEach(t => { t.mult += 0.5; t.buffsReceived.push({text:`[${d.name[state.lang]}] +50%`, type:d.type}); t.logs.push({srcId:d.id, srcIdx:idx, type:'buff', val:'+50% (Sync)'}); entry.buffsGiven.push({targetIdx: output.indexOf(t)}); }); 
+                if (isStrong && concurrent.length > 0) { concurrent.forEach(t => { t.mult += 0.25; t.buffsReceived.push({text:`[${d.name[state.lang]}] +25%`, type:d.type}); t.logs.push({srcId:d.id, srcIdx:idx, type:'buff', val:'+25% (Strong Sync)'}); }); entry.triggered = true; } 
+            } 
+            else if (d.id === "SB3") { 
+                if (next) { next.mult += 1.0; next.buffsReceived.push({text:`[${d.name[state.lang]}] +100%`, type:d.type}); next.logs.push({srcId:d.id, srcIdx:idx, type:'buff', val:'+100% (Next)'}); entry.buffsGiven.push({targetIdx: output.indexOf(next)}); } 
+                if (isStrong && next) { next.forceStrong = true; entry.triggered = true; next.logs.push({srcId:d.id, srcIdx:idx, type:'rule', val:'Force Strong'}); entry.buffsGiven.push({targetIdx: output.indexOf(next), type:'engine'}); } 
+            } 
+            else if (d.id === "SB4") { 
+                if (isStrong && strongBeatCount > 5 && !sb4Triggered) { 
+                    sb4Triggered = true; entry.triggered = true; 
+                    for (let i = idx + 1; i < output.length; i++) { 
+                        const target = output[i]; const tS = target.record.start; const tBeat = Math.floor(tS/4); const tNatStrong = (tBeat%2===0); const tIsStrong = tNatStrong || globalWeakIsStrong || target.forceStrong; 
+                        if (tIsStrong && target.record.data.type === "score") { target.finalMultiplier *= 1.5; target.buffsReceived.push({text:`[${d.name[state.lang]}] x1.5`, type:d.type}); target.logs.push({srcId:d.id, srcIdx:idx, type:'buff', val:'x1.5 (Master)'}); entry.buffsGiven.push({targetIdx: i, type:'engine'}); } 
+                    } 
                 } 
-                ta.appendChild(tr); 
-            }
-        }
+            } 
+            else if (d.id === "EB1") { if (prev) { const gap = calcGap(prev.record.start + prev.record.data.len, s); if (gap >= 4) { entry.bonus += 20; entry.triggered = true; entry.logs.push({srcId:'Self', type:'cond', val:'+20 (Gap>=4)'}); } } } 
+            else if (d.id === "EB2") { 
+                if (next) { 
+                    next.mult += 0.35; next.buffsReceived.push({text:`[${d.name[state.lang]}] +35%`, type:d.type}); next.logs.push({srcId:d.id, srcIdx:idx, type:'buff', val:'+35% (Pre)'}); entry.buffsGiven.push({targetIdx: output.indexOf(next)});
+                    const gap = calcGap(e, next.record.start); 
+                    if (gap > 0) { let extra = Math.min(1.25, gap * 0.125); next.mult += extra; next.buffsReceived.push({text:`[${d.name[state.lang]}] +${(extra*100).toFixed(0)}%`, type:d.type}); next.logs.push({srcId:d.id, srcIdx:idx, type:'buff', val:`+${(extra*100).toFixed(0)}% (Gap)`}); entry.triggered = true; } 
+                } 
+            } 
+            else if (d.id === "EB3") { 
+                if (concurrent.length > 0) concurrent.forEach(t => { if(t.record.data.type==="score") { t.bonus += 10; t.logs.push({srcId:d.id, srcIdx:idx, type:'buff', val:'+10 (Iso)'}); } }); 
+                let gapTotal = 0; if(prev) gapTotal += calcGap(prev.record.start+prev.record.data.len, s); if(next) { gapTotal += calcGap(e, next.record.start); } else { gapTotal += calcGap(e, TICKS); } 
+                if (gapTotal > 0) { let extraMult = Math.min(2.4, gapTotal * 0.075); concurrent.forEach(t => { if(t.record.data.type === "score") { t.mult += extraMult; t.buffsReceived.push({text:`[${d.name[state.lang]}] +${(extraMult*100).toFixed(1)}%`, type:d.type}); t.logs.push({srcId:d.id, srcIdx:idx, type:'buff', val:`+${(extraMult*100).toFixed(0)}% (Iso Gap)`}); entry.buffsGiven.push({targetIdx: output.indexOf(t)}); } }); entry.triggered = true; } 
+            } 
+            else if (d.id === "EB4") { let totalSpace = s * 3; let occupied = 0; items.forEach(it => { let iS = it.start; let iE = it.start + it.data.len; if (iE <= s) occupied += it.data.len; else if (iS < s) occupied += (s - iS); }); let empty = Math.max(0, totalSpace - occupied) * globalGapMult; if (empty > 0) { let boost = empty * 0.05; entry.mult += boost; entry.buffsReceived.push({text:`[空拍] +${(boost*100).toFixed(0)}%`, type:d.type}); entry.triggered = true; entry.logs.push({srcId:'Self', type:'cond', val:`+${(boost*100).toFixed(0)}% (Atmo)`});} } 
+            else if (d.id === "EB6") { let dur = e - s; let totalSpace = dur * 3; let occupied = 0; items.forEach(it => { if (it === p) return; let iS = it.start; let iE = it.start + it.data.len; let overlap = Math.max(0, Math.min(e, iE) - Math.max(s, iS)); occupied += overlap; }); occupied += dur; let empty = Math.max(0, totalSpace - occupied) * globalGapMult; if (empty > 0) { let boost = empty * 0.05; entry.mult += boost; entry.buffsReceived.push({text:`[${d.name[state.lang]}] +${(boost*100).toFixed(0)}%`, type:d.type}); entry.triggered = true; entry.logs.push({srcId:'Self', type:'cond', val:`+${(boost*100).toFixed(0)}% (Pad)`});} } 
+            else if (d.id === "NG2") { if (concurrent.length > 0) { entry.bonus += 10; entry.triggered = true; entry.logs.push({srcId:'Self', type:'cond', val:'+10 (Sync)'}); } } 
+            else if (d.id === "NG3") { 
+                if (prev) { prev.mult += 0.35; prev.buffsReceived.push({text:`[${d.name[state.lang]}] +35%`, type:d.type}); prev.logs.push({srcId:d.id, srcIdx:idx, type:'buff', val:'+35%'}); entry.buffsGiven.push({targetIdx: output.indexOf(prev)}); } 
+                if (next) { next.mult += 0.35; next.buffsReceived.push({text:`[${d.name[state.lang]}] +35%`, type:d.type}); next.logs.push({srcId:d.id, srcIdx:idx, type:'buff', val:'+35%'}); entry.buffsGiven.push({targetIdx: output.indexOf(next)}); } 
+                if (concurrent.length === 0) { if (prev) { prev.mult += 0.35; prev.buffsReceived.push({text:`[${d.name[state.lang]}] +35%`, type:d.type}); prev.logs.push({srcId:d.id, srcIdx:idx, type:'buff', val:'+35% (Solo)'}); } if (next) { next.mult += 0.35; next.buffsReceived.push({text:`[${d.name[state.lang]}] +35%`, type:d.type}); next.logs.push({srcId:d.id, srcIdx:idx, type:'buff', val:'+35% (Solo)'}); } entry.triggered = true; } 
+            } 
+        }); 
+        output.forEach(entry => { 
+            const d = entry.record.data; 
+            if (d.id === "NG4") { 
+                const s = entry.record.start; const concurrent = output.filter(x => x !== entry && x.record.start === s); let suckedScore = 0; 
+                concurrent.forEach(t => { if (t.record.data.type === "score") { let current = (t.base + t.bonus) * t.mult * t.finalMultiplier; t.finalMultiplier *= 0.5; t.buffsReceived.push({text:`[${d.name[state.lang]}] -50%`, type:d.type}); t.logs.push({srcId:d.id, srcIdx: output.indexOf(entry), type:'nerf', val:'-50% (Consumed)'}); let now = (t.base + t.bonus) * t.mult * t.finalMultiplier; suckedScore += (current - now); entry.buffsGiven.push({targetIdx: output.indexOf(t), type:'consume'}); } }); 
+                if (suckedScore > 0) { entry.bonus += 20 + (suckedScore * 1.5); entry.buffsReceived.push({text:`+${(suckedScore * 1.5).toFixed(0)}`, type:d.type}); entry.triggered = true; } 
+            } 
+        }); 
+        return output; 
     }
 
-    function clearAllItems() {
-        if(state.isPlaying) return;
-        if(!confirm("Clear all items?")) return;
-        state.placedItems = [];
-        restorePlacedItems();
-    }
-
-    function restorePlacedItems() {
-        const ta = document.getElementById('trackArea');
-        const items = ta.querySelectorAll('.placed-item');
-        items.forEach(e => e.remove());
-        state.placedItems.forEach(record => {
-            const trEl = document.getElementsByClassName('track')[record.track];
-            if (trEl) createPlacedElement(record, trEl);
-        });
-        updateRealTimeState();
-    }
-
-    function createPlacedElement(record, parent) {
-        let el = document.createElement('div');
-        el.className = 'placed-item';
-        if (record.data.type) el.classList.add('type-' + record.data.type);
-        el.style.left = (record.start/TICKS*100) + "%";
-        el.style.width = (record.data.len/TICKS*100) + "%";
-        el.style.backgroundColor = record.data.color;
-        el.innerText = record.data.name[state.lang];
-        el.onmousedown = (e) => startDragPlaced(e, record);
-        el.oncontextmenu = (e) => { 
-            if(state.isPlaying) return; 
-            e.preventDefault(); el.remove(); 
-            state.placedItems = state.placedItems.filter(x => x !== record); 
-            updateRealTimeState(); 
-        };
-        parent.appendChild(el);
-        record.el = el;
-    }
-
-    function updateInventoryUI() {
-        const list = document.getElementById('inventoryList'); list.innerHTML = ''; 
-        state.inventory.forEach(item => { 
-            let d = document.createElement('div'); d.className = 'inv-item'; d.style.borderLeftColor = item.data.color; 
-            if(state.selectedInvItem === item) d.classList.add('selected'); 
-            if(state.isPlaying) d.classList.add('disabled'); 
-            d.innerHTML = `<b style="color:${item.data.color}">${item.data.name[state.lang]}</b><div class="inv-meta"><span>CPU:${item.data.cpu}</span><span>Len:${item.data.len}</span></div>`; 
-            d.onmousedown = (e) => startDragInventory(e, item);
-            list.appendChild(d); 
-        });
-    }
-
-    // --- Audio Logic ---
-    let visualInterval = null;
-    let playbackStartTime = 0;
-    let playbackTimer = null; 
-    let audioInitialized = false;
-    let isSkipping = false;
-    let bgPlayer = null; 
-    let losePlayer = null; 
-    let samplePlayers = null;
-    let effects = {};
+    // --- Audio & Visual ---
+    let visualInterval = null; let playbackStartTime = 0; let playbackTimer = null; let audioInitialized = false; let isSkipping = false;
+    let bgPlayer = null; let losePlayer = null; let samplePlayers = null; let effects = {};
 
     async function initAudio() {
         if(audioInitialized) return;
-        const btn = document.getElementById('mainSubmitBtn');
-        if(btn) btn.innerText = "Loading Audio...";
+        const btn = document.getElementById('mainSubmitBtn'); if(btn) btn.innerText = "Loading...";
         await Tone.start();
         effects.filter = new Tone.Filter(20000, "lowpass").toDestination();
         effects.crusher = new Tone.BitCrusher(16).toDestination(); 
         effects.phaser = new Tone.Phaser({ frequency: 15, octaves: 5, baseFrequency: 1000, wet: 0 }).toDestination();
         bgPlayer = new Tone.Player({ url: AUDIO_SOURCES.bgm, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -10 });
         losePlayer = new Tone.Player({ url: AUDIO_SOURCES.bgm, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -10 }); 
-        bgPlayer.disconnect(); bgPlayer.connect(effects.filter);
-        losePlayer.disconnect(); losePlayer.connect(effects.filter);
-        effects.filter.connect(effects.crusher);
-        effects.crusher.connect(effects.phaser);
-        const itemUrls = {};
-        for (const [key, url] of Object.entries(AUDIO_SOURCES)) { if (key !== 'bgm') itemUrls[key] = url; }
+        bgPlayer.disconnect(); bgPlayer.connect(effects.filter); losePlayer.disconnect(); losePlayer.connect(effects.filter);
+        effects.filter.connect(effects.crusher); effects.crusher.connect(effects.phaser);
+        const itemUrls = {}; for (const [key, url] of Object.entries(AUDIO_SOURCES)) { if (key !== 'bgm') itemUrls[key] = url; }
         samplePlayers = new Tone.Players({ urls: itemUrls, fadeOut: 0.05, volume: 0 }).toDestination();
         await Tone.loaded();
-        if (bgPlayer.buffer.duration > 0) {
-            TOTAL_DURATION = bgPlayer.buffer.duration;
-            TICK_DURATION = TOTAL_DURATION / TICKS;
-        }
+        if (bgPlayer.buffer.duration > 0) { TOTAL_DURATION = bgPlayer.buffer.duration; TICK_DURATION = TOTAL_DURATION / TICKS; }
         if(btn) btn.innerText = UI_TEXT[state.lang].submit;
         audioInitialized = true;
     }
@@ -1355,15 +652,11 @@
     function scheduleAudio() {
         if(!audioInitialized) return;
         Tone.Transport.cancel(); Tone.Transport.stop(); Tone.Transport.position = 0;
-        const player = (state.lives === 1) ? losePlayer : bgPlayer;
-        const other = (state.lives === 1) ? bgPlayer : losePlayer;
-        if(other.state==="started") other.stop();
-        if(player.loaded) { Tone.Transport.schedule((t) => { player.start(t, 0).stop(t + TOTAL_DURATION); }, 0); }
+        const player = (state.lives === 1) ? losePlayer : bgPlayer; const other = (state.lives === 1) ? bgPlayer : losePlayer;
+        if(other.state==="started") other.stop(); if(player.loaded) { Tone.Transport.schedule((t) => { player.start(t, 0).stop(t + TOTAL_DURATION); }, 0); }
         effects.filter.frequency.value = 20000; effects.crusher.bits.value = 16; effects.phaser.wet.value = 0;
         state.placedItems.forEach(item => {
-            const start = item.start * TICK_DURATION;
-            const duration = item.data.len * TICK_DURATION;
-            const id = item.data.id;
+            const start = item.start * TICK_DURATION; const duration = item.data.len * TICK_DURATION; const id = item.data.id;
             Tone.Transport.schedule((time) => { if (samplePlayers.has(id)) samplePlayers.player(id).start(time); }, start);
             if (id === "SB4") { Tone.Transport.schedule(t => effects.filter.frequency.rampTo(400, 0.2, t), start); Tone.Transport.schedule(t => effects.filter.frequency.rampTo(20000, 0.2, t), start + duration); }
             else if (id === "SB5") { if (start % 8 === 0) { Tone.Transport.schedule(t => effects.phaser.wet.rampTo(1, 0.2, t), start); Tone.Transport.schedule(t => effects.phaser.wet.rampTo(0, 0.2, t), start + duration); } }
@@ -1371,402 +664,437 @@
         });
     }
 
-    async function runPlaybackSequence() {
+    async function runPlaybackSequence(isSim) {
         if(state.isPlaying) return;
-        state.isPlaying = true;
-        isSkipping = false;
-        const btn = document.getElementById('mainSubmitBtn'); 
-        btn.disabled = true; btn.innerText = "Running..."; 
-        document.getElementById('mainContainer').classList.add('playing-lock');
-        document.getElementById('skipOverlay').style.display = 'flex'; 
-        document.querySelectorAll('.placed-item').forEach(el => el.classList.remove('playing-active'));
+        state.isSimulation = !!isSim; state.isPlaying = true; isSkipping = false;
+        const btn = document.getElementById('mainSubmitBtn'); btn.disabled = true; btn.innerText = "Running..."; 
+        document.getElementById('mainContainer').classList.add('playing-lock'); document.getElementById('skipOverlay').style.display = 'flex'; 
+        document.querySelectorAll('.placed-item').forEach(el => el.classList.remove('playing-active')); document.getElementById('combatConnections').innerHTML = '';
         try { await initAudio(); Tone.Transport.stop(); Tone.Transport.cancel(); Tone.Draw.cancel(); scheduleAudio(); Tone.Transport.start(); } catch(e) {}
-        startVisualEngine(false);
-        if (playbackTimer) clearTimeout(playbackTimer);
-        playbackTimer = setTimeout(finishPlayback, (TOTAL_DURATION * 1000) + 150);
+        state.lastResultData = calculateLogic(); state.lastResultData.forEach(r => r.visualTriggered = false);
+        startVisualEngine(false); if (playbackTimer) clearTimeout(playbackTimer); playbackTimer = setTimeout(finishPlayback, (TOTAL_DURATION * 1000) + 150);
     }
 
     function startVisualEngine(fastForward) {
         playbackStartTime = Date.now();
-        const playhead = document.getElementById('playhead');
-        if(playhead) { playhead.style.display = 'block'; playhead.style.left = '0%'; }
+        const playhead = document.getElementById('playhead'); if(playhead) { playhead.style.display = 'block'; playhead.style.left = '0%'; }
         if (visualInterval) clearInterval(visualInterval);
-        const duration = fastForward ? 0.8 : TOTAL_DURATION; 
+        const duration = fastForward ? 0.8 : TOTAL_DURATION; const svg = document.getElementById('combatConnections');
+        
         visualInterval = setInterval(() => {
-            const realElapsed = (Date.now() - playbackStartTime) / 1000; 
-            const progress = realElapsed / duration;
+            const realElapsed = (Date.now() - playbackStartTime) / 1000; const progress = realElapsed / duration;
             if(playhead) playhead.style.left = (progress * 100) + "%";
             const simTime = fastForward ? progress * TOTAL_DURATION : (Tone.Transport.seconds || realElapsed);
-            state.placedItems.forEach(item => {
-                const start = item.start * TICK_DURATION;
-                const end = start + (item.data.len * TICK_DURATION);
-                if (item.el) {
-                    if (simTime >= start && simTime < end) {
-                        if(!item.el.classList.contains('playing-active')) item.el.classList.add('playing-active');
-                    } else {
-                        if(item.el.classList.contains('playing-active')) item.el.classList.remove('playing-active');
+            
+            state.lastResultData.forEach(r => {
+                const start = r.record.start * TICK_DURATION; const end = start + (r.record.data.len * TICK_DURATION);
+                if (r.record.el) { if (simTime >= start && simTime < end) r.record.el.classList.add('playing-active'); else r.record.el.classList.remove('playing-active'); }
+                if (!r.visualTriggered && simTime >= start) {
+                    r.visualTriggered = true;
+                    if (r.triggered || r.record.data.type === 'score') {
+                        const el = r.record.el;
+                        if(el) {
+                            const rect = el.getBoundingClientRect(); const x = rect.left + rect.width / 2; const y = rect.top;
+                            if (r.record.data.type === 'score') { const score = Math.floor((r.base + r.bonus) * r.mult * r.finalMultiplier); spawnFloatingText(`+${score}`, x, y, 'ft-score'); } 
+                            else if (r.record.data.type === 'support') { spawnFloatingText(`Buff!`, x, y, 'ft-buff'); }
+                            if (r.record.data.id === 'SB5') { spawnFloatingText(`QUANTIZE`, x, y, 'ft-buff'); document.querySelectorAll('.grid-cell.cell-weak').forEach(cell => { if(cell.getBoundingClientRect().left > x) cell.classList.add('flash-weak-fix'); }); }
+                            if (r.record.data.id === 'EB5') { spawnFloatingText(`STRETCH`, x, y, 'ft-buff'); document.querySelectorAll('.track').forEach(t => t.classList.add('flash-track-purple')); setTimeout(()=> document.querySelectorAll('.track').forEach(t => t.classList.remove('flash-track-purple')), 500); }
+                            if (r.buffsGiven.length > 0) { r.buffsGiven.forEach(b => { if(b.type === 'consume') return; const targetRes = state.lastResultData[b.targetIdx]; if (targetRes && targetRes.record.el) { drawCombatBeam(svg, el, targetRes.record.el, r.record.data.type); } }); }
+                            const nerfs = r.logs.filter(l => l.type === 'nerf'); nerfs.forEach(n => { spawnFloatingText(n.val, x, y + 20, 'ft-neg'); const srcItem = state.placedItems.find(it => it.data.id === n.srcId); if(srcItem && srcItem.el) drawCombatBeam(svg, el, srcItem.el, 'neg'); });
+                        }
                     }
                 }
             });
             if (realElapsed >= duration) { clearInterval(visualInterval); if (fastForward) finishPlayback(); }
         }, 16);
     }
-
-    function skipPlayback() {
-        if (isSkipping) return;
-        isSkipping = true;
-        Tone.Transport.stop(); Tone.Transport.cancel(); 
-        if(bgPlayer) bgPlayer.stop(); if(losePlayer) losePlayer.stop(); if(samplePlayers) samplePlayers.stopAll();
-        Tone.Draw.cancel(); 
-        if (playbackTimer) clearTimeout(playbackTimer);
-        try { const noise = new Tone.Noise("pink").toDestination(); noise.volume.value = -10; noise.start(); noise.stop("+0.2"); } catch(e){}
-        startVisualEngine(true);
+    
+    function spawnFloatingText(text, x, y, cls) { const div = document.createElement('div'); div.className = `floating-text ${cls}`; div.innerText = text; div.style.left = x + 'px'; div.style.top = y + 'px'; document.body.appendChild(div); setTimeout(() => div.remove(), 1500); }
+    function drawCombatBeam(svg, el1, el2, type) {
+        const cRect = svg.getBoundingClientRect(); const r1 = el1.getBoundingClientRect(); const r2 = el2.getBoundingClientRect();
+        const x1 = r1.left + r1.width/2 - cRect.left; const y1 = r1.top + r1.height/2 - cRect.top; const x2 = r2.left + r2.width/2 - cRect.left; const y2 = r2.top + r2.height/2 - cRect.top;
+        const line = document.createElementNS('http://www.w3.org/2000/svg','line'); line.setAttribute('x1', x1); line.setAttribute('y1', y1); line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+        let col = type === 'neg' ? '#ff5252' : type === 'engine' ? '#d500f9' : '#00e5ff'; line.setAttribute('stroke', col); line.setAttribute('stroke-width', '4'); line.setAttribute('stroke-linecap', 'round'); line.style.transition = 'opacity 0.5s'; svg.appendChild(line); setTimeout(() => { line.style.opacity = 0; setTimeout(()=>line.remove(), 500); }, 200);
     }
-
+    function skipPlayback() { if (isSkipping) return; isSkipping = true; Tone.Transport.stop(); Tone.Transport.cancel(); if(bgPlayer) bgPlayer.stop(); if(losePlayer) losePlayer.stop(); if(samplePlayers) samplePlayers.stopAll(); Tone.Draw.cancel(); if (playbackTimer) clearTimeout(playbackTimer); startVisualEngine(true); }
     function finishPlayback() {
-        Tone.Transport.stop(); Tone.Transport.cancel();
-        if(bgPlayer) bgPlayer.stop(); if(losePlayer) losePlayer.stop(); if(samplePlayers) samplePlayers.stopAll();
-        if (visualInterval) clearInterval(visualInterval);
-        document.querySelectorAll('.placed-item').forEach(el => el.classList.remove('playing-active'));
-        const playhead = document.getElementById('playhead');
-        if(playhead) playhead.style.display = 'none';
-        document.getElementById('skipOverlay').style.display = 'none';
-        state.isPlaying = false; 
-        document.getElementById('mainContainer').classList.remove('playing-lock'); 
-        document.getElementById('mainSubmitBtn').disabled = false; 
-        document.getElementById('mainSubmitBtn').innerText = UI_TEXT[state.lang].submit; 
-        const currentNg1Count = state.placedItems.filter(p => p.data.id === "NG1").length;
-        if (currentNg1Count > 0) { state.ng1PermanentStacks += currentNg1Count; }
-        const results = calculateLogic();
-        let totalScore = 0;
-        results.forEach(r => totalScore += (r.base + r.bonus) * r.mult * r.finalMultiplier);
-        showResult(currentNg1Count, Math.floor(totalScore));
+        Tone.Transport.stop(); Tone.Transport.cancel(); if(bgPlayer) bgPlayer.stop(); if(losePlayer) losePlayer.stop(); if(samplePlayers) samplePlayers.stopAll();
+        if (visualInterval) clearInterval(visualInterval); document.querySelectorAll('.placed-item').forEach(el => el.classList.remove('playing-active'));
+        const playhead = document.getElementById('playhead'); if(playhead) playhead.style.display = 'none'; document.getElementById('skipOverlay').style.display = 'none'; document.getElementById('combatConnections').innerHTML = '';
+        state.isPlaying = false; document.getElementById('mainContainer').classList.remove('playing-lock'); document.getElementById('mainSubmitBtn').disabled = false; document.getElementById('mainSubmitBtn').innerText = UI_TEXT[state.lang].submit; 
+        const results = state.lastResultData || calculateLogic(); let totalScore = 0; results.forEach(r => totalScore += (r.base + r.bonus) * r.mult * r.finalMultiplier);
+        if (state.isSimulation) { alert(`${UI_TEXT[state.lang].simReport}\n${UI_TEXT[state.lang].resTotal}: ${Math.floor(totalScore)} / ${UI_TEXT[state.lang].resTarget}: ${config.target}`); state.isSimulation = false; }
+        else { const currentNg1Count = state.placedItems.filter(p => p.data.id === "NG1").length; if (currentNg1Count > 0) { state.ng1PermanentStacks += currentNg1Count; } showResult(currentNg1Count, Math.floor(totalScore)); }
     }
 
-    // --- Helpers ---
-    function showResult(ng1Added, totalScore) {
-        const isWin = totalScore >= config.target;
-        const outcomeEl = document.getElementById('resOutcome');
-        const nextBtn = document.getElementById('nextLevelBtn');
-        const finishBtn = document.getElementById('finishGameBtn');
-        const retryBtn = document.getElementById('retryLevelBtn');
-        const dieBtn = document.getElementById('dieBtn');
-        const info = document.getElementById('resRewardInfo');
-        const statusContainer = document.getElementById('campaignStatusContainer');
-        const t = UI_TEXT[state.lang];
-        nextBtn.style.display = 'none'; finishBtn.style.display = 'none'; retryBtn.style.display = 'none'; dieBtn.style.display = 'none';
-        
-        let rewardVal = 0;
-        if (state.isTutorial) {
-            if (isWin) {
-                const cfg = TUTORIAL_CONFIG[state.levelIndex];
-                rewardVal = cfg.reward;
-                outcomeEl.innerText = t.outcomeWin; outcomeEl.style.color = "var(--highlight)";
-                info.innerText = `${t.reward}: +${rewardVal}G`;
-                if (state.levelIndex >= TUTORIAL_CONFIG.length - 1) {
-                    nextBtn.style.display = 'none';
-                    finishBtn.style.display = 'block'; 
-                    finishBtn.innerText = t.enterGame; 
-                    finishBtn.onclick = showTutorialComplete; 
-                } else {
-                    nextBtn.style.display = 'block';
-                }
-            } else {
-                outcomeEl.innerText = t.outcomeLose; outcomeEl.style.color = "var(--lose-color)";
-                if (state.levelIndex === 3) {
-                    rewardVal = TUTORIAL_CONFIG[3].failReward || 0;
-                    info.innerText = `${t.consolation}: +${rewardVal}G`;
-                } else {
-                    rewardVal = 0;
-                    info.innerText = `Try Again`;
-                }
-                retryBtn.style.display = 'block';
-                // Tutorial L1/L2/L4 reset state on fail
-                if(state.levelIndex !== 2) resetTutorialStateForLevel(state.levelIndex);
-            }
-        } else {
-            if (!isWin) state.lives--;
-            let hearts = ""; for(let i=0; i<3; i++) { if(i < state.lives) hearts += "❤️"; else hearts += "💔"; }
-            let dots = ""; for(let i=0; i<LEVEL_CONFIG.length; i++) { let cls = "status-dot"; if(i < state.levelIndex) cls += " done"; if(i === state.levelIndex) cls += " current done"; dots += `<div class="${cls}"></div>`; }
-            statusContainer.innerHTML = `<div class="status-item"><span class="status-hearts">${hearts}</span></div><div class="status-item" style="margin-left:20px;"><span>Progress:</span><div class="status-dots">${dots}</div></div>`;
-            
-            if(isWin) {
-                outcomeEl.innerText = t.outcomeWin; outcomeEl.style.color = "var(--highlight)";
-                rewardVal = LEVEL_CONFIG[state.levelIndex].reward;
-                info.innerText = `${t.reward}: +${rewardVal}G`;
-                if (state.levelIndex >= LEVEL_CONFIG.length - 1) finishBtn.style.display = "block"; else nextBtn.style.display = "block";
-            } else {
-                outcomeEl.innerText = t.outcomeLose; outcomeEl.style.color = "var(--lose-color)";
-                rewardVal = Math.floor(LEVEL_CONFIG[state.levelIndex].reward * 0.6);
-                info.innerText = `${t.consolation}: +${rewardVal}G`;
-                if(state.lives <= 0) dieBtn.style.display = "block"; else retryBtn.style.display = "block";
-            }
+    // --- UI Logic ---
+    function updateTutorialVisuals() {
+        if (!state.isTutorial) return;
+        document.querySelectorAll('.soft-guide').forEach(el => el.classList.remove('soft-guide')); document.querySelectorAll('.soft-guide-gentle').forEach(el => el.classList.remove('soft-guide-gentle'));
+        if (state.levelIndex === 0) {
+            addGuide('targetContainer');
+            const invItems = document.querySelectorAll('.inv-item');
+            invItems.forEach(el => { if (el.innerText.includes("Sampler A") && !tutorialState.l1.aPlaced) addGuideGentleEl(el); if (el.innerText.includes("Sampler B") && !tutorialState.l1.bPlaced) addGuideGentleEl(el); });
+            if (state.selectedInvItem && ((state.selectedInvItem.data.id === 'TUT1' && !tutorialState.l1.aPlaced) || (state.selectedInvItem.data.id === 'TUT2' && !tutorialState.l1.bPlaced))) addGuideGentle('detailPanel');
         }
-        
-        state.pendingReward = rewardVal;
+        if (state.levelIndex === 1) { addGuide('targetContainer'); if (!tutorialState.l2.bought) { addGuideGentle('goldText'); document.querySelectorAll('.shop-item').forEach(el => { if (el.innerText.includes("Rest") || el.innerText.includes("休止")) addGuideGentleEl(el); }); } else if (!tutorialState.l2.effectActive) { document.querySelectorAll('.inv-item').forEach(el => { if (el.innerText.includes("Rest") || el.innerText.includes("休止")) addGuideGentleEl(el); }); if (state.selectedInvItem && state.selectedInvItem.data.id === 'EB1') addGuideGentle('detailPanel'); } }
+        if (state.levelIndex === 2) { addGuide('targetContainer'); const needKick = !tutorialState.l3.kickBought; const needCpu = !tutorialState.l3.cpuBought; if (needKick || needCpu) { addGuideGentle('goldText'); if (needCpu) addGuide('btnBuyCpu'); if (needKick) document.querySelectorAll('.shop-item').forEach(el => { if (el.innerText.includes("Kick") || el.innerText.includes("底鼓")) addGuideGentleEl(el); }); } else if (!tutorialState.l3.kickEffect) { document.querySelectorAll('.inv-item').forEach(el => { if (el.innerText.includes("Kick") || el.innerText.includes("底鼓")) addGuideGentleEl(el); }); if (state.selectedInvItem && state.selectedInvItem.data.id === 'SB1') addGuideGentle('detailPanel'); } }
+        if (state.levelIndex === 3 && tutorialState.l4.cpuCount < 3) { addGuideGentle('goldText'); addGuide('btnBuyCpu'); }
+    }
+    function addGuide(id) { const el = document.getElementById(id); if (el) el.classList.add('soft-guide'); }
+    function addGuideGentle(id) { const el = document.getElementById(id); if (el) el.classList.add('soft-guide-gentle'); }
+    function addGuideGentleEl(el) { if(el) el.classList.add('soft-guide-gentle'); }
+    function canSell() { return !state.isTutorial || state.levelIndex >= 3; }
 
-        let html = `<table class="result-table"><thead><tr><th>${t.item}</th><th>${t.base}</th><th>${t.cond}</th><th>${t.mult}</th><th>${t.final}</th><th>${t.note}</th></tr></thead><tbody>`;
-        const results = calculateLogic();
-        results.forEach(r => {
-            let rowClass = "";
-            // RESULT ROW HIGHLIGHT LOGIC
-            if (state.isTutorial) {
-                const id = r.record.data.id;
-                const targetIds = ['EB1', 'SB1', 'EB2']; 
-                // Highlight if effective (triggered/bonus/buffs)
-                if (targetIds.includes(id) && (r.bonus > 0 || r.buffsGiven.length > 0)) {
-                     rowClass = "res-row-guide";
+    function startDragInventory(e, invItem) { if(state.isPlaying) return; if(e.button !== 0) return; e.stopPropagation(); setupDrag(e, invItem.data, 'inventory', null, invItem); }
+    function startDragPlaced(e, record) { if(state.isPlaying) return; if(e.button !== 0) return; e.stopPropagation(); record.el.classList.add('item-being-dragged'); setupDrag(e, record.data, 'track', record, null); }
+    function setupDrag(e, itemData, type, record, invItem) {
+        dragManager.active = true; dragManager.itemData = itemData; dragManager.sourceType = type; dragManager.sourceRecord = record; dragManager.sourceInvItem = invItem;
+        dragManager.startX = e.clientX; dragManager.startY = e.clientY;
+        const ghost = document.createElement('div'); ghost.className = 'drag-ghost'; ghost.innerText = itemData.name[state.lang]; ghost.style.backgroundColor = itemData.color;
+        const trackW = document.querySelector('.track').getBoundingClientRect().width; const widthPx = (trackW / TICKS) * itemData.len; ghost.style.width = widthPx + 'px'; ghost.style.height = '40px'; 
+        document.body.appendChild(ghost); dragManager.ghostEl = ghost;
+        if (state.isTutorial && state.levelIndex === 0) document.getElementById('trackArea').classList.add('dragging-mode');
+        if (type === 'inventory' && canSell()) document.getElementById('shopPanel').classList.add('sell-hint');
+        updateGhostPosition(e.clientX, e.clientY);
+        if(type === 'inventory') { state.selectedInvItem = invItem; updateInventoryUI(); showDetail(invItem.data); } else { state.selectedInvItem = null; showDetail(record.data); }
+    }
+    function onGlobalDragMove(e) {
+        if (!dragManager.active) return; e.preventDefault(); updateGhostPosition(e.clientX, e.clientY); updateCPU(); 
+        const gridPos = getGridFromClient(e.clientX, e.clientY); clearPreview();
+        if (gridPos) {
+            const isValid = checkPlacementValidity(gridPos.track, gridPos.tick, dragManager.itemData); renderPreview(gridPos.track, gridPos.tick, dragManager.itemData.len, isValid);
+            dragManager.currentHover = gridPos; dragManager.hoverType = 'track'; if(dragManager.sellTooltip) { dragManager.sellTooltip.remove(); dragManager.sellTooltip = null; }
+        } else {
+            const shopPanel = document.getElementById('shopPanel'); const rect = shopPanel.getBoundingClientRect();
+            if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+                if (dragManager.sourceType === 'inventory' && canSell()) {
+                    shopPanel.classList.add('drag-target-sell'); dragManager.hoverType = 'shop';
+                    if (!dragManager.sellTooltip) { const tooltip = document.createElement('div'); tooltip.className = 'drag-sell-tooltip'; document.body.appendChild(tooltip); dragManager.sellTooltip = tooltip; }
+                    const item = dragManager.sourceInvItem; const price = item.boughtPrice === 0 ? 25 : Math.floor(item.boughtPrice * 0.25);
+                    dragManager.sellTooltip.innerText = `${UI_TEXT[state.lang].sell}: +${price}G`; dragManager.sellTooltip.style.left = (e.clientX + 20) + 'px'; dragManager.sellTooltip.style.top = (e.clientY - 20) + 'px';
                 }
+            } else {
+                shopPanel.classList.remove('drag-target-sell'); dragManager.hoverType = 'outside'; if(dragManager.sellTooltip) { dragManager.sellTooltip.remove(); dragManager.sellTooltip = null; }
             }
+            dragManager.currentHover = null;
+        }
+    }
+    function onGlobalDragEnd(e) {
+        if (!dragManager.active) return;
+        const { itemData, sourceType, sourceRecord, sourceInvItem, hoverType, currentHover } = dragManager;
+        if (dragManager.ghostEl) dragManager.ghostEl.remove(); if (dragManager.sellTooltip) dragManager.sellTooltip.remove(); dragManager.sellTooltip = null; clearPreview();
+        document.getElementById('trackArea').classList.remove('dragging-mode'); document.getElementById('shopPanel').classList.remove('sell-hint'); document.getElementById('shopPanel').classList.remove('drag-target-sell');
+        if (sourceRecord && sourceRecord.el) sourceRecord.el.classList.remove('item-being-dragged');
+        if (hoverType === 'track' && currentHover) {
+            if (checkPlacementValidity(currentHover.track, currentHover.tick, itemData)) {
+                if (sourceType === 'track') state.placedItems = state.placedItems.filter(p => p !== sourceRecord);
+                state.placedItems.push({ id: Date.now(), data: itemData, track: currentHover.track, start: currentHover.tick });
+                restorePlacedItems();
+                if (state.isTutorial && state.levelIndex === 0) { if (itemData.id === 'TUT1') tutorialState.l1.aPlaced = true; if (itemData.id === 'TUT2') tutorialState.l1.bPlaced = true; }
+            }
+        } else if (hoverType === 'shop' && sourceType === 'inventory') { if (canSell()) { state.selectedInvItem = sourceInvItem; sellSelectedItem(); } }
+        else if (hoverType === 'outside' && sourceType === 'track') { state.placedItems = state.placedItems.filter(p => p !== sourceRecord); restorePlacedItems(); }
+        dragManager.active = false; dragManager.ghostEl = null; updateCPU(); updateUI();
+    }
+    function getGridFromClient(cx, cy) {
+        const tracks = document.querySelectorAll('.track'); for (let i = 0; i < tracks.length; i++) { const rect = tracks[i].getBoundingClientRect(); if (cy >= rect.top && cy <= rect.bottom && cx >= rect.left && cx <= rect.right) { if (i >= config.activeTracks) return null; const xInTrack = cx - rect.left; const widthPerTick = rect.width / TICKS; let tick = Math.floor(xInTrack / widthPerTick); if (tick < 0) tick = 0; if (tick >= TICKS) tick = TICKS - 1; return { track: i, tick: tick }; } } return null;
+    }
+    function checkPlacementValidity(trackIdx, startTick, itemData) {
+        if (trackIdx >= state.unlockedTracks) return false;
+        if (startTick + itemData.len > TICKS) return false;
+        if (dragManager.sourceType === 'inventory') { if (state.placedItems.reduce((a,b)=>a+b.data.cpu, 0) + itemData.cpu > config.maxCpu) return false; }
+        const others = state.placedItems.filter(p => p !== dragManager.sourceRecord);
+        for (let item of others) { if (item.track === trackIdx) { if (Math.max(item.start, startTick) < Math.min(item.start + item.data.len, startTick + itemData.len)) return false; } } return true;
+    }
+    function renderPreview(trackIdx, startTick, len, isValid) { const trackEl = document.querySelectorAll('.track')[trackIdx]; if (!trackEl) return; const preview = document.createElement('div'); preview.className = isValid ? 'drag-preview-valid' : 'drag-preview-invalid'; preview.style.position = 'absolute'; preview.style.height = '100%'; preview.style.left = (startTick / TICKS * 100) + '%'; preview.style.width = (len / TICKS * 100) + '%'; trackEl.appendChild(preview); dragManager.previewEl = preview; }
+    function clearPreview() { if (dragManager.previewEl) { dragManager.previewEl.remove(); dragManager.previewEl = null; } }
+    function updateGhostPosition(x, y) { if (dragManager.ghostEl) { dragManager.ghostEl.style.left = x + 'px'; dragManager.ghostEl.style.top = y + 'px'; } }
 
-            const score = Math.floor((r.base + r.bonus) * r.mult * r.finalMultiplier);
-            let notesHTML = "";
-            if(r.bonus > 0) notesHTML += `<span class="buff-tag tag-${r.record.data.type}">${r.record.data.name[state.lang]} ${t.effect} +${r.bonus}</span>`;
-            if(r.buffsReceived.length > 0) notesHTML += r.buffsReceived.map(b => `<span class="buff-tag tag-${b.type}">${b.text}</span>`).join("");
-            html += `<tr class="${rowClass}"><td>${r.record.data.name[state.lang]}</td><td>${r.base}</td><td>${r.bonus.toFixed(0)}</td><td>x${(r.mult * r.finalMultiplier).toFixed(2)}</td><td class="score-val">${score}</td><td style="font-size:10px; color:#aaa;">${notesHTML}</td></tr>`;
-        });
-        if(ng1Added > 0) html += `<tr><td colspan="6" style="text-align:center; color:#ffd700;">${t.ng1Charge} +${ng1Added} ${t.stacks}</td></tr>`;
-        html += `</tbody></table>`;
-        document.getElementById('resTableContainer').innerHTML = html; document.getElementById('resTotalScore').innerText = Math.floor(totalScore); document.getElementById('resTargetDisplay').innerText = config.target; document.getElementById('resultModal').style.display = 'flex';
+    function toggleLanguage() { state.lang = (state.lang === 'en') ? 'cn' : 'en'; updateAllText(); }
+    function showHelpModal() { document.getElementById('helpModal').style.display = 'flex'; }
+    function closeHelpModal() { document.getElementById('helpModal').style.display = 'none'; }
+    function updateAllText() {
+        const t = UI_TEXT[state.lang];
+        ['txtClear','lblCpu','lblTarget','lblInventory','lblShop','txtUpCpu','txtHistory'].forEach(id => { const el = document.getElementById(id); if(el) el.innerText = t[id.replace('txt','').replace('lbl','').toLowerCase()] || t[id.toLowerCase()]; });
+        document.getElementById('btnReroll').innerText = `${t.reroll} (10G)`; document.getElementById('detailTitle').innerText = t.ready; document.getElementById('detailContent').innerHTML = t.readyDesc;
+        document.getElementById('lblLevel').innerText = t.level; document.getElementById('lblTracks').innerText = t.tracks; document.getElementById('mainSubmitBtn').innerText = t.submit;
+        document.getElementById('txtStartMsg').innerText = t.startTitle; document.getElementById('btnStartGame').innerText = t.startGame; document.getElementById('resTitle').innerText = t.report;
+        document.getElementById('lblResTarget').innerText = t.resTarget; document.getElementById('lblResTotal').innerText = t.resTotal; document.getElementById('nextLevelBtn').innerText = t.nextLevel;
+        document.getElementById('finishGameBtn').innerText = t.victory; document.getElementById('retryLevelBtn').innerText = t.retry; document.getElementById('dieBtn').innerText = t.acceptFate;
+        document.getElementById('txtWinTitle').innerText = t.youWin; document.getElementById('txtWinMsg').innerText = t.winMsg; document.getElementById('btnRestart1').innerText = t.playAgain;
+        document.getElementById('txtLoseTitle').innerText = t.gameOver; document.getElementById('txtLoseMsg').innerText = t.loseMsg; document.getElementById('btnRestart2').innerText = t.tryAgain;
+        document.getElementById('lblHelpTitle').innerText = t.helpTitle; document.getElementById('lblHelpControl').innerText = t.helpControlTitle; document.getElementById('txtHelpControl').innerHTML = t.helpControlTxt;
+        document.getElementById('lblTutTitle').innerText = t.tutTitle; document.getElementById('lblTutDesc').innerText = t.tutDesc; document.getElementById('btnSkipTut').innerText = t.skip;
+        document.getElementById('btnPlayTut').innerText = t.playTut; document.getElementById('lblTutCompDesc').innerText = t.tutCompDesc;
+        document.querySelector('#simBtn span').innerText = t.simulate;
+        updateInventoryUI(); renderShopFromState(); updateCpuButton(); updateSimButton();
+        if(state.selectedInvItem) showDetail(state.selectedInvItem.data);
+    }
+    function showTooltip(e, key) { const tip = document.getElementById('tooltip'); const defs = DEFINITIONS[state.lang]; if(tip && defs[key]) { tip.style.display = 'block'; tip.style.left = (e.clientX + 10) + 'px'; tip.style.top = (e.clientY + 10) + 'px'; tip.innerHTML = `<span class="tooltip-key">[${key}]</span>${defs[key]}`; } }
+    function hideTooltip() { const tip = document.getElementById('tooltip'); if(tip) tip.style.display = 'none'; }
+    function showLangSelect() { document.getElementById('startScreen').style.display = 'none'; document.getElementById('langSelectModal').style.display = 'flex'; }
+    function selectLang(lang) { state.lang = lang; updateAllText(); document.getElementById('langSelectModal').style.display = 'none'; document.getElementById('tutorialQueryModal').style.display = 'flex'; }
+    function skipTutorial() { document.getElementById('tutorialQueryModal').style.display = 'none'; startStandardGame(); }
+    function playTutorial() { document.getElementById('tutorialQueryModal').style.display = 'none'; state.isTutorial = true; startTutorialLevel(0); }
+    function startStandardGame() { state.isTutorial = false; state.inventory = []; state.ng1PermanentStacks = 0; state.lives = 3; state.gold = 150; ["SB1", "EB1", "NG2"].forEach(id => addItemToInventory(id, 0)); config.maxCpu = 12; state.placedItems = []; applyLevelConfig(0); updateUI(); }
+    function startTutorialLevel(idx) { state.levelIndex = idx; resetTutorialStateForLevel(idx); const cfg = TUTORIAL_CONFIG[idx]; config.target = cfg.target; config.activeTracks = cfg.tracks; if (idx === 0) { state.inventory = []; state.placedItems = []; state.poolIds = []; state.gold = 0; config.maxCpu = cfg.startCpu; if(cfg.initialItems) cfg.initialItems.forEach(id => addItemToInventory(id, 0)); } if (cfg.poolAdds) cfg.poolAdds.forEach(id => { if(!state.poolIds.includes(id)) state.poolIds.push(id); if (!state.poolEntryTimes[id]) state.poolEntryTimes[id] = 0; }); state.tutorialCpuBought = false; if(cfg.repeatableCpu) state.cpuPurchasedRound = 0; applyLevelConfig(idx); if (idx > 0) forceTutorialShop(idx); else { state.currentShopItems = []; renderShopFromState(); } }
+    function forceTutorialShop(idx) { state.currentShopItems = []; const cfg = TUTORIAL_CONFIG[idx]; if (cfg.poolAdds) cfg.poolAdds.forEach(id => { if (!state.inventory.some(inv => inv.data.id === id)) { const data = DB.find(i => i.id === id); if(data) state.currentShopItems.push({ data: data, price: data.price, isDiscount: false, discountPercent: 0, sold: false }); } }); renderShopFromState(); }
+    function addItemToInventory(id, price) { const data = DB.find(i => i.id === id); if(data) state.inventory.push({ uid: Date.now()+Math.random(), id: id, boughtPrice: price, data: data }); }
+    
+    function applyLevelConfig(idx) { 
+        if (idx >= LEVEL_CONFIG.length && !state.isTutorial) return; 
+        state.levelIndex = idx; 
+        const cfg = state.isTutorial ? TUTORIAL_CONFIG[idx] : LEVEL_CONFIG[idx]; 
+        config.target = cfg.target; 
+        config.activeTracks = cfg.tracks; 
+        
+        // Track Logic V23.5: Std Mode starts with 2 unlocked
+        if (!state.isTutorial && idx === 0) state.unlockedTracks = 2; 
+        else if (idx === 0) state.unlockedTracks = 1;
+        else if (state.isTutorial && idx === 3) state.unlockedTracks = 1; 
+        else if (!state.isTutorial && idx === 2) state.unlockedTracks = 2; 
+        else state.unlockedTracks = config.activeTracks; 
+
+        state.cpuPurchasedRound = 0; state.roundBase = 10 + (idx * 2); 
+        // Tutorial L4 uses same base as Std L1 (10)
+        if (state.isTutorial && idx === 3) state.roundBase = 10; 
+
+        if (!state.isTutorial && cfg.poolAdds) cfg.poolAdds.forEach(id => { if(!state.poolIds.includes(id)) state.poolIds.push(id); if (!state.poolEntryTimes[id]) state.poolEntryTimes[id] = idx; }); 
+        updateUI(); initGrid(); restorePlacedItems(); if(!state.isTutorial) rerollShop(); 
     }
 
-    function showTutorialComplete() {
-        document.getElementById('resultModal').style.display = 'none';
-        document.getElementById('tutorialCompleteModal').style.display = 'flex';
+    function updateUI() { document.getElementById('levelNum').innerText = `${state.levelIndex + 1}`; document.getElementById('trackNum').innerText = config.activeTracks; document.getElementById('maxCpuText').innerText = `Max: ${config.maxCpu}`; document.getElementById('targetText').innerText = config.target; document.getElementById('goldText').innerText = state.gold + " G"; updateInventoryUI(); updateCpuButton(); updateSimButton(); updateCPU(); document.getElementById('btnReroll').style.display = state.isTutorial ? 'none' : 'block'; }
+    function updateGold(amount, animationTargetId) { state.gold += amount; document.getElementById('goldText').innerText = state.gold + " G"; if (amount < 0 && animationTargetId) { const target = document.getElementById(animationTargetId); if(target) { const float = document.createElement('div'); float.innerText = `${amount}G`; float.className = 'float-text'; float.style.color = '#ff5252'; const rect = target.getBoundingClientRect(); float.style.left = (rect.left + rect.width/2) + 'px'; float.style.top = rect.top + 'px'; document.body.appendChild(float); setTimeout(()=>float.remove(), 1000); } } updateSimButton(); updateCpuButton(); }
+    function updateCpuButton() { const btn = document.getElementById('btnBuyCpu'); if (state.isTutorial && state.levelIndex < 2) { btn.style.display = 'none'; return; } else { btn.style.display = 'flex'; } if (state.isTutorial && state.levelIndex === 2) { if (state.tutorialCpuBought) { btn.disabled = true; document.getElementById('txtUpCpu').innerText = UI_TEXT[state.lang].soldOutQAQ; document.getElementById('cpuPriceText').innerText = ""; return; } else { btn.disabled = false; document.getElementById('txtUpCpu').innerText = UI_TEXT[state.lang].upCpu; document.getElementById('cpuPriceText').innerText = "30G"; return; } } btn.disabled = false; document.getElementById('txtUpCpu').innerText = UI_TEXT[state.lang].upCpu; const cost = 30 + (Math.min(state.cpuPurchasedRound, 2) * state.roundBase); document.getElementById('cpuPriceText').innerText = `${cost}G`; }
+    function updateSimButton() { const btn = document.getElementById('simBtn'); if (state.isTutorial) { btn.style.display = 'none'; return; } const cost = 50 + (state.levelIndex * 20); document.getElementById('simCostText').innerText = cost + "G"; if (state.gold < cost || state.isPlaying) btn.disabled = true; else btn.disabled = false; btn.style.display = 'flex'; }
+    function updateCPU() { const used = state.placedItems.reduce((a, b) => a + b.data.cpu, 0); const max = config.maxCpu; const usedPct = Math.min(100, (used / max) * 100); const bar = document.getElementById('cpuBar'); const previewBar = document.getElementById('cpuPreviewBar'); if (!previewBar) return; if (dragManager.active && dragManager.sourceType === 'inventory' && dragManager.itemData) { const itemCost = dragManager.itemData.cpu; const projectedTotal = used + itemCost; const previewWidthPct = (itemCost / max) * 100; previewBar.style.left = usedPct + "%"; previewBar.style.width = previewWidthPct + "%"; previewBar.style.display = 'block'; if (projectedTotal > max) { previewBar.className = "cpu-preview invalid"; if (bar) bar.className = "cpu-fill overload"; document.getElementById('cpuText').style.color = '#ff5252'; document.getElementById('cpuText').innerText = `${used} + ${itemCost}`; } else { previewBar.className = "cpu-preview valid"; if (bar) bar.className = "cpu-fill " + (used >= max ? "danger" : ""); document.getElementById('cpuText').style.color = '#ffd700'; document.getElementById('cpuText').innerText = `${used} + ${itemCost}`; } } else { previewBar.style.display = 'none'; if (bar) bar.className = "cpu-fill " + (used >= max ? "danger" : ""); document.getElementById('cpuText').style.color = '#ccc'; document.getElementById('cpuText').innerText = `${used}`; } if (bar) bar.style.width = usedPct + "%"; }
+    
+    function initGrid() { 
+        const rh = document.querySelector('.timeline-header'); 
+        if(rh) { rh.innerHTML = ''; for(let i=0; i<8; i++) { let d = document.createElement('div'); d.className = 'ruler-beat'; d.innerText = `${Math.floor(i/4)+1}.${(i%4)+1}`; rh.appendChild(d); } } 
+        const ta = document.getElementById('trackArea'); 
+        if(ta) { 
+            const oldSvg = document.getElementById('combatConnections');
+            ta.innerHTML = ''; 
+            let ph = document.createElement('div'); ph.id = 'playhead'; ph.className = 'playhead'; ta.appendChild(ph); 
+            if(oldSvg) ta.appendChild(oldSvg); else { let s = document.createElementNS("http://www.w3.org/2000/svg", "svg"); s.id="combatConnections"; s.classList.add("combat-overlay"); ta.appendChild(s); }
+
+            for(let i=0; i<TOTAL_TRACKS; i++) { 
+                let tr = document.createElement('div'); tr.className = 'track'; 
+                
+                // Track Logic
+                if (i >= state.unlockedTracks) {
+                    if (i < config.activeTracks) { 
+                        let overlay = document.createElement('div');
+                        overlay.className = 'track-lock-overlay shake-hint';
+                        overlay.innerHTML = `<span class="lock-icon">🔒</span>`;
+                        overlay.onclick = () => unlockTrack(i);
+                        tr.appendChild(overlay);
+                    } else { 
+                        tr.classList.add('hard-locked');
+                    }
+                }
+
+                for(let t=0; t<TICKS; t++) { let c = document.createElement('div'); c.className = 'grid-cell'; const beatIndex = Math.floor(t / 4); if (beatIndex % 2 === 0) c.classList.add('cell-strong'); else c.classList.add('cell-weak'); tr.appendChild(c); } 
+                ta.appendChild(tr); 
+            } 
+        } 
+    }
+
+    function unlockTrack(idx) {
+        if (idx !== state.unlockedTracks) return; 
+        const overlay = document.querySelectorAll('.track-lock-overlay')[0];
+        if(overlay) {
+            overlay.classList.add('unlocking');
+            setTimeout(() => {
+                state.unlockedTracks++;
+                initGrid();
+                restorePlacedItems();
+            }, 600);
+        }
+    }
+
+    function clearAllItems() { if(state.isPlaying) return; if(!confirm("Clear all items?")) return; state.placedItems = []; restorePlacedItems(); }
+    function restorePlacedItems() { const ta = document.getElementById('trackArea'); const items = ta.querySelectorAll('.placed-item'); items.forEach(e => e.remove()); state.placedItems.forEach(record => { const trEl = document.getElementsByClassName('track')[record.track]; if (trEl) createPlacedElement(record, trEl); }); updateRealTimeState(); }
+    function createPlacedElement(record, parent) { let el = document.createElement('div'); el.className = 'placed-item'; if (record.data.type) el.classList.add('type-' + record.data.type); el.style.left = (record.start/TICKS*100) + "%"; el.style.width = (record.data.len/TICKS*100) + "%"; el.style.backgroundColor = record.data.color; el.innerText = record.data.name[state.lang]; el.onmousedown = (e) => startDragPlaced(e, record); el.oncontextmenu = (e) => { if(state.isPlaying) return; e.preventDefault(); el.remove(); state.placedItems = state.placedItems.filter(x => x !== record); updateRealTimeState(); }; parent.appendChild(el); record.el = el; }
+    function updateInventoryUI() { const list = document.getElementById('inventoryList'); list.innerHTML = ''; state.inventory.forEach(item => { let d = document.createElement('div'); d.className = 'inv-item'; d.style.borderLeftColor = item.data.color; if(state.selectedInvItem === item) d.classList.add('selected'); if(state.isPlaying) d.classList.add('disabled'); d.innerHTML = `<b style="color:${item.data.color}">${item.data.name[state.lang]}</b><div class="inv-meta"><span>CPU:${item.data.cpu}</span><span>Len:${item.data.len}</span></div>`; d.onmousedown = (e) => startDragInventory(e, item); list.appendChild(d); }); }
+    
+    function runSimulation() { const cost = 50 + (state.levelIndex * 20); if (state.gold < cost) return; updateGold(-cost, 'simBtn'); runPlaybackSequence(true); }
+    function showHistory() { if (!state.lastResultData) { alert("No history available yet."); return; } showResult(0, 0, true); }
+
+    function renderResultGrid(results) {
+        const container = document.getElementById('resTrackArea'); container.innerHTML = '';
+        const svg = document.getElementById('resConnections'); svg.innerHTML = '';
+        
+        for(let i=0; i<config.activeTracks; i++) {
+            let row = document.createElement('div'); row.className = 'res-grid-row';
+            let bg = document.createElement('div'); bg.className = 'res-grid-bg';
+            for(let t=0; t<TICKS; t++) { let c = document.createElement('div'); c.className = 'res-grid-cell'; bg.appendChild(c); }
+            row.appendChild(bg); container.appendChild(row);
+        }
+        const rows = document.querySelectorAll('.res-grid-row');
+        results.forEach((r, idx) => {
+            let el = document.createElement('div'); el.className = 'res-item'; el.style.left = (r.record.start/TICKS*100) + "%"; el.style.width = (r.record.data.len/TICKS*100) + "%"; el.style.backgroundColor = r.record.data.color;
+            const totalScore = Math.floor((r.base + r.bonus) * r.mult * r.finalMultiplier); el.innerHTML = r.record.data.type === 'score' ? `+${totalScore}` : r.record.data.type === 'support' ? `Buff` : `Engine`;
+            el.onmouseenter = () => highlightRelations(idx, results, svg, container); el.onmouseleave = () => clearRelations(svg, container);
+            rows[r.record.track].appendChild(el); r.resEl = el;
+        });
+        
+        // V23.5: Persistent Faint Lines
+        drawAllFaintLines(results, svg, container);
     }
     
-    function finishTutorialFlow() {
-        document.getElementById('tutorialCompleteModal').style.display = 'none';
-        startStandardGame();
+    function drawAllFaintLines(results, svg, container) {
+        results.forEach((target, idx) => {
+            target.logs.forEach(log => {
+                if (log.srcIdx !== undefined && results[log.srcIdx]) {
+                    const src = results[log.srcIdx];
+                    if(src.resEl && target.resEl) drawSVGLine(svg, container, src.resEl, target.resEl, 'rgba(0, 229, 255, 0.2)', false);
+                }
+            });
+        });
     }
 
+    function highlightRelations(idx, results, svg, container) {
+        clearRelations(svg, container); const target = results[idx]; if(!target.resEl) return; target.resEl.classList.add('highlight-target');
+        
+        // Incoming (Who buffed me?)
+        target.logs.forEach(log => { if (log.srcIdx !== undefined && results[log.srcIdx]) { const src = results[log.srcIdx]; if(src.resEl) { src.resEl.classList.add('highlight-source'); drawSVGLine(svg, container, src.resEl, target.resEl, '#00e5ff', true); } } });
+        
+        // Outgoing (Who did I buff?) -- V23.5
+        if (target.buffsGiven && target.buffsGiven.length > 0) {
+            target.buffsGiven.forEach(b => {
+                const dest = results[b.targetIdx];
+                if (dest && dest.resEl) {
+                    dest.resEl.classList.add('highlight-source'); // Reusing source style for target just to highlight
+                    drawSVGLine(svg, container, target.resEl, dest.resEl, '#d500f9', true);
+                }
+            });
+        }
+
+        showResultTooltip(target);
+    }
+    function clearRelations(svg, container) { 
+        // Remove highlighters only, keep faint lines (actually we redraw all faint lines to reset)
+        svg.innerHTML = ''; 
+        const results = state.lastResultData || []; 
+        drawAllFaintLines(results, svg, container);
+        container.querySelectorAll('.res-item').forEach(el => el.classList.remove('highlight-target', 'highlight-source')); 
+        document.getElementById('resultTooltip').style.display = 'none'; 
+    }
+    function drawSVGLine(svg, container, el1, el2, color, isDashed) {
+        const cRect = container.getBoundingClientRect(); const r1 = el1.getBoundingClientRect(); const r2 = el2.getBoundingClientRect();
+        const x1 = r1.left + r1.width/2 - cRect.left; const y1 = r1.top + r1.height/2 - cRect.top; const x2 = r2.left + r2.width/2 - cRect.left; const y2 = r2.top + r2.height/2 - cRect.top;
+        const line = document.createElementNS('http://www.w3.org/2000/svg','line'); line.setAttribute('x1', x1); line.setAttribute('y1', y1); line.setAttribute('x2', x2); line.setAttribute('y2', y2); line.setAttribute('stroke', color); line.setAttribute('stroke-width', '2'); 
+        if(isDashed) line.setAttribute('stroke-dasharray', '5,5'); 
+        svg.appendChild(line);
+    }
+    function showResultTooltip(r) {
+        const tip = document.getElementById('resultTooltip'); const t = UI_TEXT[state.lang];
+        let html = `<b>${r.record.data.name[state.lang]}</b><br>`; html += `<div class="rt-row"><span>${t.base}</span> <span>${r.base}</span></div>`;
+        r.logs.forEach(l => { let col = l.type === 'buff' ? '#00e5ff' : l.type === 'cond' ? '#ffd700' : '#ff5252'; html += `<div class="rt-row" style="color:${col}"><span>${l.val}</span> <span>[${l.srcId}]</span></div>`; });
+        if (r.record.data.type === 'score') { const final = Math.floor((r.base + r.bonus) * r.mult * r.finalMultiplier); html += `<div class="rt-total">${t.final}: ${final}</div>`; }
+        // Show Outgoing info
+        if (r.buffsGiven.length > 0) { html += `<div class="rt-total" style="color:#d500f9; border-top:1px dashed #555;">Buffed ${r.buffsGiven.length} items</div>`; }
+        const rect = r.resEl.getBoundingClientRect(); tip.innerHTML = html; tip.style.display = 'block'; tip.style.left = (rect.right + 10) + 'px'; tip.style.top = rect.top + 'px';
+    }
+
+    function showResult(ng1Added, totalScore, isHistoryMode = false) {
+        const isWin = totalScore >= config.target; const outcomeEl = document.getElementById('resOutcome');
+        const btns = ['nextLevelBtn','finishGameBtn','retryLevelBtn','dieBtn','simCloseBtn']; btns.forEach(id => document.getElementById(id).style.display = 'none');
+        const info = document.getElementById('resRewardInfo'); const statusContainer = document.getElementById('campaignStatusContainer'); const t = UI_TEXT[state.lang];
+
+        if (isHistoryMode) { outcomeEl.innerText = "HISTORY REVIEW"; outcomeEl.style.color = "#aaa"; info.innerText = ""; document.getElementById('simCloseBtn').style.display = "block"; const results = state.lastResultData; let histScore = 0; results.forEach(r => histScore += (r.base + r.bonus) * r.mult * r.finalMultiplier); document.getElementById('resTotalScore').innerText = Math.floor(histScore); renderResultGrid(results); document.getElementById('resultModal').style.display = 'flex'; return; }
+
+        let rewardVal = 0;
+        if (state.isTutorial) {
+            if (isWin) { rewardVal = TUTORIAL_CONFIG[state.levelIndex].reward; outcomeEl.innerText = t.outcomeWin; outcomeEl.style.color = "var(--highlight)"; info.innerText = `${t.reward}: +${rewardVal}G`; if (state.levelIndex >= TUTORIAL_CONFIG.length - 1) { document.getElementById('finishGameBtn').style.display = 'block'; document.getElementById('finishGameBtn').innerText = t.enterGame; document.getElementById('finishGameBtn').onclick = showTutorialComplete; } else { document.getElementById('nextLevelBtn').style.display = 'block'; } }
+            else { outcomeEl.innerText = t.outcomeLose; outcomeEl.style.color = "var(--lose-color)"; rewardVal = state.levelIndex === 3 ? (TUTORIAL_CONFIG[3].failReward || 0) : 0; info.innerText = state.levelIndex === 3 ? `${t.consolation}: +${rewardVal}G` : `Try Again`; document.getElementById('retryLevelBtn').style.display = 'block'; if(state.levelIndex !== 2) resetTutorialStateForLevel(state.levelIndex); }
+        } else {
+            if (!isWin) {
+                state.lives--;
+                const heartsEl = document.querySelector('.status-hearts');
+                if(heartsEl) heartsEl.classList.add('shake');
+            }
+            let hearts = ""; for(let i=0; i<3; i++) { if(i < state.lives) hearts += "❤️"; else hearts += "💔"; }
+            let dots = ""; for(let i=0; i<LEVEL_CONFIG.length; i++) { let cls = "status-dot"; if(i < state.levelIndex) cls += " done"; if(i === state.levelIndex) cls += " current done"; dots += `<div class="${cls}"></div>`; }
+            statusContainer.innerHTML = `<div class="status-item"><span class="status-hearts ${!isWin?'shake':''}">${hearts}</span></div><div class="status-item" style="margin-left:20px;"><span>Progress:</span><div class="status-dots">${dots}</div></div>`;
+            
+            if(isWin) { outcomeEl.innerText = t.outcomeWin; outcomeEl.style.color = "var(--highlight)"; rewardVal = LEVEL_CONFIG[state.levelIndex].reward; info.innerText = `${t.reward}: +${rewardVal}G`; if (state.levelIndex >= LEVEL_CONFIG.length - 1) document.getElementById('finishGameBtn').style.display = "block"; else document.getElementById('nextLevelBtn').style.display = "block"; }
+            else { outcomeEl.innerText = t.outcomeLose; outcomeEl.style.color = "var(--lose-color)"; rewardVal = Math.floor(LEVEL_CONFIG[state.levelIndex].reward * 0.6); info.innerText = `${t.consolation}: +${rewardVal}G`; if(state.lives <= 0) document.getElementById('dieBtn').style.display = "block"; else document.getElementById('retryLevelBtn').style.display = "block"; }
+        }
+        state.pendingReward = rewardVal;
+        const results = state.lastResultData || calculateLogic(); renderResultGrid(results);
+        document.getElementById('resTotalScore').innerText = Math.floor(totalScore); document.getElementById('resTargetDisplay').innerText = config.target; document.getElementById('resultModal').style.display = 'flex';
+    }
+
+    function showTutorialComplete() { document.getElementById('resultModal').style.display = 'none'; document.getElementById('tutorialCompleteModal').style.display = 'flex'; }
+    function finishTutorialFlow() { document.getElementById('tutorialCompleteModal').style.display = 'none'; startStandardGame(); }
     function showVictory() { document.getElementById('victoryModal').style.display = 'flex'; }
     function showGameOver() { document.getElementById('gameOverModal').style.display = 'flex'; }
     function closeResult() { document.getElementById('resultModal').style.display = 'none'; }
-    
-    function nextLevel() { 
-        updateGold(state.pendingReward); 
-        document.getElementById('resultModal').style.display = 'none'; 
-        
-        if (state.isTutorial) {
-            startTutorialLevel(state.levelIndex + 1);
-        } else {
-            const next = state.levelIndex + 1; 
-            if(next >= LEVEL_CONFIG.length) showVictory(); else applyLevelConfig(next); 
-        }
-    }
-    
-    function retryLevel() { 
-        updateGold(state.pendingReward); 
-        document.getElementById('resultModal').style.display = 'none'; 
-        
-        if (state.isTutorial) {
-             startTutorialLevel(state.levelIndex);
-        } else {
-            updateUI(); rerollShop(); 
-        }
-    }
-    
+    function nextLevel() { updateGold(state.pendingReward); document.getElementById('resultModal').style.display = 'none'; if (state.isTutorial) { startTutorialLevel(state.levelIndex + 1); } else { const next = state.levelIndex + 1; if(next >= LEVEL_CONFIG.length) showVictory(); else applyLevelConfig(next); } }
+    function retryLevel() { updateGold(state.pendingReward); document.getElementById('resultModal').style.display = 'none'; if (state.isTutorial) { startTutorialLevel(state.levelIndex); } else { updateUI(); rerollShop(); } }
     function sellSelectedItem() { 
-        if (!state.selectedInvItem) return; 
-        const item = state.selectedInvItem; 
+        if (!state.selectedInvItem) return; const item = state.selectedInvItem; 
         if(item.id === "NG1" && state.ng1PermanentStacks > 0) { applyNG1Discount(state.ng1PermanentStacks); state.ng1PermanentStacks = 0; } 
         const price = item.boughtPrice === 0 ? 25 : Math.floor(item.boughtPrice * 0.25); 
-        updateGold(price); 
-        state.inventory = state.inventory.filter(x => x !== item); 
-        state.selectedInvItem = null; 
-        
-        // Remove placed items of same ID
-        const itemId = item.data.id;
-        const initialCount = state.placedItems.length;
-        state.placedItems = state.placedItems.filter(p => p.data.id !== itemId);
-        if (state.placedItems.length !== initialCount) {
-            restorePlacedItems(); 
-        }
-
-        updateInventoryUI();
-        
-        const shop = document.getElementById('shopPanel');
-        const float = document.createElement('div');
-        float.innerText = `+${price}G`;
-        float.style.position = 'absolute'; float.style.left = '50%'; float.style.top = '50%'; float.style.color = 'gold'; float.style.fontWeight='bold'; float.style.transform='translate(-50%, -50%)'; float.style.pointerEvents='none';
-        shop.appendChild(float);
-        setTimeout(()=>float.remove(), 1000);
+        updateGold(price); state.inventory = state.inventory.filter(x => x !== item); state.selectedInvItem = null; 
+        const itemId = item.data.id; const initialCount = state.placedItems.length; state.placedItems = state.placedItems.filter(p => p.data.id !== itemId); if (state.placedItems.length !== initialCount) { restorePlacedItems(); }
+        updateInventoryUI(); const shop = document.getElementById('shopPanel'); const float = document.createElement('div'); float.innerText = `+${price}G`; float.style.position = 'absolute'; float.style.left = '50%'; float.style.top = '50%'; float.style.color = 'gold'; float.style.fontWeight='bold'; float.style.transform='translate(-50%, -50%)'; float.style.pointerEvents='none'; shop.appendChild(float); setTimeout(()=>float.remove(), 1000);
     }
     function applyNG1Discount(count) { const minDisc = 0.05 * count; const maxDisc = 0.10 * count; alert(`NG1 Burst! ${count} stacks consumed!`); state.currentShopItems.forEach(item => { if(!item.sold) { let extra = minDisc + Math.random() * (maxDisc - minDisc); const minPrice = Math.floor(item.data.price * 0.1); let newPrice = Math.floor(item.price * (1 - extra)); if (newPrice < minPrice) newPrice = minPrice; item.price = newPrice; item.isDiscount = true; item.discountPercent += Math.round(extra * 100); } }); renderShopFromState(); }
     
     function buyCpu() { 
-        // Tutorial L3 Logic
-        if (state.isTutorial && state.levelIndex === 2) {
-             if (state.gold >= 30 && !state.tutorialCpuBought) {
-                 updateGold(-30, 'btnBuyCpu');
-                 config.maxCpu++;
-                 state.tutorialCpuBought = true;
-                 tutorialState.l3.cpuBought = true; // Tut State
-                 updateUI();
-                 updateCPU();
-             } else if (state.gold < 30) {
-                 alert("No Gold");
-             }
-             return;
-        }
-        
-        // Tut L4 Logic
-        if (state.isTutorial && state.levelIndex === 3) {
-            tutorialState.l4.cpuCount++;
-        }
-
-        const cost = 30 + (Math.min(state.cpuPurchasedRound, 2) * state.roundBase); 
-        if(state.gold >= cost) { 
-            updateGold(-cost, 'btnBuyCpu'); 
-            config.maxCpu++; state.cpuPurchasedRound++; updateUI(); updateCPU(); 
-        } else { alert("No Gold"); } 
+        if (state.isTutorial && state.levelIndex === 2) { if (state.gold >= 30 && !state.tutorialCpuBought) { updateGold(-30, 'btnBuyCpu'); config.maxCpu++; state.tutorialCpuBought = true; tutorialState.l3.cpuBought = true; updateUI(); updateCPU(); } else if (state.gold < 30) { alert("No Gold"); } return; }
+        if (state.isTutorial && state.levelIndex === 3) { tutorialState.l4.cpuCount++; }
+        const cost = 30 + (Math.min(state.cpuPurchasedRound, 2) * state.roundBase); if(state.gold >= cost) { updateGold(-cost, 'btnBuyCpu'); config.maxCpu++; state.cpuPurchasedRound++; updateUI(); updateCPU(); } else { alert("No Gold"); } 
     }
     
     function rerollShop() { 
         if(state.isPlaying) return; 
-        
-        const isManual = (event && event.target && event.target.id === 'btnReroll'); 
-        if (isManual) { 
-            if(state.gold < 10) { alert("No Gold"); return; } 
-            updateGold(-10); 
-        } 
-        state.currentShopItems = []; 
-        let candidates = DB.filter(i => state.poolIds.includes(i.id) && !state.inventory.some(inv => inv.id === i.id)); 
-        for(let i=0; i<4; i++) { 
-            if(candidates.length === 0) break; 
-            const rand = Math.random(); 
-            let rarityTarget = 1; 
-            if (rand > 0.6) rarityTarget = 2; 
-            if (rand > 0.9) rarityTarget = 3; 
-            let pool = candidates.filter(x => x.rarity === rarityTarget); 
-            if (pool.length === 0) pool = candidates; 
-            const itemBase = pool[0]; 
-            candidates = candidates.filter(x => x.id !== itemBase.id); 
-            const variance = Math.floor(Math.random() * 11) - 5; 
-            let finalPrice = itemBase.price + variance; 
-            const entryRound = state.poolEntryTimes[itemBase.id] || 0; 
-            const roundsInPool = state.levelIndex - entryRound; 
-            const discountChance = Math.min(0.5, 0.2 + (roundsInPool * 0.1)); 
-            let isDiscount = Math.random() < discountChance; 
-            let discountPercent = 0; 
-            if(isDiscount) { 
-                const maxOff = Math.min(0.5, 0.1 + (roundsInPool * 0.1)); 
-                const minOff = 0.1; 
-                const actualOff = minOff + Math.random() * (maxOff - minOff); 
-                finalPrice = Math.floor(finalPrice * (1 - actualOff)); 
-                discountPercent = Math.round(actualOff * 100); 
-            } 
-            state.currentShopItems.push({ data: itemBase, price: finalPrice, isDiscount: isDiscount, discountPercent: discountPercent, sold: false }); 
-        } 
-        renderShopFromState(); 
+        const isManual = (event && event.target && event.target.id === 'btnReroll'); if (isManual) { if(state.gold < 10) { alert("No Gold"); return; } updateGold(-10); } 
+        state.currentShopItems = []; let candidates = DB.filter(i => state.poolIds.includes(i.id) && !state.inventory.some(inv => inv.id === i.id)); 
+        for(let i=0; i<4; i++) { if(candidates.length === 0) break; const rand = Math.random(); let rarityTarget = 1; if (rand > 0.6) rarityTarget = 2; if (rand > 0.9) rarityTarget = 3; let pool = candidates.filter(x => x.rarity === rarityTarget); if (pool.length === 0) pool = candidates; const itemBase = pool[0]; candidates = candidates.filter(x => x.id !== itemBase.id); const variance = Math.floor(Math.random() * 11) - 5; let finalPrice = itemBase.price + variance; const entryRound = state.poolEntryTimes[itemBase.id] || 0; const roundsInPool = state.levelIndex - entryRound; const discountChance = Math.min(0.5, 0.2 + (roundsInPool * 0.1)); let isDiscount = Math.random() < discountChance; let discountPercent = 0; if(isDiscount) { const maxOff = Math.min(0.5, 0.1 + (roundsInPool * 0.1)); const minOff = 0.1; const actualOff = minOff + Math.random() * (maxOff - minOff); finalPrice = Math.floor(finalPrice * (1 - actualOff)); discountPercent = Math.round(actualOff * 100); } state.currentShopItems.push({ data: itemBase, price: finalPrice, isDiscount: isDiscount, discountPercent: discountPercent, sold: false }); } renderShopFromState(); 
     }
     
-    function renderShopFromState() { const list = document.getElementById('shopList'); list.innerHTML = ''; state.currentShopItems.forEach(item => { let d = document.createElement('div'); d.className = 'shop-item'; d.onclick = () => { if(!state.isPlaying) showDetail(item.data); }; let btn = document.createElement('button'); btn.className = "btn-buy"; if (item.sold) { btn.disabled = true; btn.innerText = UI_TEXT[state.lang].purchased; } else { btn.innerHTML = `${item.price}G`; btn.onclick = (e) => { e.stopPropagation(); if(state.gold>=item.price){ 
-        
-        updateGold(-item.price, 'goldText'); // Animation source
-        addItemToInventory(item.data.id, item.price); 
-        item.sold=true; 
-        
-        // Tutorial State Updates
-        if (state.isTutorial && state.levelIndex === 1 && item.data.id === 'EB1') tutorialState.l2.bought = true;
-        if (state.isTutorial && state.levelIndex === 2 && item.data.id === 'SB1') tutorialState.l3.kickBought = true;
-
-        updateInventoryUI(); renderShopFromState(); 
-    } else { alert("No Gold"); } }; } let html = `<div class="shop-row-top"><b style="color:${item.data.color}">${item.data.name[state.lang]}</b></div><div class="shop-row-btm"><span>CPU:${item.data.cpu}</span><span>Len:${item.data.len}</span></div>`; if (item.isDiscount) html += `<div class="discount-tag">-${item.discountPercent}%</div>`; d.innerHTML = html; d.querySelector('.shop-row-top').appendChild(btn); list.appendChild(d); }); }
+    function renderShopFromState() { const list = document.getElementById('shopList'); list.innerHTML = ''; state.currentShopItems.forEach(item => { let d = document.createElement('div'); d.className = 'shop-item'; d.onclick = () => { if(!state.isPlaying) showDetail(item.data); }; let btn = document.createElement('button'); btn.className = "btn-buy"; if (item.sold) { btn.disabled = true; btn.innerText = UI_TEXT[state.lang].purchased; } else { btn.innerHTML = `${item.price}G`; btn.onclick = (e) => { e.stopPropagation(); if(state.gold>=item.price){ updateGold(-item.price, 'goldText'); addItemToInventory(item.data.id, item.price); item.sold=true; if (state.isTutorial && state.levelIndex === 1 && item.data.id === 'EB1') tutorialState.l2.bought = true; if (state.isTutorial && state.levelIndex === 2 && item.data.id === 'SB1') tutorialState.l3.kickBought = true; updateInventoryUI(); renderShopFromState(); } else { alert("No Gold"); } }; } let html = `<div class="shop-row-top"><b style="color:${item.data.color}">${item.data.name[state.lang]}</b></div><div class="shop-row-btm"><span>CPU:${item.data.cpu}</span><span>Len:${item.data.len}</span></div>`; if (item.isDiscount) html += `<div class="discount-tag">-${item.discountPercent}%</div>`; d.innerHTML = html; d.querySelector('.shop-row-top').appendChild(btn); list.appendChild(d); }); }
     
-    function calculateLogic() { 
-        const items = state.placedItems; 
-        const sorted = [...items].sort((a,b) => a.start - b.start); 
-        let output = sorted.map(p => ({ record: p, base: p.data.base, bonus: 0, mult: 1.0, finalMultiplier: 1.0, triggered: false, buffsReceived: [], buffsGiven: [], forceStrong: false })); 
-        let globalWeakIsStrong = false; let globalGapMult = 1;          
-        output.forEach(entry => { const d = entry.record.data; const s = entry.record.start; if (d.id === "SB5" && (s % 8 === 0)) { globalWeakIsStrong = true; entry.triggered = true; } if (d.id === "EB5") { globalGapMult = 2; entry.triggered = true; } }); 
-        let strongBeatCount = 0; let sb4Triggered = false; 
-        output.forEach((entry, idx) => { 
-            const p = entry.record; const d = p.data; const s = p.start; const e = s + d.len; 
-            const beatIdx = Math.floor(s / 4); let isNaturalStrong = (beatIdx % 2 === 0); let isStrong = isNaturalStrong || globalWeakIsStrong || entry.forceStrong; 
-            if (isStrong && (d.id.startsWith("SB") || d.id.startsWith("NG"))) strongBeatCount++; 
-            const trackItems = output.filter(x => x.record.track === p.track); const tIdx = trackItems.indexOf(entry); const prev = tIdx > 0 ? trackItems[tIdx-1] : null; const next = tIdx < trackItems.length-1 ? trackItems[tIdx+1] : null; const concurrent = output.filter(x => x !== entry && x.record.start === s); 
-            const calcGap = (t1, t2) => Math.max(0, t2 - t1) * globalGapMult; 
-            if (d.id === "SB1") { if (isStrong) { entry.bonus += 10; entry.triggered = true; } } 
-            else if (d.id === "SB2") { if (concurrent.length > 0) concurrent.forEach(t => { t.mult += 0.5; t.buffsReceived.push({text:`[${d.name[state.lang]}] +50%`, type:d.type}); }); if (isStrong && concurrent.length > 0) { concurrent.forEach(t => { t.mult += 0.25; t.buffsReceived.push({text:`[${d.name[state.lang]}] +25%`, type:d.type}); }); entry.triggered = true; } } 
-            else if (d.id === "SB3") { if (next) { next.mult += 1.0; next.buffsReceived.push({text:`[${d.name[state.lang]}] +100%`, type:d.type}); } if (isStrong && next) { next.forceStrong = true; entry.triggered = true; } } 
-            else if (d.id === "SB4") { if (isStrong && strongBeatCount > 5 && !sb4Triggered) { sb4Triggered = true; entry.triggered = true; for (let i = idx + 1; i < output.length; i++) { const target = output[i]; const tS = target.record.start; const tBeat = Math.floor(tS/4); const tNatStrong = (tBeat%2===0); const tIsStrong = tNatStrong || globalWeakIsStrong || target.forceStrong; if (tIsStrong && target.record.data.type === "score") { target.finalMultiplier *= 1.5; target.buffsReceived.push({text:`[${d.name[state.lang]}] x1.5`, type:d.type}); } } } } 
-            else if (d.id === "EB1") { if (prev) { const gap = calcGap(prev.record.start + prev.record.data.len, s); if (gap >= 4) { entry.bonus += 20; entry.triggered = true; } } } 
-            else if (d.id === "EB2") { if (next) { let boost = 0.35; next.mult += 0.35; next.buffsReceived.push({text:`[${d.name[state.lang]}] +35%`, type:d.type}); const gap = calcGap(e, next.record.start); if (gap > 0) { let extra = Math.min(1.25, gap * 0.125); next.mult += extra; next.buffsReceived.push({text:`[${d.name[state.lang]}] +${(extra*100).toFixed(0)}%`, type:d.type}); entry.triggered = true; } } } 
-            else if (d.id === "EB3") { if (concurrent.length > 0) concurrent.forEach(t => { if(t.record.data.type==="score") t.bonus += 10; }); let gapTotal = 0; if(prev) gapTotal += calcGap(prev.record.start+prev.record.data.len, s); if(next) { gapTotal += calcGap(e, next.record.start); } else { gapTotal += calcGap(e, TICKS); } if (gapTotal > 0) { let extraMult = Math.min(2.4, gapTotal * 0.075); concurrent.forEach(t => { if(t.record.data.type === "score") { t.mult += extraMult; t.buffsReceived.push({text:`[${d.name[state.lang]}] +${(extraMult*100).toFixed(1)}%`, type:d.type}); } }); entry.triggered = true; } } 
-            else if (d.id === "EB4") { let totalSpace = s * 3; let occupied = 0; items.forEach(it => { let iS = it.start; let iE = it.start + it.data.len; if (iE <= s) occupied += it.data.len; else if (iS < s) occupied += (s - iS); }); let empty = Math.max(0, totalSpace - occupied) * globalGapMult; if (empty > 0) { let boost = empty * 0.05; entry.mult += boost; entry.buffsReceived.push({text:`[空拍] +${(boost*100).toFixed(0)}%`, type:d.type}); entry.triggered = true; } } 
-            else if (d.id === "EB6") { let dur = e - s; let totalSpace = dur * 3; let occupied = 0; items.forEach(it => { if (it === p) return; let iS = it.start; let iE = it.start + it.data.len; let overlap = Math.max(0, Math.min(e, iE) - Math.max(s, iS)); occupied += overlap; }); occupied += dur; let empty = Math.max(0, totalSpace - occupied) * globalGapMult; if (empty > 0) { let boost = empty * 0.05; entry.mult += boost; entry.buffsReceived.push({text:`[${d.name[state.lang]}] +${(boost*100).toFixed(0)}%`, type:d.type}); entry.triggered = true; } } 
-            else if (d.id === "NG2") { if (concurrent.length > 0) { entry.bonus += 10; entry.triggered = true; } } 
-            else if (d.id === "NG3") { if (prev) { prev.mult += 0.35; prev.buffsReceived.push({text:`[${d.name[state.lang]}] +35%`, type:d.type}); } if (next) { next.mult += 0.35; next.buffsReceived.push({text:`[${d.name[state.lang]}] +35%`, type:d.type}); } if (concurrent.length === 0) { if (prev) { prev.mult += 0.35; prev.buffsReceived.push({text:`[${d.name[state.lang]}] +35%`, type:d.type}); } if (next) { next.mult += 0.35; next.buffsReceived.push({text:`[${d.name[state.lang]}] +35%`, type:d.type}); } entry.triggered = true; } } 
-        }); 
-        output.forEach(entry => { 
-            const d = entry.record.data; 
-            if (d.id === "NG4") { 
-                const s = entry.record.start; const concurrent = output.filter(x => x !== entry && x.record.start === s); let suckedScore = 0; 
-                concurrent.forEach(t => { if (t.record.data.type === "score") { let current = (t.base + t.bonus) * t.mult * t.finalMultiplier; t.finalMultiplier *= 0.5; t.buffsReceived.push({text:`[${d.name[state.lang]}] -50%`, type:d.type}); let now = (t.base + t.bonus) * t.mult * t.finalMultiplier; suckedScore += (current - now); } }); 
-                if (suckedScore > 0) { entry.bonus += 20 + (suckedScore * 1.5); entry.buffsReceived.push({text:`+${(suckedScore * 1.5).toFixed(0)}`, type:d.type}); entry.triggered = true; } 
-            } 
-        }); 
-        return output; 
-    }
-
-    // --- FIX: Optimized for Mac Safari/Chrome (No DOM Thrashing) ---
     function updateRealTimeState() { 
         updateCPU(); 
         const results = calculateLogic(); 
-        
-        // Tutorial State Effect Check
-        if (state.isTutorial) {
-            results.forEach(r => {
-                if (r.bonus > 0 || r.buffsGiven.length > 0 || r.buffsReceived.length > 0) { // Simple check for 'Active'
-                    if (state.levelIndex === 1 && r.record.data.id === 'EB1') tutorialState.l2.effectActive = true;
-                    if (state.levelIndex === 2 && r.record.data.id === 'SB1') tutorialState.l3.kickEffect = true;
-                }
-            });
-        }
-
+        if (state.isTutorial) { results.forEach(r => { if (r.bonus > 0 || r.buffsGiven.length > 0 || r.buffsReceived.length > 0) { if (state.levelIndex === 1 && r.record.data.id === 'EB1') tutorialState.l2.effectActive = true; if (state.levelIndex === 2 && r.record.data.id === 'SB1') tutorialState.l3.kickEffect = true; } }); }
         state.placedItems.forEach(p => { 
-            const res = results.find(r => r.record === p); 
-            const shouldGlow = res && res.triggered;
-            
-            let targetClass = '';
-            if (shouldGlow) {
-                if (p.data.type === "score") targetClass = 'glowing-score';
-                else if (p.data.type === "support") targetClass = 'glowing-support';
-                else if (p.data.type === "engine") targetClass = 'glowing-engine';
-            }
-
-            ['glowing-score', 'glowing-support', 'glowing-engine'].forEach(cls => {
-                if (cls === targetClass) {
-                    if (!p.el.classList.contains(cls)) p.el.classList.add(cls);
-                } else {
-                    if (p.el.classList.contains(cls)) p.el.classList.remove(cls);
-                }
-            });
+            const res = results.find(r => r.record === p); const shouldGlow = res && res.triggered;
+            let targetClass = ''; if (shouldGlow) { if (p.data.type === "score") targetClass = 'glowing-score'; else if (p.data.type === "support") targetClass = 'glowing-support'; else if (p.data.type === "engine") targetClass = 'glowing-engine'; }
+            ['glowing-score', 'glowing-support', 'glowing-engine'].forEach(cls => { if (cls === targetClass) { if (!p.el.classList.contains(cls)) p.el.classList.add(cls); } else { if (p.el.classList.contains(cls)) p.el.classList.remove(cls); } });
         }); 
     }
 
     function showDetail(item) { 
-        // Tutorial State
-        if (state.isTutorial) {
-            if (state.levelIndex === 0) {
-                if (item.id === 'TUT1') tutorialState.l1.aClicked = true;
-                if (item.id === 'TUT2') tutorialState.l1.bClicked = true;
-            }
-            if (state.levelIndex === 1 && item.id === 'EB1') {
-                tutorialState.l2.clicked = true;
-            }
-            if (state.levelIndex === 2 && item.id === 'SB1') {
-                tutorialState.l3.kickClicked = true;
-            }
-        }
-
+        if (state.isTutorial) { if (state.levelIndex === 0) { if (item.id === 'TUT1') tutorialState.l1.aClicked = true; if (item.id === 'TUT2') tutorialState.l1.bClicked = true; } if (state.levelIndex === 1 && item.id === 'EB1') { tutorialState.l2.clicked = true; } if (state.levelIndex === 2 && item.id === 'SB1') { tutorialState.l3.kickClicked = true; } }
         document.getElementById('detailTitle').innerText = item.name[state.lang]; 
         document.getElementById('detailTitle').style.color = item.color; 
         document.getElementById('detailMeta').innerHTML = `<span>CPU: ${item.cpu}</span><span>${state.lang==='en'?'Len':'长度'}: ${item.len}</span><span>${state.lang==='en'?'Base':'基础'}: ${item.base}</span>`; 
-        let desc = item.desc[state.lang]; if (item.id === "NG1") { desc += `<br><span style="color:#ffd700; font-weight:bold;">[${UI_TEXT[state.lang].ng1Charge}: ${state.ng1PermanentStacks}]</span>`; } 
-        for (const key in DEFINITIONS[state.lang]) { const regex = new RegExp(`\\[${key}\\]`, "g"); desc = desc.replace(regex, `<span class="tooltip-ref" onmouseenter="showTooltip(event, '${key}')" onmouseleave="hideTooltip()">[${key}]</span>`); } 
+        let desc = item.desc[state.lang]; 
+        if (item.id === "NG1") { desc += `<br><span style="color:#ffd700; font-weight:bold;">[${UI_TEXT[state.lang].ng1Charge}: ${state.ng1PermanentStacks}]</span>`; } 
+        
+        for (const key in DEFINITIONS[state.lang]) { 
+            const regex = new RegExp(`\\[${key}\\]`, "g"); 
+            desc = desc.replace(regex, `<span class="tooltip-ref" onmouseenter="showTooltip(event, '${key}')" onmouseleave="hideTooltip()">[${key}]</span>`); 
+        } 
+
+        desc = desc.replace(/Strong Beat/g, `${TAG_ICONS.strong} Strong Beat`)
+                   .replace(/强拍/g, `${TAG_ICONS.strong} 强拍`)
+                   .replace(/Empty Slot/g, `${TAG_ICONS.empty} Empty Slot`)
+                   .replace(/Empty Slots/g, `${TAG_ICONS.empty} Empty Slots`)
+                   .replace(/空拍/g, `${TAG_ICONS.empty} 空拍`)
+                   .replace(/Sync/g, `${TAG_ICONS.sync} Sync`)
+                   .replace(/同步/g, `${TAG_ICONS.sync} 同步`)
+                   .replace(/Same Track/g, `${TAG_ICONS.track} Same Track`)
+                   .replace(/同轨/g, `${TAG_ICONS.track} 同轨`);
+
         document.getElementById('detailContent').innerHTML = desc; 
     }
 </script>

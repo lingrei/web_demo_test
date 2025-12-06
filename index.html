@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Soundwave - MVP V24.5 (Precision Fix)</title>
+    <title>Soundwave - MVP V25.0 (Visual & Logic Refine)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         /* --- 基础样式 --- */
@@ -223,9 +223,10 @@
         .soft-guide { border: 2px solid gold !important; animation: guide-pulse-strong 2s infinite ease-in-out; }
         @keyframes guide-pulse-strong { 0% { box-shadow: 0 0 3px rgba(255,215,0,0.4); } 50% { box-shadow: 0 0 15px rgba(255,215,0,0.9); } 100% { box-shadow: 0 0 3px rgba(255,215,0,0.4); } }
         
-        .result-tooltip { position: fixed; background: rgba(0,0,0,0.95); border: 1px solid #666; padding: 10px; border-radius: 4px; color: #fff; z-index: 10002; pointer-events: none; text-align: left; font-size: 12px; min-width: 150px; box-shadow: 0 5px 20px black; }
+        .result-tooltip { position: fixed; background: rgba(0,0,0,0.95); border: 1px solid #666; padding: 10px; border-radius: 4px; color: #fff; z-index: 10002; pointer-events: none; text-align: left; font-size: 12px; min-width: 200px; box-shadow: 0 5px 20px black; }
         .rt-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
-        .rt-total { border-top: 1px solid #444; margin-top: 5px; padding-top: 5px; font-weight: bold; color: gold; font-size: 14px; }
+        .rt-formula { border-top: 1px solid #444; margin-top: 5px; padding-top: 5px; color: #aaa; font-style: italic; font-size: 11px; text-align: center; }
+        .rt-total { margin-top: 5px; font-weight: bold; color: gold; font-size: 14px; text-align: center; }
         
         .status-hearts.shake { animation: shake 0.5s; display: inline-block; color: #ff5252; }
         @keyframes shake { 0% { transform: translate(1px, 1px) rotate(0deg); } 10% { transform: translate(-1px, -2px) rotate(-1deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 30% { transform: translate(3px, 2px) rotate(0deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } 50% { transform: translate(-1px, 2px) rotate(-1deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } 70% { transform: translate(3px, 1px) rotate(-1deg); } 80% { transform: translate(-1px, -1px) rotate(1deg); } 90% { transform: translate(1px, 2px) rotate(0deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); } }
@@ -458,7 +459,8 @@
             helpControlTxt: "• <b>Drag Inventory -> Track</b>: Place Item<br>• <b>Drag Track -> Track</b>: Move Item<br>• <b>Drag Track -> Outside</b>: Remove Item (Refund CPU)<br>• <b>Drag Inventory -> Shop</b>: Sell Item<br>• <b>Right Click</b>: Quick Remove",
             tutTitle: "Tutorial", tutDesc: "Recommended for new players.", skip: "Skip", playTut: "Play Tutorial",
             tutComp: "Tutorial Complete!", tutCompDesc: "You are now ready for the real challenge.", enterGame: "ENTER GAME",
-            soldOutQAQ: "Sold Out QAQ", simReport: "SIMULATION REPORT"
+            soldOutQAQ: "Sold Out QAQ", simReport: "SIMULATION REPORT",
+            self: "Self Effect", global: "Global Rule"
         },
         cn: {
             clear: "清空", help: "帮助", history: "历史", cpu: "★ CPU", target: "目标 Groove", funds: "资金 (G)",
@@ -477,7 +479,8 @@
             helpControlTxt: "• <b>左键拖拽 (库存->音轨)</b>: 放置道具<br>• <b>左键拖拽 (音轨->音轨)</b>: 移动位置<br>• <b>拖拽至音轨外</b>: 移除道具 (返还CPU)<br>• <b>拖拽至商店区域</b>: 出售道具<br>• <b>右键点击</b>: 快速移除",
             tutTitle: "新手教程", tutDesc: "强烈建议新玩家游玩。", skip: "跳过", playTut: "进入教程",
             tutComp: "教程结束!", tutCompDesc: "恭喜完成! 现在进入正式挑战。", enterGame: "进入正式关卡",
-            soldOutQAQ: "商店卖断货了 QAQ", simReport: "模拟运行报告"
+            soldOutQAQ: "商店卖断货了 QAQ", simReport: "模拟运行报告",
+            self: "自身效果", global: "全局规则"
         }
     };
 
@@ -493,7 +496,6 @@
         track: '<span class="tag-icon tag-track">↔️</span>'
     };
 
-    // Modified DB with Unique Flag
     const DB = [
         { id: "SB1", name: {en: "Kick Drum", cn: "底鼓"}, desc: {en: "Gain 20 Groove. If placed on a [Strong Beat], gain +10.", cn: "获得 20 Groove。若放置在 [Strong Beat] (Start on Strong Beat) 上，额外 +10。"}, len: 4, cpu: 1, base: 20, type: "score", color: "#ffecb3", price: 100, rarity: 1 },
         { id: "SB2", name: {en: "Sidechain", cn: "侧链"}, desc: {en: "All [Sync] items +50%. If on [Strong Beat], effect +25%.", cn: "所有 [Sync] 道具 +50%。若在 [Strong Beat]，效果 +25%。"}, len: 4, cpu: 1, base: 0, type: "support", color: "#b2ebf2", price: 75, rarity: 1 },
@@ -556,6 +558,13 @@
     });
 
     // --- Logic ---
+    function getSourceName(id) {
+        if(id === 'Self' || id === 'Self Condition') return UI_TEXT[state.lang].self;
+        if(id === 'Global') return UI_TEXT[state.lang].global;
+        const item = DB.find(i => i.id === id || i.name.en === id || i.name.cn === id);
+        return item ? item.name[state.lang] : id;
+    }
+
     function calculateLogic() { 
         const items = state.placedItems; 
         const sorted = [...items].sort((a,b) => a.start - b.start); 
@@ -567,8 +576,8 @@
         let globalWeakIsStrong = false; let globalGapMult = 1;          
         output.forEach(entry => { 
             const d = entry.record.data; const s = entry.record.start; 
-            if (d.id === "SB5" && (s % 8 === 0)) { globalWeakIsStrong = true; entry.triggered = true; entry.logs.push({srcId:'Quantizer', type:'rule', val:'Quantizer Active', order: 5}); } 
-            if (d.id === "EB5") { globalGapMult = 2; entry.triggered = true; entry.logs.push({srcId:'Time Stretch', type:'rule', val:'Time Stretch Active', order: 5}); } 
+            if (d.id === "SB5" && (s % 8 === 0)) { globalWeakIsStrong = true; entry.triggered = true; entry.logs.push({srcId:'Global', type:'rule', val:'Quantizer Active', order: 5}); } 
+            if (d.id === "EB5") { globalGapMult = 2; entry.triggered = true; entry.logs.push({srcId:'Global', type:'rule', val:'Time Stretch Active', order: 5}); } 
         }); 
 
         let strongBeatCount = 0; let sb4Triggered = false; 
@@ -581,58 +590,51 @@
             const trackItems = output.filter(x => x.record.track === p.track); const tIdx = trackItems.indexOf(entry); const prev = tIdx > 0 ? trackItems[tIdx-1] : null; const next = tIdx < trackItems.length-1 ? trackItems[tIdx+1] : null; const concurrent = output.filter(x => x !== entry && x.record.start === s); 
             const calcGap = (t1, t2) => Math.max(0, t2 - t1) * globalGapMult; 
 
-            // LOG LEVELS: 
-            // 1: Base (Auto added in visualizer)
-            // 2: Self Add (Bonus)
-            // 3: Other Add
-            // 4: Self Mult
-            // 5: Other Mult / System
-
-            if (d.id === "SB1") { if (isStrong) { entry.bonus += 10; entry.triggered = true; entry.logs.push({srcId:'Self Condition', type:'cond', val:'+10 (Strong)', order: 2}); } } 
+            if (d.id === "SB1") { if (isStrong) { entry.bonus += 10; entry.triggered = true; entry.logs.push({srcId:'Self', type:'cond', val:'+10 (Strong)', order: 2}); } } 
             else if (d.id === "SB2") { 
-                if (concurrent.length > 0) concurrent.forEach(t => { t.mult += 0.5; t.buffsReceived.push({text:`[${d.name[state.lang]}] +50%`, type:d.type}); t.logs.push({srcId:d.name[state.lang], srcIdx:idx, type:'buff', val:'+50% (Sync)', order: 5}); entry.buffsGiven.push({targetIdx: output.indexOf(t)}); }); 
-                if (isStrong && concurrent.length > 0) { concurrent.forEach(t => { t.mult += 0.25; t.buffsReceived.push({text:`[${d.name[state.lang]}] +25%`, type:d.type}); t.logs.push({srcId:d.name[state.lang], srcIdx:idx, type:'buff', val:'+25% (Strong Sync)', order: 5}); }); entry.triggered = true; } 
+                if (concurrent.length > 0) concurrent.forEach(t => { t.mult += 0.5; t.buffsReceived.push({text:`[${d.name[state.lang]}] +50%`, type:d.type}); t.logs.push({srcId:d.id, srcIdx:idx, type:'buff', val:'+50% (Sync)', order: 5}); entry.buffsGiven.push({targetIdx: output.indexOf(t)}); }); 
+                if (isStrong && concurrent.length > 0) { concurrent.forEach(t => { t.mult += 0.25; t.buffsReceived.push({text:`[${d.name[state.lang]}] +25%`, type:d.type}); t.logs.push({srcId:d.id, srcIdx:idx, type:'buff', val:'+25% (Strong Sync)', order: 5}); }); entry.triggered = true; } 
             } 
             else if (d.id === "SB3") { 
-                if (next) { next.mult += 1.0; next.buffsReceived.push({text:`[${d.name[state.lang]}] +100%`, type:d.type}); next.logs.push({srcId:d.name[state.lang], srcIdx:idx, type:'buff', val:'+100% (Next)', order: 5}); entry.buffsGiven.push({targetIdx: output.indexOf(next)}); } 
-                if (isStrong && next) { next.forceStrong = true; entry.triggered = true; next.logs.push({srcId:d.name[state.lang], srcIdx:idx, type:'rule', val:'Force Strong', order: 5}); entry.buffsGiven.push({targetIdx: output.indexOf(next), type:'engine'}); } 
+                if (next) { next.mult += 1.0; next.buffsReceived.push({text:`[${d.name[state.lang]}] +100%`, type:d.type}); next.logs.push({srcId:d.id, srcIdx:idx, type:'buff', val:'+100% (Next)', order: 5}); entry.buffsGiven.push({targetIdx: output.indexOf(next)}); } 
+                if (isStrong && next) { next.forceStrong = true; entry.triggered = true; next.logs.push({srcId:d.id, srcIdx:idx, type:'rule', val:'Force Strong', order: 5}); entry.buffsGiven.push({targetIdx: output.indexOf(next), type:'engine'}); } 
             } 
             else if (d.id === "SB4") { 
                 if (isStrong && strongBeatCount > 5 && !sb4Triggered) { 
                     sb4Triggered = true; entry.triggered = true; 
                     for (let i = idx + 1; i < output.length; i++) { 
                         const target = output[i]; const tS = target.record.start; const tBeat = Math.floor(tS/4); const tNatStrong = (tBeat%2===0); const tIsStrong = tNatStrong || globalWeakIsStrong || target.forceStrong; 
-                        if (tIsStrong && target.record.data.type === "score") { target.finalMultiplier *= 1.5; target.buffsReceived.push({text:`[${d.name[state.lang]}] x1.5`, type:d.type}); target.logs.push({srcId:d.name[state.lang], srcIdx:idx, type:'buff', val:'x1.5 (Master)', order: 6}); entry.buffsGiven.push({targetIdx: i, type:'engine'}); } 
+                        if (tIsStrong && target.record.data.type === "score") { target.finalMultiplier *= 1.5; target.buffsReceived.push({text:`[${d.name[state.lang]}] x1.5`, type:d.type}); target.logs.push({srcId:d.id, srcIdx:idx, type:'buff', val:'x1.5 (Master)', order: 6}); entry.buffsGiven.push({targetIdx: i, type:'engine'}); } 
                     } 
                 } 
             } 
-            else if (d.id === "EB1") { if (prev) { const gap = calcGap(prev.record.start + prev.record.data.len, s); if (gap >= 4) { entry.bonus += 20; entry.triggered = true; entry.logs.push({srcId:'Self Condition', type:'cond', val:'+20 (Gap>=4)', order: 2}); } } } 
+            else if (d.id === "EB1") { if (prev) { const gap = calcGap(prev.record.start + prev.record.data.len, s); if (gap >= 4) { entry.bonus += 20; entry.triggered = true; entry.logs.push({srcId:'Self', type:'cond', val:'+20 (Gap>=4)', order: 2}); } } } 
             else if (d.id === "EB2") { 
                 if (next) { 
-                    next.mult += 0.35; next.buffsReceived.push({text:`[${d.name[state.lang]}] +35%`, type:d.type}); next.logs.push({srcId:d.name[state.lang], srcIdx:idx, type:'buff', val:'+35% (Pre)', order: 5}); entry.buffsGiven.push({targetIdx: output.indexOf(next)});
+                    next.mult += 0.35; next.buffsReceived.push({text:`[${d.name[state.lang]}] +35%`, type:d.type}); next.logs.push({srcId:d.id, srcIdx:idx, type:'buff', val:'+35% (Pre)', order: 5}); entry.buffsGiven.push({targetIdx: output.indexOf(next)});
                     const gap = calcGap(e, next.record.start); 
-                    if (gap > 0) { let extra = Math.min(1.25, gap * 0.125); next.mult += extra; next.buffsReceived.push({text:`[${d.name[state.lang]}] +${(extra*100).toFixed(0)}%`, type:d.type}); next.logs.push({srcId:d.name[state.lang], srcIdx:idx, type:'buff', val:`+${(extra*100).toFixed(0)}% (Gap)`, order: 5}); entry.triggered = true; } 
+                    if (gap > 0) { let extra = Math.min(1.25, gap * 0.125); next.mult += extra; next.buffsReceived.push({text:`[${d.name[state.lang]}] +${(extra*100).toFixed(0)}%`, type:d.type}); next.logs.push({srcId:d.id, srcIdx:idx, type:'buff', val:`+${(extra*100).toFixed(0)}% (Gap)`, order: 5}); entry.triggered = true; } 
                 } 
             } 
             else if (d.id === "EB3") { 
-                if (concurrent.length > 0) concurrent.forEach(t => { if(t.record.data.type==="score") { t.bonus += 10; t.logs.push({srcId:d.name[state.lang], srcIdx:idx, type:'buff', val:'+10 (Iso)', order: 3}); } }); 
+                if (concurrent.length > 0) concurrent.forEach(t => { if(t.record.data.type==="score") { t.bonus += 10; t.logs.push({srcId:d.id, srcIdx:idx, type:'buff', val:'+10 (Iso)', order: 3}); } }); 
                 let gapTotal = 0; if(prev) gapTotal += calcGap(prev.record.start+prev.record.data.len, s); if(next) { gapTotal += calcGap(e, next.record.start); } else { gapTotal += calcGap(e, TICKS); } 
-                if (gapTotal > 0) { let extraMult = Math.min(2.4, gapTotal * 0.075); concurrent.forEach(t => { if(t.record.data.type === "score") { t.mult += extraMult; t.buffsReceived.push({text:`[${d.name[state.lang]}] +${(extraMult*100).toFixed(1)}%`, type:d.type}); t.logs.push({srcId:d.name[state.lang], srcIdx:idx, type:'buff', val:`+${(extraMult*100).toFixed(0)}% (Iso Gap)`, order: 5}); entry.buffsGiven.push({targetIdx: output.indexOf(t)}); } }); entry.triggered = true; } 
+                if (gapTotal > 0) { let extraMult = Math.min(2.4, gapTotal * 0.075); concurrent.forEach(t => { if(t.record.data.type === "score") { t.mult += extraMult; t.buffsReceived.push({text:`[${d.name[state.lang]}] +${(extraMult*100).toFixed(1)}%`, type:d.type}); t.logs.push({srcId:d.id, srcIdx:idx, type:'buff', val:`+${(extraMult*100).toFixed(0)}% (Iso Gap)`, order: 5}); entry.buffsGiven.push({targetIdx: output.indexOf(t)}); } }); entry.triggered = true; } 
             } 
-            else if (d.id === "EB4") { let totalSpace = s * 3; let occupied = 0; items.forEach(it => { let iS = it.start; let iE = it.start + it.data.len; if (iE <= s) occupied += it.data.len; else if (iS < s) occupied += (s - iS); }); let empty = Math.max(0, totalSpace - occupied) * globalGapMult; if (empty > 0) { let boost = empty * 0.05; entry.mult += boost; entry.buffsReceived.push({text:`[空拍] +${(boost*100).toFixed(0)}%`, type:d.type}); entry.triggered = true; entry.logs.push({srcId:'Self Condition', type:'cond', val:`+${(boost*100).toFixed(0)}% (Atmo)`, order: 4});} } 
-            else if (d.id === "EB6") { let dur = e - s; let totalSpace = dur * 3; let occupied = 0; items.forEach(it => { if (it === p) return; let iS = it.start; let iE = it.start + it.data.len; let overlap = Math.max(0, Math.min(e, iE) - Math.max(s, iS)); occupied += overlap; }); occupied += dur; let empty = Math.max(0, totalSpace - occupied) * globalGapMult; if (empty > 0) { let boost = empty * 0.05; entry.mult += boost; entry.buffsReceived.push({text:`[${d.name[state.lang]}] +${(boost*100).toFixed(0)}%`, type:d.type}); entry.triggered = true; entry.logs.push({srcId:'Self Condition', type:'cond', val:`+${(boost*100).toFixed(0)}% (Pad)`, order: 4});} } 
-            else if (d.id === "NG2") { if (concurrent.length > 0) { entry.bonus += 10; entry.triggered = true; entry.logs.push({srcId:'Self Condition', type:'cond', val:'+10 (Sync)', order: 2}); } } 
+            else if (d.id === "EB4") { let totalSpace = s * 3; let occupied = 0; items.forEach(it => { let iS = it.start; let iE = it.start + it.data.len; if (iE <= s) occupied += it.data.len; else if (iS < s) occupied += (s - iS); }); let empty = Math.max(0, totalSpace - occupied) * globalGapMult; if (empty > 0) { let boost = empty * 0.05; entry.mult += boost; entry.buffsReceived.push({text:`[空拍] +${(boost*100).toFixed(0)}%`, type:d.type}); entry.triggered = true; entry.logs.push({srcId:'Self', type:'cond', val:`+${(boost*100).toFixed(0)}% (Atmo)`, order: 4});} } 
+            else if (d.id === "EB6") { let dur = e - s; let totalSpace = dur * 3; let occupied = 0; items.forEach(it => { if (it === p) return; let iS = it.start; let iE = it.start + it.data.len; let overlap = Math.max(0, Math.min(e, iE) - Math.max(s, iS)); occupied += overlap; }); occupied += dur; let empty = Math.max(0, totalSpace - occupied) * globalGapMult; if (empty > 0) { let boost = empty * 0.05; entry.mult += boost; entry.buffsReceived.push({text:`[${d.name[state.lang]}] +${(boost*100).toFixed(0)}%`, type:d.type}); entry.triggered = true; entry.logs.push({srcId:'Self', type:'cond', val:`+${(boost*100).toFixed(0)}% (Pad)`, order: 4});} } 
+            else if (d.id === "NG2") { if (concurrent.length > 0) { entry.bonus += 10; entry.triggered = true; entry.logs.push({srcId:'Self', type:'cond', val:'+10 (Sync)', order: 2}); } } 
             else if (d.id === "NG3") { 
-                if (prev) { prev.mult += 0.35; prev.buffsReceived.push({text:`[${d.name[state.lang]}] +35%`, type:d.type}); prev.logs.push({srcId:d.name[state.lang], srcIdx:idx, type:'buff', val:'+35%', order: 5}); entry.buffsGiven.push({targetIdx: output.indexOf(prev)}); } 
-                if (next) { next.mult += 0.35; next.buffsReceived.push({text:`[${d.name[state.lang]}] +35%`, type:d.type}); next.logs.push({srcId:d.name[state.lang], srcIdx:idx, type:'buff', val:'+35%', order: 5}); entry.buffsGiven.push({targetIdx: output.indexOf(next)}); } 
-                if (concurrent.length === 0) { if (prev) { prev.mult += 0.35; prev.buffsReceived.push({text:`[${d.name[state.lang]}] +35%`, type:d.type}); prev.logs.push({srcId:d.name[state.lang], srcIdx:idx, type:'buff', val:'+35% (Solo)', order: 5}); } if (next) { next.mult += 0.35; next.buffsReceived.push({text:`[${d.name[state.lang]}] +35%`, type:d.type}); next.logs.push({srcId:d.name[state.lang], srcIdx:idx, type:'buff', val:'+35% (Solo)', order: 5}); } entry.triggered = true; } 
+                if (prev) { prev.mult += 0.35; prev.buffsReceived.push({text:`[${d.name[state.lang]}] +35%`, type:d.type}); prev.logs.push({srcId:d.id, srcIdx:idx, type:'buff', val:'+35%', order: 5}); entry.buffsGiven.push({targetIdx: output.indexOf(prev)}); } 
+                if (next) { next.mult += 0.35; next.buffsReceived.push({text:`[${d.name[state.lang]}] +35%`, type:d.type}); next.logs.push({srcId:d.id, srcIdx:idx, type:'buff', val:'+35%', order: 5}); entry.buffsGiven.push({targetIdx: output.indexOf(next)}); } 
+                if (concurrent.length === 0) { if (prev) { prev.mult += 0.35; prev.buffsReceived.push({text:`[${d.name[state.lang]}] +35%`, type:d.type}); prev.logs.push({srcId:d.id, srcIdx:idx, type:'buff', val:'+35% (Solo)', order: 5}); } if (next) { next.mult += 0.35; next.buffsReceived.push({text:`[${d.name[state.lang]}] +35%`, type:d.type}); next.logs.push({srcId:d.id, srcIdx:idx, type:'buff', val:'+35% (Solo)', order: 5}); } entry.triggered = true; } 
             } 
         }); 
         output.forEach(entry => { 
             const d = entry.record.data; 
             if (d.id === "NG4") { 
                 const s = entry.record.start; const concurrent = output.filter(x => x !== entry && x.record.start === s); let suckedScore = 0; 
-                concurrent.forEach(t => { if (t.record.data.type === "score") { let current = (t.base + t.bonus) * t.mult * t.finalMultiplier; t.finalMultiplier *= 0.5; t.buffsReceived.push({text:`[${d.name[state.lang]}] -50%`, type:d.type}); t.logs.push({srcId:d.name[state.lang], srcIdx: output.indexOf(entry), type:'nerf', val:'-50% (Consumed)', order: 6}); let now = (t.base + t.bonus) * t.mult * t.finalMultiplier; suckedScore += (current - now); entry.buffsGiven.push({targetIdx: output.indexOf(t), type:'consume'}); } }); 
+                concurrent.forEach(t => { if (t.record.data.type === "score") { let current = (t.base + t.bonus) * t.mult * t.finalMultiplier; t.finalMultiplier *= 0.5; t.buffsReceived.push({text:`[${d.name[state.lang]}] -50%`, type:d.type}); t.logs.push({srcId:d.id, srcIdx: output.indexOf(entry), type:'nerf', val:'-50% (Consumed)', order: 6}); let now = (t.base + t.bonus) * t.mult * t.finalMultiplier; suckedScore += (current - now); entry.buffsGiven.push({targetIdx: output.indexOf(t), type:'consume'}); } }); 
                 if (suckedScore > 0) { entry.bonus += 20 + (suckedScore * 1.5); entry.buffsReceived.push({text:`+${(suckedScore * 1.5).toFixed(0)}`, type:d.type}); entry.triggered = true; } 
             } 
         }); 
@@ -685,7 +687,7 @@
         document.getElementById('mainContainer').classList.add('playing-lock'); document.getElementById('skipOverlay').style.display = 'flex'; 
         document.querySelectorAll('.placed-item').forEach(el => el.classList.remove('playing-active')); 
         document.getElementById('combatConnections').innerHTML = '';
-        activeBeams = []; // Reset beams registry
+        activeBeams = [];
 
         // Reset Visuals
         document.querySelectorAll('.engine-aura').forEach(el=>el.remove());
@@ -707,13 +709,15 @@
             if(playhead) playhead.style.left = (progress * 100) + "%";
             const simTime = fastForward ? progress * TOTAL_DURATION : (Tone.Transport.seconds || realElapsed);
             
-            // Clean up expired beams
+            // Beam Cleanup (Opacity Fade)
             for (let i = activeBeams.length - 1; i >= 0; i--) {
                 const b = activeBeams[i];
+                if (simTime > b.startTime) {
+                    b.el.style.opacity = 0; // Trigger fade out
+                }
                 if (simTime > b.endTime) {
-                    b.el.style.opacity = 0;
-                    // setTimeout removal happens in CSS transition
                     activeBeams.splice(i, 1);
+                    setTimeout(()=>b.el.remove(), 100);
                 }
             }
 
@@ -729,39 +733,31 @@
                             if (r.record.data.type === 'score') { const score = Math.floor((r.base + r.bonus) * r.mult * r.finalMultiplier); spawnFloatingText(`+${score}`, x, y, 'ft-score'); } 
                             else if (r.record.data.type === 'support') { spawnFloatingText(`Buff!`, x, y, 'ft-buff'); }
                             
-                            // Engine Visuals (Aura/Flash)
-                            if (r.record.data.id === 'SB4') { // Master Clock Aura
+                            if (r.record.data.id === 'SB4') { // Master Clock
                                 spawnFloatingText(`MASTER`, x, y, 'ft-buff');
                                 if (r.buffsGiven.length > 0) {
-                                    r.buffsGiven.forEach(b => {
-                                        const tRes = state.lastResultData[b.targetIdx];
-                                        if(tRes && tRes.record.el) spawnEngineEffect(tRes.record.el, 'engine-aura');
-                                    });
+                                    r.buffsGiven.forEach(b => { const tRes = state.lastResultData[b.targetIdx]; if(tRes && tRes.record.el) spawnEngineEffect(tRes.record.el, 'engine-aura'); });
                                 }
                             }
                             if (r.record.data.id === 'SB5') { spawnFloatingText(`QUANTIZE`, x, y, 'ft-buff'); document.querySelectorAll('.grid-cell.cell-weak').forEach(cell => { if(cell.getBoundingClientRect().left > x) cell.classList.add('flash-weak-fix'); }); }
                             if (r.record.data.id === 'EB5') { spawnFloatingText(`STRETCH`, x, y, 'ft-buff'); document.querySelectorAll('.track').forEach(t => t.classList.add('flash-track-purple')); setTimeout(()=> document.querySelectorAll('.track').forEach(t => t.classList.remove('flash-track-purple')), 500); }
                             
-                            // Beams
                             if (r.buffsGiven.length > 0 && r.record.data.id !== 'SB4') { 
                                 r.buffsGiven.forEach(b => { 
                                     if(b.type === 'consume') return; 
                                     const targetRes = state.lastResultData[b.targetIdx]; 
                                     if (targetRes && targetRes.record.el) { 
-                                        // Calculate target end time for beam persistence
-                                        const tStart = targetRes.record.start * TICK_DURATION;
-                                        const tDur = targetRes.record.data.len * TICK_DURATION;
-                                        drawCombatBeam(svg, el, targetRes.record.el, r.record.data.type, tStart + tDur); 
+                                        drawCombatBeam(svg, el, targetRes.record.el, r.record.data.type, simTime); 
                                     } 
                                 }); 
                             }
                             const nerfs = r.logs.filter(l => l.type === 'nerf'); 
                             nerfs.forEach(n => { 
                                 spawnFloatingText(n.val, x, y + 20, 'ft-neg'); 
-                                const srcItem = state.placedItems.find(it => it.data.id === n.srcId); // Note: srcId here is Name, mapping back is tricky if dupe names. Ideally use ID. But for visual it's ok.
-                                // Fallback: find any item with that name
-                                const srcRes = state.lastResultData.find(res => res.record.data.name[state.lang] === n.srcId || res.record.data.id === n.srcId);
-                                if(srcRes && srcRes.record.el) drawCombatBeam(svg, el, srcRes.record.el, 'neg', simTime + 1.0); 
+                                // Lookup by name is fuzzy, ideally by ID, but for visual this is OK
+                                // NG4 hack: Find source of nerf
+                                const srcItem = state.placedItems.find(it => it.data.id === "NG4"); 
+                                if(srcItem && srcItem.el) drawCombatBeam(svg, el, srcItem.el, 'neg', simTime); 
                             });
                         }
                     }
@@ -772,28 +768,18 @@
     }
     
     function spawnEngineEffect(targetEl, cls) {
-        const rect = targetEl.getBoundingClientRect();
-        const aura = document.createElement('div');
-        aura.className = cls;
-        aura.style.width = rect.width + 'px';
-        aura.style.height = rect.height + 'px';
-        aura.style.left = rect.left + 'px';
-        aura.style.top = rect.top + 'px';
-        document.body.appendChild(aura);
-        // Remove when playback ends or via timeout
-        setTimeout(() => aura.remove(), 2500); 
+        const rect = targetEl.getBoundingClientRect(); const aura = document.createElement('div'); aura.className = cls; aura.style.width = rect.width + 'px'; aura.style.height = rect.height + 'px'; aura.style.left = rect.left + 'px'; aura.style.top = rect.top + 'px'; document.body.appendChild(aura); setTimeout(() => aura.remove(), 2500); 
     }
-
     function spawnFloatingText(text, x, y, cls) { const div = document.createElement('div'); div.className = `floating-text ${cls}`; div.innerText = text; div.style.left = x + 'px'; div.style.top = y + 'px'; document.body.appendChild(div); setTimeout(() => div.remove(), 1500); }
     
-    function drawCombatBeam(svg, el1, el2, type, endTime) {
+    function drawCombatBeam(svg, el1, el2, type, startTime) {
         const cRect = svg.getBoundingClientRect(); const r1 = el1.getBoundingClientRect(); const r2 = el2.getBoundingClientRect();
         const x1 = r1.left + r1.width/2 - cRect.left; const y1 = r1.top + r1.height/2 - cRect.top; const x2 = r2.left + r2.width/2 - cRect.left; const y2 = r2.top + r2.height/2 - cRect.top;
         const line = document.createElementNS('http://www.w3.org/2000/svg','line'); line.setAttribute('x1', x1); line.setAttribute('y1', y1); line.setAttribute('x2', x2); line.setAttribute('y2', y2);
-        let col = type === 'neg' ? '#ff5252' : type === 'engine' ? '#d500f9' : '#00e5ff'; line.setAttribute('stroke', col); line.setAttribute('stroke-width', '4'); line.setAttribute('stroke-linecap', 'round'); line.style.transition = 'opacity 0.5s'; 
+        let col = type === 'neg' ? '#ff5252' : type === 'engine' ? '#d500f9' : '#00e5ff'; line.setAttribute('stroke', col); line.setAttribute('stroke-width', '4'); line.setAttribute('stroke-linecap', 'round'); 
+        line.style.transition = 'opacity 2.5s ease-out'; // Long fade out
         svg.appendChild(line); 
-        
-        activeBeams.push({ el: line, endTime: endTime + 0.2 }); // Add slight buffer
+        activeBeams.push({ el: line, startTime: startTime, endTime: startTime + 3.0 });
     }
     
     function skipPlayback() { if (isSkipping) return; isSkipping = true; Tone.Transport.stop(); Tone.Transport.cancel(); if(bgPlayer) bgPlayer.stop(); if(losePlayer) losePlayer.stop(); if(samplePlayers) samplePlayers.stopAll(); Tone.Draw.cancel(); if (playbackTimer) clearTimeout(playbackTimer); startVisualEngine(true); }
@@ -802,10 +788,7 @@
         if (visualInterval) clearInterval(visualInterval); document.querySelectorAll('.placed-item').forEach(el => el.classList.remove('playing-active'));
         const playhead = document.getElementById('playhead'); if(playhead) playhead.style.display = 'none'; document.getElementById('skipOverlay').style.display = 'none'; document.getElementById('combatConnections').innerHTML = '';
         state.isPlaying = false; document.getElementById('mainContainer').classList.remove('playing-lock'); document.getElementById('mainSubmitBtn').disabled = false; document.getElementById('mainSubmitBtn').innerText = UI_TEXT[state.lang].submit; 
-        
-        // Remove effects
         document.querySelectorAll('.engine-aura').forEach(el=>el.remove());
-
         const results = state.lastResultData || calculateLogic(); let totalScore = 0; results.forEach(r => totalScore += (r.base + r.bonus) * r.mult * r.finalMultiplier);
         if (state.isSimulation) { alert(`${UI_TEXT[state.lang].simReport}\n${UI_TEXT[state.lang].resTotal}: ${Math.floor(totalScore)} / ${UI_TEXT[state.lang].resTarget}: ${config.target}`); state.isSimulation = false; }
         else { const currentNg1Count = state.placedItems.filter(p => p.data.id === "NG1").length; if (currentNg1Count > 0) { state.ng1PermanentStacks += currentNg1Count; } showResult(currentNg1Count, Math.floor(totalScore)); }
@@ -817,13 +800,15 @@
         document.querySelectorAll('.soft-guide').forEach(el => el.classList.remove('soft-guide')); document.querySelectorAll('.soft-guide-gentle').forEach(el => el.classList.remove('soft-guide-gentle'));
         if (state.levelIndex === 0) {
             addGuide('targetContainer');
+            // FIX: Always glow inventory items until placed
             const invItems = document.querySelectorAll('.inv-item');
-            invItems.forEach(el => { if (el.innerText.includes("Sampler A") && !tutorialState.l1.aPlaced) addGuideGentleEl(el); if (el.innerText.includes("Sampler B") && !tutorialState.l1.bPlaced) addGuideGentleEl(el); });
-            // L1 GLOW FIX: Check if selected item matches pending placement
-            if (state.selectedInvItem) {
-                if (state.selectedInvItem.data.id === 'TUT1' && !tutorialState.l1.aPlaced) addGuideGentle('detailPanel');
-                if (state.selectedInvItem.data.id === 'TUT2' && !tutorialState.l1.bPlaced) addGuideGentle('detailPanel');
-            }
+            const hasA = state.placedItems.some(p => p.data.id === 'TUT1');
+            const hasB = state.placedItems.some(p => p.data.id === 'TUT2');
+            invItems.forEach(el => { 
+                if (el.innerText.includes("Sampler A") && !hasA) addGuideGentleEl(el); 
+                if (el.innerText.includes("Sampler B") && !hasB) addGuideGentleEl(el); 
+            });
+            if (state.selectedInvItem && ((state.selectedInvItem.data.id === 'TUT1' && !hasA) || (state.selectedInvItem.data.id === 'TUT2' && !hasB))) addGuideGentle('detailPanel');
         }
         if (state.levelIndex === 1) { addGuide('targetContainer'); if (!tutorialState.l2.bought) { addGuideGentle('goldText'); document.querySelectorAll('.shop-item').forEach(el => { if (el.innerText.includes("Rest") || el.innerText.includes("休止")) addGuideGentleEl(el); }); } else if (!tutorialState.l2.effectActive) { document.querySelectorAll('.inv-item').forEach(el => { if (el.innerText.includes("Rest") || el.innerText.includes("休止")) addGuideGentleEl(el); }); if (state.selectedInvItem && state.selectedInvItem.data.id === 'EB1') addGuideGentle('detailPanel'); } }
         if (state.levelIndex === 2) { addGuide('targetContainer'); const needKick = !tutorialState.l3.kickBought; const needCpu = !tutorialState.l3.cpuBought; if (needKick || needCpu) { addGuideGentle('goldText'); if (needCpu) addGuide('btnBuyCpu'); if (needKick) document.querySelectorAll('.shop-item').forEach(el => { if (el.innerText.includes("Kick") || el.innerText.includes("底鼓")) addGuideGentleEl(el); }); } else if (!tutorialState.l3.kickEffect) { document.querySelectorAll('.inv-item').forEach(el => { if (el.innerText.includes("Kick") || el.innerText.includes("底鼓")) addGuideGentleEl(el); }); if (state.selectedInvItem && state.selectedInvItem.data.id === 'SB1') addGuideGentle('detailPanel'); } }
@@ -879,7 +864,6 @@
                 if (sourceType === 'track') state.placedItems = state.placedItems.filter(p => p !== sourceRecord);
                 state.placedItems.push({ id: Date.now(), data: itemData, track: currentHover.track, start: currentHover.tick });
                 restorePlacedItems();
-                if (state.isTutorial && state.levelIndex === 0) { if (itemData.id === 'TUT1') tutorialState.l1.aPlaced = true; if (itemData.id === 'TUT2') tutorialState.l1.bPlaced = true; }
             }
         } else if (hoverType === 'shop' && sourceType === 'inventory') { if (canSell()) { state.selectedInvItem = sourceInvItem; sellSelectedItem(); } }
         else if (hoverType === 'outside' && sourceType === 'track') { state.placedItems = state.placedItems.filter(p => p !== sourceRecord); restorePlacedItems(); }
@@ -944,7 +928,7 @@
         config.target = cfg.target; 
         config.activeTracks = cfg.tracks; 
         
-        // Track Logic
+        // Track Logic V23.5: Std Mode starts with 2 unlocked
         if (!state.isTutorial && idx === 0) state.unlockedTracks = 2; 
         else if (idx === 0) state.unlockedTracks = 1;
         else if (state.isTutorial && idx === 3) state.unlockedTracks = 1; 
@@ -952,6 +936,7 @@
         else state.unlockedTracks = config.activeTracks; 
 
         state.cpuPurchasedRound = 0; state.roundBase = 10 + (idx * 2); 
+        // Tutorial L4 uses same base as Std L1 (10)
         if (state.isTutorial && idx === 3) state.roundBase = 10; 
 
         if (!state.isTutorial && cfg.poolAdds) cfg.poolAdds.forEach(id => { if(!state.poolIds.includes(id)) state.poolIds.push(id); if (!state.poolEntryTimes[id]) state.poolEntryTimes[id] = idx; }); 
@@ -1084,7 +1069,7 @@
         svg.appendChild(line);
     }
     
-    // Updated Tooltip Logic (Sorting)
+    // Updated Tooltip Logic (Sorting) V25.0
     function showResultTooltip(r) {
         const tip = document.getElementById('resultTooltip'); const t = UI_TEXT[state.lang];
         let html = `<b>${r.record.data.name[state.lang]}</b><br>`; 
@@ -1095,12 +1080,54 @@
         // Sort Logs by 'order'
         const sortedLogs = r.logs.sort((a, b) => (a.order || 0) - (b.order || 0));
         
+        let addSum = 0;
+        let multProd = 1;
+
         sortedLogs.forEach(l => { 
             let col = l.type === 'buff' ? '#00e5ff' : l.type === 'cond' ? '#ffd700' : '#ff5252'; 
-            html += `<div class="rt-row" style="color:${col}"><span>${l.val}</span> <span>[${l.srcId}]</span></div>`; 
+            
+            // Clean Val for display (remove parens)
+            let displayVal = l.val;
+            let displaySrc = getSourceName(l.srcId);
+            
+            // Accumulate for formula
+            if(l.val.includes('+') && !l.val.includes('%')) {
+                const num = parseInt(l.val.replace(/[^\d-]/g, ''));
+                if(!isNaN(num)) addSum += num;
+            }
+            if(l.val.includes('%')) {
+                const num = parseInt(l.val.replace(/[^\d-]/g, ''));
+                if(!isNaN(num)) multProd += (num/100);
+            }
+            if(l.val.includes('x')) {
+                const num = parseFloat(l.val.replace(/[^\d.]/g, ''));
+                if(!isNaN(num)) multProd *= num;
+            }
+
+            // Clean display string: Remove the (Reason) part for cleaner UI
+            if (displayVal.includes('(')) displayVal = displayVal.split('(')[0].trim();
+
+            html += `<div class="rt-row" style="color:${col}"><span>${displayVal}</span> <span>[${displaySrc}]</span></div>`; 
         });
         
-        if (r.record.data.type === 'score') { const final = Math.floor((r.base + r.bonus) * r.mult * r.finalMultiplier); html += `<div class="rt-total">${t.final}: ${final}</div>`; }
+        if (r.record.data.type === 'score') { 
+            const final = Math.floor((r.base + r.bonus) * r.mult * r.finalMultiplier); 
+            
+            // FORMULA ROW
+            let formulaStr = `(${r.base}`;
+            if (addSum > 0) formulaStr += ` + ${addSum}`;
+            formulaStr += `)`;
+            
+            // Reconstruct Mult string approximately for visual aid
+            // Note: This is an approximation as calculating exact breakdown of multipliers from logs is complex
+            // We show the aggregated multiplier
+            const totalMult = r.mult * r.finalMultiplier;
+            if (totalMult !== 1) formulaStr += ` * ${totalMult.toFixed(2)}`;
+            formulaStr += ` = ${final}`;
+
+            html += `<div class="rt-formula">${formulaStr}</div>`;
+            html += `<div class="rt-total">${t.final}: ${final}</div>`; 
+        }
         if (r.buffsGiven.length > 0) { html += `<div class="rt-total" style="color:#d500f9; border-top:1px dashed #555;">Buffed ${r.buffsGiven.length} items</div>`; }
         
         const rect = r.resEl.getBoundingClientRect(); tip.innerHTML = html; tip.style.display = 'block'; tip.style.left = (rect.right + 10) + 'px'; tip.style.top = rect.top + 'px';
@@ -1167,7 +1194,6 @@
     
     function renderShopFromState() { const list = document.getElementById('shopList'); list.innerHTML = ''; state.currentShopItems.forEach(item => { 
         let d = document.createElement('div'); d.className = 'shop-item'; 
-        // UNIQUE CHECK IN SHOP
         const owned = state.inventory.some(inv => inv.data.id === item.data.id) || state.placedItems.some(p => p.data.id === item.data.id);
         if (item.data.unique && owned) { d.classList.add('owned-unique'); item.sold = true; }
 
@@ -1185,7 +1211,7 @@
         }); 
     }
 
-    // --- TOOLTIP FIX V24.5: SAFER HTML CONSTRUCTION ---
+    // --- TOOLTIP FIX V25.0: SAFER & CLEANER ---
     function showDetail(item) { 
         if (state.isTutorial) { if (state.levelIndex === 0) { if (item.id === 'TUT1') tutorialState.l1.aClicked = true; if (item.id === 'TUT2') tutorialState.l1.bClicked = true; } if (state.levelIndex === 1 && item.id === 'EB1') { tutorialState.l2.clicked = true; } if (state.levelIndex === 2 && item.id === 'SB1') { tutorialState.l3.kickClicked = true; } }
         document.getElementById('detailTitle').innerText = item.name[state.lang]; 
@@ -1195,35 +1221,43 @@
         let rawDesc = item.desc[state.lang];
         if (item.id === "NG1") { rawDesc += `<br><span style="color:#ffd700; font-weight:bold;">[${UI_TEXT[state.lang].ng1Charge}: ${state.ng1PermanentStacks}]</span>`; } 
 
-        // 1. Tokenize string by [Keywords] to avoid regex collision inside HTML tags later
-        // We use split to separate plain text from tokens
-        const tokens = rawDesc.split(/(\[.*?\])/g);
         const container = document.getElementById('detailContent');
-        container.innerHTML = ''; // Clear
+        container.innerHTML = ''; 
+
+        // 1. Identify Keywords using regex
+        const tokens = rawDesc.split(/(\[.*?\])/g);
 
         tokens.forEach(token => {
-            // Check if token matches a known keyword
-            const coreKey = token.replace('[', '').replace(']', '');
-            if (DEFINITIONS[state.lang][coreKey]) {
-                // It is a Keyword. Create Span.
+            const cleanToken = token.replace('[', '').replace(']', '');
+            // Check if this token matches a defined keyword
+            // We search keys in DEFINITIONS[state.lang]
+            let matchedKey = null;
+            for (const key in DEFINITIONS[state.lang]) {
+                if (cleanToken.includes(key)) { // "Strong Beat" matches "Strong Beat"
+                    matchedKey = key;
+                    break;
+                }
+            }
+
+            if (matchedKey) {
                 const span = document.createElement('span');
                 span.className = 'tooltip-ref';
-                span.onmouseenter = (e) => showTooltip(e, coreKey);
+                span.onmouseenter = (e) => showTooltip(e, matchedKey);
                 span.onmouseleave = () => hideTooltip();
                 
-                // Inject Icon if exists
-                let innerHTML = token;
+                // Construct HTML with Icon
+                let innerHTML = token; // default
                 if (token.includes('Strong Beat') || token.includes('强拍')) innerHTML = `${TAG_ICONS.strong} ${token}`;
                 else if (token.includes('Empty') || token.includes('空拍')) innerHTML = `${TAG_ICONS.empty} ${token}`;
                 else if (token.includes('Sync') || token.includes('同步')) innerHTML = `${TAG_ICONS.sync} ${token}`;
                 else if (token.includes('Same Track') || token.includes('同轨')) innerHTML = `${TAG_ICONS.track} ${token}`;
                 
-                span.innerHTML = innerHTML;
+                span.innerHTML = innerHTML; // Safe innerHTML for just icon+text
                 container.appendChild(span);
             } else {
-                // Plain text, just append
+                // Regular Text
                 const textNode = document.createElement('span');
-                textNode.innerHTML = token; // Use innerHTML to preserve line breaks if any
+                textNode.innerHTML = token; 
                 container.appendChild(textNode);
             }
         });

@@ -426,6 +426,23 @@
     </div>
 </div>
 
+<div class="modal" id="discordModal">
+    <div class="modal-content" style="width: 450px; text-align: center;">
+        <h2 style="color: #5865F2; margin-bottom: 10px;">🎮 Join Our Community!</h2>
+        <p style="color: #aaa; margin-bottom: 20px;" id="txtDiscordMsg">Thanks for playing! Join our Discord to share feedback and connect with other players.</p>
+        <div style="background: white; padding: 20px; border-radius: 12px; display: inline-block; margin-bottom: 20px;">
+            <img src="discord_qr.png" alt="Discord QR Code" style="width: 200px; height: 200px; display: block;">
+        </div>
+        <p style="color: #888; font-size: 12px; margin-bottom: 15px;" id="txtScanQR">Scan to join Discord</p>
+        <div style="display: flex; gap: 10px; justify-content: center;">
+            <a href="https://discord.gg/XeJ6mfQtVW" target="_blank" class="submit-btn" style="text-decoration: none; display: inline-block; padding: 12px 24px; background: #5865F2;">
+                <span id="txtJoinDiscord">Open Discord</span>
+            </a>
+            <button class="submit-btn" style="background: #444;" onclick="closeDiscordAndContinue()" id="btnDiscordContinue">Continue</button>
+        </div>
+    </div>
+</div>
+
 <script>
     // --- Constants ---
     const TICKS = 32;
@@ -460,7 +477,9 @@
             tutTitle: "Tutorial", tutDesc: "Recommended for new players.", skip: "Skip", playTut: "Play Tutorial",
             tutComp: "Tutorial Complete!", tutCompDesc: "You are now ready for the real challenge.", enterGame: "ENTER GAME",
             soldOutQAQ: "Sold Out QAQ", simReport: "SIMULATION REPORT",
-            self: "Self Effect", global: "Global Rule"
+            self: "Self Effect", global: "Global Rule",
+            discordMsg: "Thanks for playing! Join our Discord to share feedback and connect with other players.",
+            scanQR: "Scan to join Discord", joinDiscord: "Open Discord", discordContinue: "Continue"
         },
         cn: {
             clear: "清空", help: "帮助", history: "历史", cpu: "★ CPU", target: "目标 Groove", funds: "资金 (G)",
@@ -480,13 +499,30 @@
             tutTitle: "新手教程", tutDesc: "强烈建议新玩家游玩。", skip: "跳过", playTut: "进入教程",
             tutComp: "教程结束!", tutCompDesc: "恭喜完成! 现在进入正式挑战。", enterGame: "进入正式关卡",
             soldOutQAQ: "商店卖断货了 QAQ", simReport: "模拟运行报告",
-            self: "自身效果", global: "全局规则"
+            self: "自身效果", global: "全局规则",
+            discordMsg: "感谢游玩！扫码加入我们的Discord社区，分享反馈、与其他玩家交流！",
+            scanQR: "扫码加入 Discord", joinDiscord: "打开 Discord", discordContinue: "继续"
         }
     };
 
     const DEFINITIONS = {
-        en: { "Strong Beat": "The start of the 1st and 3rd beat of a bar. (Darker Grid Area)", "Weak Beat": "The 2nd and 4th beat of a bar.", "Same Track": "items placed on the same horizontal track.", "Sync": "Refers to items triggered at the exact same time (vertical column) on different tracks.", "Empty Slot": "An unoccupied Grid unit on the timeline. (1 Beat = 4 Grids).", "Empty Slots": "An unoccupied Grid unit on the timeline. (1 Beat = 4 Grids).", "Consume": "Reduces the Groove of target items." },
-        cn: { "强拍": "每小节的第1拍与第3拍 (黑色网格区域)。", "弱拍": "每小节的第2拍与第4拍。", "同轨": "处于同一音轨上的道具。", "同步": "垂直方向上，与该道具在同一时间点被触发的其他道具。", "空拍": "DAW中最小的空间单位。1拍 = 4格。", "吞噬": "减少目标道具的分数，并将其作为自身分数的计算依据。" }
+        en: { 
+            "Strong Beat": "The 1st and 3rd beat of a bar (Darker Grid Area).", 
+            "Weak Beat": "The 2nd and 4th beat of a bar.", 
+            "Same Track": "Items on the same horizontal track.", 
+            "Sync": "Items triggered at the same time on different tracks.", 
+            "Empty Slot": "An unoccupied Grid unit. 1 Beat = 4 Grids.", 
+            "Empty Slots": "An unoccupied Grid unit. 1 Beat = 4 Grids.", 
+            "Consume": "Reduces the Groove of target items." 
+        },
+        cn: { 
+            "强拍": "每小节的第1拍与第3拍（黑色网格区域）。", 
+            "弱拍": "每小节的第2拍与第4拍。", 
+            "同轨": "处于同一音轨上的道具。", 
+            "同步": "与该道具在同一时间点触发的其他道具。", 
+            "空拍": "DAW中最小的空间单位。1拍 = 4格。", 
+            "吞噬": "减少目标道具的分数，并作为自身分数的计算依据。"
+        }
     };
 
     const TAG_ICONS = {
@@ -497,21 +533,21 @@
     };
 
     const DB = [
-        { id: "SB1", name: {en: "Kick Drum", cn: "底鼓"}, desc: {en: "Gain 20 Groove. If placed on a [Strong Beat], gain +10.", cn: "获得 20 Groove。若放置在 [Strong Beat] (Start on Strong Beat) 上，额外 +10。"}, len: 4, cpu: 1, base: 20, type: "score", color: "#ffecb3", price: 100, rarity: 1 },
-        { id: "SB2", name: {en: "Sidechain", cn: "侧链"}, desc: {en: "All [Sync] items +50%. If on [Strong Beat], effect +25%.", cn: "所有 [Sync] 道具 +50%。若在 [Strong Beat]，效果 +25%。"}, len: 4, cpu: 1, base: 0, type: "support", color: "#b2ebf2", price: 75, rarity: 1 },
-        { id: "SB3", name: {en: "Accent", cn: "重音标记"}, desc: {en: "[Same Track] Next item +100%. If on [Strong Beat], Next item counts as [Strong Beat].", cn: "[Same Track] 下一个道具 +100%。若在 [Strong Beat]，下一个视为 [Strong Beat]触发。"}, len: 4, cpu: 2, base: 0, type: "support", color: "#80deea", price: 100, rarity: 2 },
-        { id: "SB4", name: {en: "Master Clock", cn: "主时钟"}, desc: {en: "Unique (Limit 1). If 5+ [Strong Beat] triggered before: Next [Strong Beat] items x1.5.", cn: "唯一 (Limit 1)。若此前已触发 5+ [Strong Beat]：后续 [Strong Beat] 道具 x1.5。"}, len: 4, cpu: 4, base: 0, type: "engine", color: "#e1bee7", price: 150, rarity: 3, unique: true },
-        { id: "SB5", name: {en: "Quantizer", cn: "量化器"}, desc: {en: "Unique (Limit 1). If on start of [Strong Beat], all [Weak Beat] positions count as [Strong Beat].", cn: "唯一 (Limit 1)。若在 [Strong Beat] 起始点，全场 [Weak Beat] 均视为 [Strong Beat]。"}, len: 8, cpu: 4, base: 0, type: "engine", color: "#ce93d8", price: 150, rarity: 3, unique: true },
-        { id: "EB1", name: {en: "Rest Note", cn: "休止符"}, desc: {en: "Gain 14 Groove. If [Same Track] Previous is ≥ 4 [Empty Slots] away, +20.", cn: "获得 14 Groove。若 [Same Track]前一个 间隔 ≥ 4 [Empty Slot]，+20。"}, len: 2, cpu: 1, base: 14, type: "score", color: "#ffe082", price: 100, rarity: 1 },
-        { id: "EB2", name: {en: "Pre-Delay", cn: "预延时"}, desc: {en: "[Same Track] Next item +35%. Per 1 [Empty Slot] gap, +12.5%.", cn: "[Same Track] 下一个 +35%。每间隔 1 [Empty Slot]，+12.5%。"}, len: 2, cpu: 1, base: 0, type: "support", color: "#4dd0e1", price: 100, rarity: 1 },
-        { id: "EB3", name: {en: "Isolation Booth", cn: "隔离室"}, desc: {en: "[Sync] items +10. Per 1 [Empty Slot] gap (Prev/Next), [Sync] +7.5%.", cn: "[Sync] 道具 +10。每与前后间隔 1 [Empty Slot]，[Sync] +7.5%。"}, len: 4, cpu: 2, base: 0, type: "support", color: "#00bcd4", price: 100, rarity: 2 },
-        { id: "EB4", name: {en: "Atmosphere", cn: "氛围采样"}, desc: {en: "Gain 30 Groove. +5% per previous [Empty Slot].", cn: "获得 30 Groove。此前每 1 [Empty Slot]，+5%。"}, len: 4, cpu: 3, base: 30, type: "score", color: "#ffd54f", price: 150, rarity: 3 },
-        { id: "EB5", name: {en: "Time Stretch", cn: "时间拉伸"}, desc: {en: "Unique (Limit 1). 1 [Empty Slot] counts as 2.", cn: "唯一 (Limit 1)。1 [Empty Slot] 视为 2。"}, len: 8, cpu: 4, base: 0, type: "engine", color: "#ba68c8", price: 150, rarity: 3, unique: true },
-        { id: "EB6", name: {en: "Pad", cn: "铺底音色"}, desc: {en: "Gain 30 over time. +5% per concurrent [Empty Slot].", cn: "持续获得 30。全场每 1 [Empty Slot]，+5%。"}, len: 8, cpu: 2, base: 30, type: "score", color: "#ffca28", price: 100, rarity: 2 },
+        { id: "SB1", name: {en: "Kick Drum", cn: "底鼓"}, desc: {en: "Gain 20 Groove. If placed on a [Strong Beat], gain +10.", cn: "获得 20 Groove。若放置在[强拍]上，额外 +10。"}, len: 4, cpu: 1, base: 20, type: "score", color: "#ffecb3", price: 100, rarity: 1 },
+        { id: "SB2", name: {en: "Sidechain", cn: "侧链"}, desc: {en: "All [Sync] items +50%. If on [Strong Beat], effect +25%.", cn: "所有[同步]道具 +50%。若在[强拍]，效果 +25%。"}, len: 4, cpu: 1, base: 0, type: "support", color: "#b2ebf2", price: 75, rarity: 1 },
+        { id: "SB3", name: {en: "Accent", cn: "重音标记"}, desc: {en: "[Same Track] Next item +100%. If on [Strong Beat], Next item counts as [Strong Beat].", cn: "[同轨]下一个道具 +100%。若在[强拍]，下一个视为[强拍]触发。"}, len: 4, cpu: 2, base: 0, type: "support", color: "#80deea", price: 100, rarity: 2 },
+        { id: "SB4", name: {en: "Master Clock", cn: "主时钟"}, desc: {en: "Unique. If 5+ [Strong Beat] triggered before: Next [Strong Beat] items x1.5.", cn: "唯一。若此前已触发 5+[强拍]：后续[强拍]道具 x1.5。"}, len: 4, cpu: 4, base: 0, type: "engine", color: "#e1bee7", price: 150, rarity: 3, unique: true },
+        { id: "SB5", name: {en: "Quantizer", cn: "量化器"}, desc: {en: "Unique. If on [Strong Beat], all [Weak Beat] positions count as [Strong Beat].", cn: "唯一。若在[强拍]，全场[弱拍]均视为[强拍]。"}, len: 8, cpu: 4, base: 0, type: "engine", color: "#ce93d8", price: 150, rarity: 3, unique: true },
+        { id: "EB1", name: {en: "Rest Note", cn: "休止符"}, desc: {en: "Gain 14 Groove. If [Same Track] Previous is ≥ 4 [Empty Slots] away, +20.", cn: "获得 14 Groove。若[同轨]前一个间隔 ≥ 4[空拍]，+20。"}, len: 2, cpu: 1, base: 14, type: "score", color: "#ffe082", price: 100, rarity: 1 },
+        { id: "EB2", name: {en: "Pre-Delay", cn: "预延时"}, desc: {en: "[Same Track] Next item +35%. Per 1 [Empty Slot] gap, +12.5%.", cn: "[同轨]下一个 +35%。每间隔 1[空拍]，+12.5%。"}, len: 2, cpu: 1, base: 0, type: "support", color: "#4dd0e1", price: 100, rarity: 1 },
+        { id: "EB3", name: {en: "Isolation Booth", cn: "隔离室"}, desc: {en: "[Sync] items +10. Per 1 [Empty Slot] gap (Prev/Next), [Sync] +7.5%.", cn: "[同步]道具 +10。每与前后间隔 1[空拍]，[同步]+7.5%。"}, len: 4, cpu: 2, base: 0, type: "support", color: "#00bcd4", price: 100, rarity: 2 },
+        { id: "EB4", name: {en: "Atmosphere", cn: "氛围采样"}, desc: {en: "Gain 30 Groove. +5% per previous [Empty Slot].", cn: "获得 30 Groove。此前每 1[空拍]，+5%。"}, len: 4, cpu: 3, base: 30, type: "score", color: "#ffd54f", price: 150, rarity: 3 },
+        { id: "EB5", name: {en: "Time Stretch", cn: "时间拉伸"}, desc: {en: "Unique. 1 [Empty Slot] counts as 2.", cn: "唯一。1[空拍]视为 2。"}, len: 8, cpu: 4, base: 0, type: "engine", color: "#ba68c8", price: 150, rarity: 3, unique: true },
+        { id: "EB6", name: {en: "Pad", cn: "铺底音色"}, desc: {en: "Gain 30 over time. +5% per concurrent [Empty Slot].", cn: "持续获得 30。全场每 1[空拍]，+5%。"}, len: 8, cpu: 2, base: 30, type: "score", color: "#ffca28", price: 100, rarity: 2 },
         { id: "NG1", name: {en: "Viral Hit", cn: "网红单曲"}, desc: {en: "Gain 30 Groove. On Sold: Shop discount based on play count.", cn: "获得 30 Groove。卖出时：基于播放次数全场打折。"}, len: 8, cpu: 1, base: 30, type: "score", color: "#cfd8dc", price: 75, rarity: 1 },
-        { id: "NG2", name: {en: "Layering", cn: "叠层"}, desc: {en: "Gain 20 Groove. If [Sync] triggered, +10.", cn: "获得 20 Groove。若 [Sync] 触发，+10。"}, len: 4, cpu: 1, base: 20, type: "score", color: "#b0bec5", price: 75, rarity: 1 },
-        { id: "NG3", name: {en: "Solo Fader", cn: "独奏推子"}, desc: {en: "[Same Track] Prev/Next +35%. If no [Sync], +35% more.", cn: "[Same Track] 前后 +35%。若无 [Sync]，额外 +35%。"}, len: 2, cpu: 1, base: 0, type: "support", color: "#90a4ae", price: 100, rarity: 2 },
-        { id: "NG4", name: {en: "Noise Gate", cn: "降噪门"}, desc: {en: "Unique (Limit 1). [Consume]: [Sync] items -50%. Gain (40 + Consumed) x 1.5.", cn: "唯一 (Limit 1)。[Consume]: [Sync] 道具 -50%。获得 (40 + 吞噬量) x 1.5。"}, len: 4, cpu: 2, base: 40, type: "score", color: "#78909c", price: 150, rarity: 3, unique: true },
+        { id: "NG2", name: {en: "Layering", cn: "叠层"}, desc: {en: "Gain 20 Groove. If [Sync] triggered, +10.", cn: "获得 20 Groove。若[同步]触发，+10。"}, len: 4, cpu: 1, base: 20, type: "score", color: "#b0bec5", price: 75, rarity: 1 },
+        { id: "NG3", name: {en: "Solo Fader", cn: "独奏推子"}, desc: {en: "[Same Track] Prev/Next +35%. If no [Sync], +35% more.", cn: "[同轨]前后 +35%。若无[同步]，额外 +35%。"}, len: 2, cpu: 1, base: 0, type: "support", color: "#90a4ae", price: 100, rarity: 2 },
+        { id: "NG4", name: {en: "Noise Gate", cn: "降噪门"}, desc: {en: "Unique. [Consume]: [Sync] items -50%. Gain (40 + Consumed) x 1.5.", cn: "唯一。[吞噬]：[同步]道具 -50%。获得 (40 + 吞噬量) x 1.5。"}, len: 4, cpu: 2, base: 40, type: "score", color: "#78909c", price: 150, rarity: 3, unique: true },
         { id: "TUT1", name: {en: "Sampler A", cn: "采样器 A"}, desc: {en: "Gain 20 Groove.", cn: "获得 20 Groove。"}, len: 4, cpu: 1, base: 20, type: "score", color: "#ddd", price: 0, rarity: 1 },
         { id: "TUT2", name: {en: "Sampler B", cn: "采样器 B"}, desc: {en: "Gain 30 Groove.", cn: "获得 30 Groove。"}, len: 8, cpu: 1, base: 30, type: "score", color: "#bbb", price: 0, rarity: 1 }
     ];
@@ -539,7 +575,8 @@
         gold: 150, cpuPurchasedRound: 0, roundBase: 10, currentShopItems: [],
         ng1PermanentStacks: 0, lastRoundReward: 0, lives: 3,
         lang: 'en', isTutorial: false, tutorialCpuBought: false,
-        lastResultData: null, isSimulation: false, unlockedTracks: 1 
+        lastResultData: null, isSimulation: false, unlockedTracks: 1,
+        discordShown: false
     };
 
     let dragManager = { active: false, itemData: null, sourceType: null, sourceRecord: null, sourceInvItem: null, ghostEl: null, previewEl: null, sellTooltip: null, currentHover: null, startX: 0, startY: 0 };
@@ -635,7 +672,14 @@
             if (d.id === "NG4") { 
                 const s = entry.record.start; const concurrent = output.filter(x => x !== entry && x.record.start === s); let suckedScore = 0; 
                 concurrent.forEach(t => { if (t.record.data.type === "score") { let current = (t.base + t.bonus) * t.mult * t.finalMultiplier; t.finalMultiplier *= 0.5; t.buffsReceived.push({text:`[${d.name[state.lang]}] -50%`, type:d.type}); t.logs.push({srcId:d.id, srcIdx: output.indexOf(entry), type:'nerf', val:'-50% (Consumed)', order: 6}); let now = (t.base + t.bonus) * t.mult * t.finalMultiplier; suckedScore += (current - now); entry.buffsGiven.push({targetIdx: output.indexOf(t), type:'consume'}); } }); 
-                if (suckedScore > 0) { entry.bonus += 20 + (suckedScore * 1.5); entry.buffsReceived.push({text:`+${(suckedScore * 1.5).toFixed(0)}`, type:d.type}); entry.triggered = true; } 
+                if (suckedScore > 0) { 
+                    const consumeBonus = Math.floor(suckedScore * 1.5);
+                    entry.bonus += 20 + consumeBonus; 
+                    entry.buffsReceived.push({text:`+${consumeBonus}`, type:d.type}); 
+                    entry.triggered = true;
+                    // Add log for consume bonus display in result
+                    entry.logs.push({srcId:'Self', type:'cond', val:`+${consumeBonus} (Consume)`, order: 3});
+                } 
             } 
         }); 
         return output; 
@@ -688,6 +732,7 @@
         document.querySelectorAll('.placed-item').forEach(el => el.classList.remove('playing-active')); 
         document.getElementById('combatConnections').innerHTML = '';
         activeBeams = [];
+        activeAuras = [];
 
         // Reset Visuals
         document.querySelectorAll('.engine-aura').forEach(el=>el.remove());
@@ -709,15 +754,27 @@
             if(playhead) playhead.style.left = (progress * 100) + "%";
             const simTime = fastForward ? progress * TOTAL_DURATION : (Tone.Transport.seconds || realElapsed);
             
-            // Beam Cleanup (Opacity Fade)
+            // Beam Cleanup (Opacity Fade) - fade starts when target triggers
             for (let i = activeBeams.length - 1; i >= 0; i--) {
                 const b = activeBeams[i];
-                if (simTime > b.startTime) {
-                    b.el.style.opacity = 0; // Trigger fade out
+                if (simTime >= b.fadeTime && b.el.style.opacity !== '0') {
+                    b.el.style.opacity = '0';
                 }
                 if (simTime > b.endTime) {
                     activeBeams.splice(i, 1);
-                    setTimeout(()=>b.el.remove(), 100);
+                    b.el.remove();
+                }
+            }
+            
+            // Aura Cleanup (Engine effects like Master Clock) - fade starts when target triggers
+            for (let i = activeAuras.length - 1; i >= 0; i--) {
+                const a = activeAuras[i];
+                if (simTime >= a.fadeTime && a.el.style.opacity !== '0') {
+                    a.el.style.opacity = '0'; // Start fade when target item triggers
+                }
+                if (simTime > a.endTime) {
+                    activeAuras.splice(i, 1);
+                    a.el.remove();
                 }
             }
 
@@ -733,10 +790,17 @@
                             if (r.record.data.type === 'score') { const score = Math.floor((r.base + r.bonus) * r.mult * r.finalMultiplier); spawnFloatingText(`+${score}`, x, y, 'ft-score'); } 
                             else if (r.record.data.type === 'support') { spawnFloatingText(`Buff!`, x, y, 'ft-buff'); }
                             
-                            if (r.record.data.id === 'SB4') { // Master Clock
+                            if (r.record.data.id === 'SB4') { // Master Clock - each aura fades independently when target triggers
                                 spawnFloatingText(`MASTER`, x, y, 'ft-buff');
                                 if (r.buffsGiven.length > 0) {
-                                    r.buffsGiven.forEach(b => { const tRes = state.lastResultData[b.targetIdx]; if(tRes && tRes.record.el) spawnEngineEffect(tRes.record.el, 'engine-aura'); });
+                                    r.buffsGiven.forEach(b => { 
+                                        const tRes = state.lastResultData[b.targetIdx]; 
+                                        if(tRes && tRes.record.el) {
+                                            // Each aura has independent fadeTime based on target's trigger time
+                                            const targetTriggerTime = tRes.record.start * TICK_DURATION;
+                                            spawnEngineEffect(tRes.record.el, 'engine-aura', targetTriggerTime);
+                                        }
+                                    });
                                 }
                             }
                             if (r.record.data.id === 'SB5') { spawnFloatingText(`QUANTIZE`, x, y, 'ft-buff'); document.querySelectorAll('.grid-cell.cell-weak').forEach(cell => { if(cell.getBoundingClientRect().left > x) cell.classList.add('flash-weak-fix'); }); }
@@ -747,17 +811,18 @@
                                     if(b.type === 'consume') return; 
                                     const targetRes = state.lastResultData[b.targetIdx]; 
                                     if (targetRes && targetRes.record.el) { 
-                                        drawCombatBeam(svg, el, targetRes.record.el, r.record.data.type, simTime); 
+                                        // targetTime = when target item triggers
+                                        const targetTriggerTime = targetRes.record.start * TICK_DURATION;
+                                        drawCombatBeam(svg, el, targetRes.record.el, r.record.data.type, simTime, targetTriggerTime); 
                                     } 
                                 }); 
                             }
                             const nerfs = r.logs.filter(l => l.type === 'nerf'); 
                             nerfs.forEach(n => { 
                                 spawnFloatingText(n.val, x, y + 20, 'ft-neg'); 
-                                // Lookup by name is fuzzy, ideally by ID, but for visual this is OK
-                                // NG4 hack: Find source of nerf
                                 const srcItem = state.placedItems.find(it => it.data.id === "NG4"); 
-                                if(srcItem && srcItem.el) drawCombatBeam(svg, el, srcItem.el, 'neg', simTime); 
+                                // For nerf beams, target is already triggering, so fade immediately
+                                if(srcItem && srcItem.el) drawCombatBeam(svg, el, srcItem.el, 'neg', simTime, simTime); 
                             });
                         }
                     }
@@ -767,19 +832,42 @@
         }, 16);
     }
     
-    function spawnEngineEffect(targetEl, cls) {
-        const rect = targetEl.getBoundingClientRect(); const aura = document.createElement('div'); aura.className = cls; aura.style.width = rect.width + 'px'; aura.style.height = rect.height + 'px'; aura.style.left = rect.left + 'px'; aura.style.top = rect.top + 'px'; document.body.appendChild(aura); setTimeout(() => aura.remove(), 2500); 
+    let activeAuras = []; // Track auras for independent fade timing
+    
+    function spawnEngineEffect(targetEl, cls, targetTriggerTime) {
+        const rect = targetEl.getBoundingClientRect(); 
+        const aura = document.createElement('div'); 
+        aura.className = cls; 
+        aura.style.width = rect.width + 'px'; 
+        aura.style.height = rect.height + 'px'; 
+        aura.style.left = rect.left + 'px'; 
+        aura.style.top = rect.top + 'px';
+        aura.style.transition = 'opacity 0.8s ease-out';
+        aura.style.opacity = '1';
+        document.body.appendChild(aura);
+        
+        // Track aura with its target trigger time for independent fade
+        if (targetTriggerTime !== undefined) {
+            activeAuras.push({ el: aura, fadeTime: targetTriggerTime, endTime: targetTriggerTime + 1.0 });
+        } else {
+            // Fallback: remove after 2.5s if no trigger time specified
+            setTimeout(() => aura.remove(), 2500);
+        }
     }
     function spawnFloatingText(text, x, y, cls) { const div = document.createElement('div'); div.className = `floating-text ${cls}`; div.innerText = text; div.style.left = x + 'px'; div.style.top = y + 'px'; document.body.appendChild(div); setTimeout(() => div.remove(), 1500); }
     
-    function drawCombatBeam(svg, el1, el2, type, startTime) {
+    function drawCombatBeam(svg, el1, el2, type, startTime, targetTime) {
         const cRect = svg.getBoundingClientRect(); const r1 = el1.getBoundingClientRect(); const r2 = el2.getBoundingClientRect();
         const x1 = r1.left + r1.width/2 - cRect.left; const y1 = r1.top + r1.height/2 - cRect.top; const x2 = r2.left + r2.width/2 - cRect.left; const y2 = r2.top + r2.height/2 - cRect.top;
         const line = document.createElementNS('http://www.w3.org/2000/svg','line'); line.setAttribute('x1', x1); line.setAttribute('y1', y1); line.setAttribute('x2', x2); line.setAttribute('y2', y2);
         let col = type === 'neg' ? '#ff5252' : type === 'engine' ? '#d500f9' : '#00e5ff'; line.setAttribute('stroke', col); line.setAttribute('stroke-width', '4'); line.setAttribute('stroke-linecap', 'round'); 
-        line.style.transition = 'opacity 2.5s ease-out'; // Long fade out
+        line.style.transition = 'opacity 0.8s ease-out'; // Fast fade when target triggers
+        line.style.opacity = '1';
         svg.appendChild(line); 
-        activeBeams.push({ el: line, startTime: startTime, endTime: startTime + 3.0 });
+        // targetTime: when target item triggers, beam starts fading
+        // If targetTime <= startTime (同时触发), fade immediately
+        const fadeStartTime = targetTime || startTime;
+        activeBeams.push({ el: line, startTime: startTime, fadeTime: fadeStartTime, endTime: fadeStartTime + 1.0 });
     }
     
     function skipPlayback() { if (isSkipping) return; isSkipping = true; Tone.Transport.stop(); Tone.Transport.cancel(); if(bgPlayer) bgPlayer.stop(); if(losePlayer) losePlayer.stop(); if(samplePlayers) samplePlayers.stopAll(); Tone.Draw.cancel(); if (playbackTimer) clearTimeout(playbackTimer); startVisualEngine(true); }
@@ -789,6 +877,7 @@
         const playhead = document.getElementById('playhead'); if(playhead) playhead.style.display = 'none'; document.getElementById('skipOverlay').style.display = 'none'; document.getElementById('combatConnections').innerHTML = '';
         state.isPlaying = false; document.getElementById('mainContainer').classList.remove('playing-lock'); document.getElementById('mainSubmitBtn').disabled = false; document.getElementById('mainSubmitBtn').innerText = UI_TEXT[state.lang].submit; 
         document.querySelectorAll('.engine-aura').forEach(el=>el.remove());
+        activeAuras = []; // Clear tracked auras
         const results = state.lastResultData || calculateLogic(); let totalScore = 0; results.forEach(r => totalScore += (r.base + r.bonus) * r.mult * r.finalMultiplier);
         if (state.isSimulation) { alert(`${UI_TEXT[state.lang].simReport}\n${UI_TEXT[state.lang].resTotal}: ${Math.floor(totalScore)} / ${UI_TEXT[state.lang].resTarget}: ${config.target}`); state.isSimulation = false; }
         else { const currentNg1Count = state.placedItems.filter(p => p.data.id === "NG1").length; if (currentNg1Count > 0) { state.ng1PermanentStacks += currentNg1Count; } showResult(currentNg1Count, Math.floor(totalScore)); }
@@ -800,13 +889,14 @@
         document.querySelectorAll('.soft-guide').forEach(el => el.classList.remove('soft-guide')); document.querySelectorAll('.soft-guide-gentle').forEach(el => el.classList.remove('soft-guide-gentle'));
         if (state.levelIndex === 0) {
             addGuide('targetContainer');
-            // FIX: Always glow inventory items until placed
+            // FIX: Always glow inventory items until placed - support both EN/CN
             const invItems = document.querySelectorAll('.inv-item');
             const hasA = state.placedItems.some(p => p.data.id === 'TUT1');
             const hasB = state.placedItems.some(p => p.data.id === 'TUT2');
             invItems.forEach(el => { 
-                if (el.innerText.includes("Sampler A") && !hasA) addGuideGentleEl(el); 
-                if (el.innerText.includes("Sampler B") && !hasB) addGuideGentleEl(el); 
+                const text = el.innerText;
+                if ((text.includes("Sampler A") || text.includes("采样器 A")) && !hasA) addGuideGentleEl(el); 
+                if ((text.includes("Sampler B") || text.includes("采样器 B")) && !hasB) addGuideGentleEl(el); 
             });
             if (state.selectedInvItem && ((state.selectedInvItem.data.id === 'TUT1' && !hasA) || (state.selectedInvItem.data.id === 'TUT2' && !hasB))) addGuideGentle('detailPanel');
         }
@@ -907,6 +997,11 @@
         document.getElementById('lblTutTitle').innerText = t.tutTitle; document.getElementById('lblTutDesc').innerText = t.tutDesc; document.getElementById('btnSkipTut').innerText = t.skip;
         document.getElementById('btnPlayTut').innerText = t.playTut; document.getElementById('lblTutCompDesc').innerText = t.tutCompDesc;
         document.querySelector('#simBtn span').innerText = t.simulate;
+        // Discord Modal
+        document.getElementById('txtDiscordMsg').innerText = t.discordMsg;
+        document.getElementById('txtScanQR').innerText = t.scanQR;
+        document.getElementById('txtJoinDiscord').innerText = t.joinDiscord;
+        document.getElementById('btnDiscordContinue').innerText = t.discordContinue;
         updateInventoryUI(); renderShopFromState(); updateCpuButton(); updateSimButton();
         if(state.selectedInvItem) showDetail(state.selectedInvItem.data);
     }
@@ -1069,66 +1164,131 @@
         svg.appendChild(line);
     }
     
-    // Updated Tooltip Logic (Sorting) V25.0
+    // Updated Tooltip Logic V27.0 - Clear effect breakdown
     function showResultTooltip(r) {
         const tip = document.getElementById('resultTooltip'); const t = UI_TEXT[state.lang];
-        let html = `<b>${r.record.data.name[state.lang]}</b><br>`; 
+        const itemName = r.record.data.name[state.lang];
+        let html = `<b>${itemName}</b><br>`; 
         
-        // Base
-        html += `<div class="rt-row"><span>${t.base}</span> <span>${r.base}</span></div>`;
+        // For score items, always show base first
+        if (r.record.data.type === 'score' && r.base > 0) {
+            const baseLabel = state.lang === 'cn' ? '基础' : 'Base';
+            html += `<div class="rt-row" style="color:#ffd700"><span>+${r.base}</span> <span style="color:#888;">[${itemName} ${baseLabel}]</span></div>`;
+        }
         
-        // Sort Logs by 'order'
-        const sortedLogs = r.logs.sort((a, b) => (a.order || 0) - (b.order || 0));
+        // Track for formula
+        let bonusTotal = 0;
+        let multTotal = 0;
+        let finalMultTotal = 1;
         
-        let addSum = 0;
-        let multProd = 1;
-
-        sortedLogs.forEach(l => { 
-            let col = l.type === 'buff' ? '#00e5ff' : l.type === 'cond' ? '#ffd700' : '#ff5252'; 
+        // Process logs - show each effect clearly
+        const sortedLogs = [...r.logs].sort((a, b) => (a.order || 0) - (b.order || 0));
+        
+        sortedLogs.forEach(l => {
+            // Skip system markers
+            if (l.srcId === 'System') return;
+            if (l.type === 'rule') return;
+            if (l.type === 'cond' && l.val === 'Strong Beat') return;
             
-            // Clean Val for display (remove parens)
-            let displayVal = l.val;
-            let displaySrc = getSourceName(l.srcId);
+            // Get source name
+            let srcName = '';
+            let effectDesc = '';
             
-            // Accumulate for formula
-            if(l.val.includes('+') && !l.val.includes('%')) {
-                const num = parseInt(l.val.replace(/[^\d-]/g, ''));
-                if(!isNaN(num)) addSum += num;
+            if (l.srcId === 'Self' || l.srcId === 'Self Condition') {
+                srcName = itemName;
+                // Extract effect type from val
+                if (l.val.includes('Strong')) effectDesc = state.lang === 'cn' ? '强拍加成' : 'Strong Beat';
+                else if (l.val.includes('Gap')) effectDesc = state.lang === 'cn' ? '间隔加成' : 'Gap Bonus';
+                else if (l.val.includes('Sync')) effectDesc = state.lang === 'cn' ? '同步加成' : 'Sync Bonus';
+                else if (l.val.includes('Atmo')) effectDesc = state.lang === 'cn' ? '空拍加成' : 'Empty Bonus';
+                else if (l.val.includes('Pad')) effectDesc = state.lang === 'cn' ? '空拍加成' : 'Empty Bonus';
+                else effectDesc = state.lang === 'cn' ? '额外效果' : 'Bonus';
+            } else {
+                const srcItem = DB.find(i => i.id === l.srcId);
+                srcName = srcItem ? srcItem.name[state.lang] : l.srcId;
+                effectDesc = '';
             }
-            if(l.val.includes('%')) {
-                const num = parseInt(l.val.replace(/[^\d-]/g, ''));
-                if(!isNaN(num)) multProd += (num/100);
+            
+            // Parse value and display
+            const valStr = l.val;
+            let displayVal = '';
+            let col = '#aaa';
+            
+            // Extract number from val string
+            const numMatch = valStr.match(/[+-]?\d+\.?\d*/);
+            if (!numMatch) return;
+            const num = parseFloat(numMatch[0]);
+            if (isNaN(num) || num === 0) return;
+            
+            if (valStr.includes('%')) {
+                // Percentage
+                if (valStr.includes('-')) {
+                    displayVal = `-${Math.abs(num)}%`;
+                    col = '#ff5252';
+                } else {
+                    displayVal = `+${Math.abs(num)}%`;
+                    col = '#00e5ff';
+                    multTotal += num / 100;
+                }
+            } else if (valStr.includes('x') || valStr.includes('×')) {
+                // Final multiplier
+                displayVal = `×${num}`;
+                col = '#d500f9';
+                finalMultTotal *= num;
+            } else {
+                // Flat bonus
+                if (num > 0) {
+                    displayVal = `+${Math.floor(num)}`;
+                    col = '#ffd700';
+                    bonusTotal += num;
+                } else {
+                    displayVal = `${Math.floor(num)}`;
+                    col = '#ff5252';
+                }
             }
-            if(l.val.includes('x')) {
-                const num = parseFloat(l.val.replace(/[^\d.]/g, ''));
-                if(!isNaN(num)) multProd *= num;
-            }
-
-            // Clean display string: Remove the (Reason) part for cleaner UI
-            if (displayVal.includes('(')) displayVal = displayVal.split('(')[0].trim();
-
-            html += `<div class="rt-row" style="color:${col}"><span>${displayVal}</span> <span>[${displaySrc}]</span></div>`; 
+            
+            // Build display string
+            let srcDisplay = srcName;
+            if (effectDesc) srcDisplay += ` ${effectDesc}`;
+            
+            html += `<div class="rt-row" style="color:${col}"><span>${displayVal}</span> <span style="color:#888;">[${srcDisplay}]</span></div>`;
         });
         
+        // Build formula and final score for score items
         if (r.record.data.type === 'score') { 
-            const final = Math.floor((r.base + r.bonus) * r.mult * r.finalMultiplier); 
+            const final = Math.floor((r.base + r.bonus) * r.mult * r.finalMultiplier);
             
-            // FORMULA ROW
-            let formulaStr = `(${r.base}`;
-            if (addSum > 0) formulaStr += ` + ${addSum}`;
-            formulaStr += `)`;
+            // Build clear formula
+            let formulaParts = [];
             
-            // Reconstruct Mult string approximately for visual aid
-            // Note: This is an approximation as calculating exact breakdown of multipliers from logs is complex
-            // We show the aggregated multiplier
-            const totalMult = r.mult * r.finalMultiplier;
-            if (totalMult !== 1) formulaStr += ` * ${totalMult.toFixed(2)}`;
-            formulaStr += ` = ${final}`;
-
-            html += `<div class="rt-formula">${formulaStr}</div>`;
+            // Base + bonus part
+            if (r.bonus > 0) {
+                formulaParts.push(`(${r.base}+${Math.floor(r.bonus)})`);
+            } else {
+                formulaParts.push(`${r.base}`);
+            }
+            
+            // Multiplier part
+            const totalMult = r.mult;
+            if (totalMult !== 1) {
+                formulaParts.push(`×${totalMult.toFixed(2)}`);
+            }
+            
+            // Final multiplier
+            if (r.finalMultiplier !== 1) {
+                formulaParts.push(`×${r.finalMultiplier.toFixed(1)}`);
+            }
+            
+            let formulaStr = formulaParts.join(' ');
+            html += `<div class="rt-formula">${formulaStr} = ${final}</div>`;
             html += `<div class="rt-total">${t.final}: ${final}</div>`; 
         }
-        if (r.buffsGiven.length > 0) { html += `<div class="rt-total" style="color:#d500f9; border-top:1px dashed #555;">Buffed ${r.buffsGiven.length} items</div>`; }
+        
+        // Show buff given count
+        if (r.buffsGiven.length > 0) { 
+            const buffText = state.lang === 'cn' ? `增益了 ${r.buffsGiven.length} 个道具` : `Buffed ${r.buffsGiven.length} items`;
+            html += `<div class="rt-total" style="color:#d500f9; border-top:1px dashed #555;">${buffText}</div>`; 
+        }
         
         const rect = r.resEl.getBoundingClientRect(); tip.innerHTML = html; tip.style.display = 'block'; tip.style.left = (rect.right + 10) + 'px'; tip.style.top = rect.top + 'px';
     }
@@ -1164,8 +1324,48 @@
 
     function showTutorialComplete() { document.getElementById('resultModal').style.display = 'none'; document.getElementById('tutorialCompleteModal').style.display = 'flex'; }
     function finishTutorialFlow() { document.getElementById('tutorialCompleteModal').style.display = 'none'; startStandardGame(); }
-    function showVictory() { document.getElementById('victoryModal').style.display = 'flex'; }
-    function showGameOver() { document.getElementById('gameOverModal').style.display = 'flex'; }
+    
+    // Discord Modal Logic
+    let pendingAction = null; // 'victory' or 'gameover'
+    
+    function shouldShowDiscord() {
+        // 只要进入正式关，通关或彻底失败都显示
+        return !state.isTutorial;
+    }
+    
+    function showVictory() { 
+        if (shouldShowDiscord() && !state.discordShown) {
+            state.discordShown = true;
+            pendingAction = 'victory';
+            showDiscordModal();
+        } else {
+            document.getElementById('victoryModal').style.display = 'flex'; 
+        }
+    }
+    
+    function showGameOver() { 
+        if (shouldShowDiscord() && !state.discordShown) {
+            state.discordShown = true;
+            pendingAction = 'gameover';
+            showDiscordModal();
+        } else {
+            document.getElementById('gameOverModal').style.display = 'flex'; 
+        }
+    }
+    
+    function showDiscordModal() {
+        document.getElementById('discordModal').style.display = 'flex';
+    }
+    
+    function closeDiscordAndContinue() {
+        document.getElementById('discordModal').style.display = 'none';
+        if (pendingAction === 'victory') {
+            document.getElementById('victoryModal').style.display = 'flex';
+        } else if (pendingAction === 'gameover') {
+            document.getElementById('gameOverModal').style.display = 'flex';
+        }
+        pendingAction = null;
+    }
     function closeResult() { document.getElementById('resultModal').style.display = 'none'; }
     function nextLevel() { updateGold(state.pendingReward); document.getElementById('resultModal').style.display = 'none'; if (state.isTutorial) { startTutorialLevel(state.levelIndex + 1); } else { const next = state.levelIndex + 1; if(next >= LEVEL_CONFIG.length) showVictory(); else applyLevelConfig(next); } }
     function retryLevel() { updateGold(state.pendingReward); document.getElementById('resultModal').style.display = 'none'; if (state.isTutorial) { startTutorialLevel(state.levelIndex); } else { updateUI(); rerollShop(); } }
@@ -1245,12 +1445,14 @@
                 span.onmouseenter = (e) => showTooltip(e, matchedKey);
                 span.onmouseleave = () => hideTooltip();
                 
-                // Construct HTML with Icon
+                // Construct HTML with Icon - support both EN/CN keywords
                 let innerHTML = token; // default
                 if (token.includes('Strong Beat') || token.includes('强拍')) innerHTML = `${TAG_ICONS.strong} ${token}`;
+                else if (token.includes('Weak Beat') || token.includes('弱拍')) innerHTML = token; // No icon for weak beat
                 else if (token.includes('Empty') || token.includes('空拍')) innerHTML = `${TAG_ICONS.empty} ${token}`;
                 else if (token.includes('Sync') || token.includes('同步')) innerHTML = `${TAG_ICONS.sync} ${token}`;
                 else if (token.includes('Same Track') || token.includes('同轨')) innerHTML = `${TAG_ICONS.track} ${token}`;
+                else if (token.includes('Consume') || token.includes('吞噬')) innerHTML = `🔥 ${token}`;
                 
                 span.innerHTML = innerHTML; // Safe innerHTML for just icon+text
                 container.appendChild(span);

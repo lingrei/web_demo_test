@@ -11,7 +11,7 @@
 
         body { background-color: var(--bg-color); color: var(--text-color); font-family: 'Segoe UI', sans-serif; margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; user-select: none; }
         
-        .container { width: 98vw; max-width: 1600px; height: 95vh; display: grid; grid-template-columns: 220px 1fr 280px; grid-template-rows: 70px 1fr 220px; gap: 8px; background: #252525; padding: 10px; box-shadow: 0 0 50px rgba(0,0,0,0.8); border-radius: 8px; }
+        .container { width: 98vw; max-width: 1600px; height: 95vh; display: grid; grid-template-columns: 200px 1fr 240px; grid-template-rows: 60px 1fr 190px; gap: 6px; background: #252525; padding: 8px; box-shadow: 0 0 50px rgba(0,0,0,0.8); border-radius: 8px; }
         
         /* Header */
         .header { grid-column: 1 / -1; grid-row: 1 / 2; background: var(--panel-color); border: var(--border); border-radius: 4px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; position: relative; }
@@ -140,17 +140,18 @@
         .shop-panel.drag-target-sell { background-color: rgba(244, 67, 54, 0.2); border: 2px dashed #f44336; }
         .shop-panel.sell-hint { border-color: rgba(244, 67, 54, 0.5); background-color: rgba(244, 67, 54, 0.05); box-shadow: inset 0 0 15px rgba(244, 67, 54, 0.1); }
 
-        .shop-list { flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
-        .shop-item { background: #222; padding: 10px; border: 1px solid #444; border-radius: 6px; display: flex; flex-direction: column; gap: 6px; cursor: pointer; transition: all 0.2s; position: relative; }
+        .shop-list { flex: 1; padding: 6px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+        .shop-item { background: #222; padding: 6px 8px; border: 1px solid #444; border-radius: 4px; display: flex; flex-direction: column; gap: 3px; cursor: pointer; transition: all 0.2s; position: relative; }
         .shop-item:hover { background: #2a2a2a; border-color: #555; }
         .shop-item.owned-unique { opacity: 0.5; pointer-events: none; filter: grayscale(1); border-color: #555; }
-        .discount-tag { position: absolute; top: -8px; right: -8px; background: #f44336; color: white; font-size: 10px; padding: 3px 6px; border-radius: 4px; font-weight: bold; transform: rotate(15deg); box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .discount-tag { position: absolute; top: -5px; right: -5px; background: #f44336; color: white; font-size: 9px; padding: 2px 4px; border-radius: 3px; font-weight: bold; transform: rotate(15deg); box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
         .shop-row-top { display: flex; justify-content: space-between; align-items: center; }
-        .shop-row-btm { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #888; margin-bottom: 6px; }
-        .shop-price-row { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #333; padding-top: 8px; margin-top: 4px; }
-        .shop-price { color: var(--gold-color); font-weight: bold; font-size: 14px; }
-        .btn-buy { background: linear-gradient(135deg, var(--highlight) 0%, #388e3c 100%); border: none; color: white; cursor: pointer; padding: 8px 20px; border-radius: 4px; font-size: 12px; font-weight: bold; transition: all 0.2s; }
-        .btn-buy:hover { transform: scale(1.05); box-shadow: 0 0 10px rgba(76,175,80,0.5); }
+        .shop-row-top b { font-size: 12px; }
+        .shop-row-btm { display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #888; }
+        .shop-price-row { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #333; padding-top: 5px; margin-top: 3px; }
+        .shop-price { color: var(--gold-color); font-weight: bold; font-size: 12px; }
+        .btn-buy { background: linear-gradient(135deg, var(--highlight) 0%, #388e3c 100%); border: none; color: white; cursor: pointer; padding: 5px 12px; border-radius: 3px; font-size: 11px; font-weight: bold; transition: all 0.2s; }
+        .btn-buy:hover { transform: scale(1.03); box-shadow: 0 0 8px rgba(76,175,80,0.5); }
         .btn-buy:disabled { background: #444 !important; color: #666 !important; cursor: not-allowed; transform: none; box-shadow: none; }
         
         .shop-controls { padding: 10px; border-top: 1px solid #444; display: flex; flex-direction: column; gap: 10px; background: #252525; }
@@ -166,12 +167,12 @@
         .info-box { background: var(--panel-color); border: var(--border); padding: 12px 15px; border-radius: 4px; overflow-y: auto; transition: filter 0.3s; }
         .info-left { flex: 2.5; border-left: 4px solid var(--highlight); } 
         .info-right { flex: 1; display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid #ffd700; padding-left: 15px; }
-        .target-display { background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%); border: 2px solid #ffd700; border-radius: 8px; padding: 10px 15px; text-align: center; }
-        .target-label { font-size: 11px; color: #ffd700; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 4px; }
-        .target-value { font-size: 32px; font-weight: bold; color: #fff; text-shadow: 0 0 10px rgba(255,215,0,0.3); }
-        .detail-title { font-size: 20px; color: white; margin-bottom: 8px; font-weight: bold; display: flex; align-items: center; gap: 5px; }
-        .detail-meta { font-size: 14px; color: #aaa; margin-bottom: 10px; display: flex; gap: 20px; }
-        .detail-desc { font-size: 16px; color: #ddd; line-height: 1.6; background: #222; padding: 12px; border-radius: 6px; }
+        .target-display { background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%); border: 2px solid #ffd700; border-radius: 6px; padding: 8px 12px; text-align: center; }
+        .target-label { font-size: 10px; color: #ffd700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
+        .target-value { font-size: 26px; font-weight: bold; color: #fff; text-shadow: 0 0 10px rgba(255,215,0,0.3); }
+        .detail-title { font-size: 17px; color: white; margin-bottom: 5px; font-weight: bold; display: flex; align-items: center; gap: 5px; }
+        .detail-meta { font-size: 13px; color: #aaa; margin-bottom: 6px; display: flex; gap: 15px; }
+        .detail-desc { font-size: 14px; color: #ddd; line-height: 1.5; background: #222; padding: 10px; border-radius: 5px; }
         
         .action-row { display: flex; gap: 10px; margin-top: 5px; }
         .submit-btn { flex: 2; padding: 10px; background: white; color: black; font-size: 18px; font-weight: bold; border: none; border-radius: 20px; cursor: pointer; transition: transform 0.1s; }
@@ -617,6 +618,7 @@
     };
 
     let dragManager = { active: false, itemData: null, sourceType: null, sourceRecord: null, sourceInvItem: null, ghostEl: null, previewEl: null, sellTooltip: null, currentHover: null, startX: 0, startY: 0 };
+    let lastClickedItemId = null; // Track last clicked item to prevent repeated sound
     let tutorialState = { l1: { aClicked: false, bClicked: false, aPlaced: false, bPlaced: false }, l2: { bought: false, clicked: false, effectActive: false }, l3: { kickBought: false, cpuBought: false, kickClicked: false, kickEffect: false }, l4: { cpuCount: 0 } };
     
     // === STRONG GUIDE SYSTEM ===
@@ -626,24 +628,24 @@
         waitingFor: null, // 'click', 'place', 'buy', 'sell', 'shopItemClick', 'cpuBuy'
         highlightedElement: null,
         levelGuides: {
-            // Level 1 guides
+            // Level 1 guides - position: where to show message relative to target
             0: [
-                { target: 'targetContainer', msg: { en: 'This is your TARGET GROOVE. You must reach this score to pass the level!', cn: '这是你的目标分数。你必须达到这个分数才能通关！' }, wait: 'click' },
-                { target: ['invPanel', 'trackArea'], msg: { en: 'Drag items from INVENTORY to the DAW tracks to place them. Items will generate Groove when triggered!', cn: '从库存中拖拽道具到DAW音轨上放置。道具被触发时会产生分数！' }, wait: 'place' },
-                { target: 'detailPanel', msg: { en: 'Check the DESCRIPTION panel to see how much Groove each item provides. Plan your placement wisely!', cn: '查看描述面板了解每个道具能提供多少分数。合理规划放置位置！' }, wait: 'click' },
-                { target: 'cpuContainer', msg: { en: 'Items cost CPU and SPACE. When you run out of either, you cannot place more items. Manage your resources!', cn: '道具需要消耗CPU和空间。当任一资源耗尽时，就无法放置更多道具了。合理管理资源！' }, wait: 'click' }
+                { target: 'targetContainer', pos: 'left', msg: { en: 'This is your TARGET GROOVE. You must reach this score to pass the level!', cn: '这是你的目标分数。你必须达到这个分数才能通关！' }, wait: 'click' },
+                { target: ['invPanel', 'trackArea'], pos: 'top', msg: { en: 'Drag items from INVENTORY to the DAW tracks to place them. Items will generate Groove when triggered!', cn: '从库存中拖拽道具到DAW音轨上放置。道具被触发时会产生分数！' }, wait: 'place' },
+                { target: 'detailPanel', pos: 'top', msg: { en: 'Check the DESCRIPTION panel to see how much Groove each item provides. Plan your placement wisely!', cn: '查看描述面板了解每个道具能提供多少分数。合理规划放置位置！' }, wait: 'click' },
+                { target: ['cpuContainer', 'trackArea'], pos: 'right', msg: { en: 'Items cost CPU and SPACE. When you run out of either, you cannot place more items. Manage your resources!', cn: '道具需要消耗CPU和空间。当任一资源耗尽时，就无法放置更多道具了。合理管理资源！' }, wait: 'click' }
             ],
             // Level 2 guides
             1: [
-                { target: 'shopList', msg: { en: 'Click on shop items to view their description before buying. Some items have special effects!', cn: '购买前先点击商店道具查看描述。有些道具有特殊效果！' }, wait: 'shopItemClick' }
+                { target: 'shopList', pos: 'left', msg: { en: 'Click on shop items to view their description before buying. Some items have special effects!', cn: '购买前先点击商店道具查看描述。有些道具有特殊效果！' }, wait: 'shopItemClick' }
             ],
             // Level 3 guides  
             2: [
-                { target: 'btnBuyCpu', msg: { en: 'Buy CPU to permanently increase your CPU limit. More CPU = more items you can place!', cn: '购买CPU可以永久提升CPU上限。更多CPU = 可放置更多道具！' }, wait: 'cpuBuy' }
+                { target: 'btnBuyCpu', pos: 'left', msg: { en: 'Buy CPU to permanently increase your CPU limit. More CPU = more items you can place!', cn: '购买CPU可以永久提升CPU上限。更多CPU = 可放置更多道具！' }, wait: 'cpuBuy' }
             ],
-            // Level 4 guides
+            // Level 4 guides - highlight both inventory and shop for drag operation
             3: [
-                { target: 'shopPanel', msg: { en: 'Drag items from INVENTORY to the SHOP to sell them. Get gold to buy better items!', cn: '将道具从库存拖拽到商店区域可以出售。获得金币购买更好的道具！' }, wait: 'sell' }
+                { target: ['invPanel', 'shopPanel'], pos: 'top', msg: { en: 'Drag items from INVENTORY to the SHOP to sell them. Get gold to buy better items!', cn: '将道具从库存拖拽到商店区域可以出售。获得金币购买更好的道具！' }, wait: 'sell' }
             ]
         }
     };
@@ -693,12 +695,33 @@
         document.getElementById('guideBtn').innerText = btnText;
         document.getElementById('guideBtn').disabled = (step.wait !== 'click');
         
-        // Position message near target
+        // Position message based on pos parameter - don't cover the target
+        msgBox.style.transform = '';
         const targetEl = document.getElementById(targets[0]);
+        const pos = step.pos || 'bottom';
+        
         if (targetEl) {
             const rect = targetEl.getBoundingClientRect();
-            msgBox.style.top = Math.min(rect.bottom + 20, window.innerHeight - 200) + 'px';
-            msgBox.style.left = Math.max(20, Math.min(rect.left, window.innerWidth - 480)) + 'px';
+            const msgWidth = 450;
+            const msgHeight = 180;
+            
+            switch(pos) {
+                case 'top':
+                    msgBox.style.top = Math.max(10, rect.top - msgHeight - 20) + 'px';
+                    msgBox.style.left = Math.max(20, Math.min(rect.left, window.innerWidth - msgWidth - 20)) + 'px';
+                    break;
+                case 'left':
+                    msgBox.style.top = Math.max(10, rect.top) + 'px';
+                    msgBox.style.left = Math.max(20, rect.left - msgWidth - 30) + 'px';
+                    break;
+                case 'right':
+                    msgBox.style.top = Math.max(10, rect.top) + 'px';
+                    msgBox.style.left = Math.min(rect.right + 30, window.innerWidth - msgWidth - 20) + 'px';
+                    break;
+                default: // bottom
+                    msgBox.style.top = Math.min(rect.bottom + 20, window.innerHeight - msgHeight - 20) + 'px';
+                    msgBox.style.left = Math.max(20, Math.min(rect.left, window.innerWidth - msgWidth - 20)) + 'px';
+            }
         } else {
             msgBox.style.top = '50%';
             msgBox.style.left = '50%';
@@ -1712,6 +1735,13 @@
     // --- TOOLTIP FIX V25.0: SAFER & CLEANER ---
     function showDetail(item) { 
         if (state.isTutorial) { if (state.levelIndex === 0) { if (item.id === 'TUT1') tutorialState.l1.aClicked = true; if (item.id === 'TUT2') tutorialState.l1.bClicked = true; } if (state.levelIndex === 1 && item.id === 'EB1') { tutorialState.l2.clicked = true; } if (state.levelIndex === 2 && item.id === 'SB1') { tutorialState.l3.kickClicked = true; } }
+        
+        // Play item sound on click (only if different from last clicked)
+        if (item.id !== lastClickedItemId && audioInitialized && samplePlayers && samplePlayers.has(item.id)) {
+            try { samplePlayers.player(item.id).start(); } catch(e) {}
+        }
+        lastClickedItemId = item.id;
+        
         document.getElementById('detailTitle').innerText = item.name[state.lang]; 
         document.getElementById('detailTitle').style.color = item.color; 
         document.getElementById('detailMeta').innerHTML = `<span>CPU: ${item.cpu}</span><span>${state.lang==='en'?'Len':'长度'}: ${item.len}</span><span>${state.lang==='en'?'Base':'基础'}: ${item.base}</span>`; 

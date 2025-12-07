@@ -11,7 +11,7 @@
 
         body { background-color: var(--bg-color); color: var(--text-color); font-family: 'Segoe UI', sans-serif; margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; user-select: none; }
         
-        .container { width: 98vw; max-width: 1600px; height: 95vh; display: grid; grid-template-columns: 220px 1fr 260px; grid-template-rows: 70px 1fr 180px; gap: 8px; background: #252525; padding: 10px; box-shadow: 0 0 50px rgba(0,0,0,0.8); border-radius: 8px; }
+        .container { width: 98vw; max-width: 1600px; height: 95vh; display: grid; grid-template-columns: 220px 1fr 280px; grid-template-rows: 70px 1fr 220px; gap: 8px; background: #252525; padding: 10px; box-shadow: 0 0 50px rgba(0,0,0,0.8); border-radius: 8px; }
         
         /* Header */
         .header { grid-column: 1 / -1; grid-row: 1 / 2; background: var(--panel-color); border: var(--border); border-radius: 4px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; position: relative; }
@@ -140,15 +140,18 @@
         .shop-panel.drag-target-sell { background-color: rgba(244, 67, 54, 0.2); border: 2px dashed #f44336; }
         .shop-panel.sell-hint { border-color: rgba(244, 67, 54, 0.5); background-color: rgba(244, 67, 54, 0.05); box-shadow: inset 0 0 15px rgba(244, 67, 54, 0.1); }
 
-        .shop-list { flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
-        .shop-item { background: #222; padding: 8px; border: 1px solid #444; border-radius: 4px; display: flex; flex-direction: column; gap: 4px; cursor: pointer; transition: background 0.2s; position: relative; }
-        .shop-item:active { background: #333; }
+        .shop-list { flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+        .shop-item { background: #222; padding: 10px; border: 1px solid #444; border-radius: 6px; display: flex; flex-direction: column; gap: 6px; cursor: pointer; transition: all 0.2s; position: relative; }
+        .shop-item:hover { background: #2a2a2a; border-color: #555; }
         .shop-item.owned-unique { opacity: 0.5; pointer-events: none; filter: grayscale(1); border-color: #555; }
-        .discount-tag { position: absolute; top: -5px; right: -5px; background: #f44336; color: white; font-size: 10px; padding: 2px 4px; border-radius: 4px; font-weight: bold; transform: rotate(15deg); box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .discount-tag { position: absolute; top: -8px; right: -8px; background: #f44336; color: white; font-size: 10px; padding: 3px 6px; border-radius: 4px; font-weight: bold; transform: rotate(15deg); box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
         .shop-row-top { display: flex; justify-content: space-between; align-items: center; }
-        .shop-row-btm { display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #888;}
-        .btn-buy { background: var(--highlight); border: none; color: white; cursor: pointer; padding: 3px 10px; border-radius: 2px; font-size: 11px; }
-        .btn-buy:disabled { background: #444 !important; color: #888 !important; cursor: not-allowed; }
+        .shop-row-btm { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #888; margin-bottom: 6px; }
+        .shop-price-row { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #333; padding-top: 8px; margin-top: 4px; }
+        .shop-price { color: var(--gold-color); font-weight: bold; font-size: 14px; }
+        .btn-buy { background: linear-gradient(135deg, var(--highlight) 0%, #388e3c 100%); border: none; color: white; cursor: pointer; padding: 8px 20px; border-radius: 4px; font-size: 12px; font-weight: bold; transition: all 0.2s; }
+        .btn-buy:hover { transform: scale(1.05); box-shadow: 0 0 10px rgba(76,175,80,0.5); }
+        .btn-buy:disabled { background: #444 !important; color: #666 !important; cursor: not-allowed; transform: none; box-shadow: none; }
         
         .shop-controls { padding: 10px; border-top: 1px solid #444; display: flex; flex-direction: column; gap: 10px; background: #252525; }
         .btn-cpu { width: 100%; padding: 12px; background: linear-gradient(135deg, #1e88e5, #42a5f5); border: 1px solid #64b5f6; color: white; cursor: pointer; font-weight: bold; border-radius: 6px; display: flex; flex-direction: column; align-items: center; line-height: 1.2; box-shadow: 0 4px 6px rgba(0,0,0,0.3); text-transform: uppercase; letter-spacing: 1px; transition: all 0.2s; }
@@ -160,12 +163,15 @@
         .shop-funds { color: var(--gold-color); font-size: 16px; font-weight: bold; text-shadow: 0 0 5px rgba(255, 215, 0, 0.3); }
 
         .bottom-panel { grid-column: 1 / -1; grid-row: 3 / 4; display: flex; gap: 10px; padding-top: 5px; position: relative; overflow: hidden; }
-        .info-box { background: var(--panel-color); border: var(--border); padding: 10px 15px; border-radius: 4px; overflow-y: auto; transition: filter 0.3s; }
-        .info-left { flex: 2; border-left: 4px solid var(--highlight); } 
-        .info-right { flex: 1; display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid #2196f3; padding-left: 15px; }
-        .detail-title { font-size: 16px; color: white; margin-bottom: 5px; font-weight: bold; display: flex; align-items: center; gap: 5px; }
-        .detail-meta { font-size: 11px; color: #aaa; margin-bottom: 8px; display: flex; gap: 15px; }
-        .detail-desc { font-size: 13px; color: #ccc; line-height: 1.4; background: #222; padding: 8px; border-radius: 4px; }
+        .info-box { background: var(--panel-color); border: var(--border); padding: 12px 15px; border-radius: 4px; overflow-y: auto; transition: filter 0.3s; }
+        .info-left { flex: 2.5; border-left: 4px solid var(--highlight); } 
+        .info-right { flex: 1; display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid #ffd700; padding-left: 15px; }
+        .target-display { background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%); border: 2px solid #ffd700; border-radius: 8px; padding: 10px 15px; text-align: center; }
+        .target-label { font-size: 11px; color: #ffd700; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 4px; }
+        .target-value { font-size: 32px; font-weight: bold; color: #fff; text-shadow: 0 0 10px rgba(255,215,0,0.3); }
+        .detail-title { font-size: 20px; color: white; margin-bottom: 8px; font-weight: bold; display: flex; align-items: center; gap: 5px; }
+        .detail-meta { font-size: 14px; color: #aaa; margin-bottom: 10px; display: flex; gap: 20px; }
+        .detail-desc { font-size: 16px; color: #ddd; line-height: 1.6; background: #222; padding: 12px; border-radius: 6px; }
         
         .action-row { display: flex; gap: 10px; margin-top: 5px; }
         .submit-btn { flex: 2; padding: 10px; background: white; color: black; font-size: 18px; font-weight: bold; border: none; border-radius: 20px; cursor: pointer; transition: transform 0.1s; }
@@ -237,12 +243,39 @@
         /* Unlock Anim */
         .unlock-flash-anim { animation: unlock-pop 0.5s ease-out; background-color: #333 !important; opacity: 1 !important; }
         @keyframes unlock-pop { 0% { background-color: white; transform: scale(1.05); } 100% { background-color: #333; transform: scale(1); } }
+        
+        /* === STRONG GUIDE SYSTEM === */
+        .guide-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 8000; display: none; }
+        .guide-highlight { position: relative; z-index: 8500 !important; box-shadow: 0 0 0 4px #ffd700, 0 0 30px rgba(255,215,0,0.5) !important; animation: guide-glow 1.5s infinite; }
+        @keyframes guide-glow { 0% { box-shadow: 0 0 0 4px #ffd700, 0 0 30px rgba(255,215,0,0.5); } 50% { box-shadow: 0 0 0 6px #ffd700, 0 0 50px rgba(255,215,0,0.8); } 100% { box-shadow: 0 0 0 4px #ffd700, 0 0 30px rgba(255,215,0,0.5); } }
+        .guide-message { position: fixed; z-index: 9000; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border: 2px solid #ffd700; border-radius: 12px; padding: 20px 30px; max-width: 450px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.8), 0 0 20px rgba(255,215,0,0.3); }
+        .guide-message h3 { color: #ffd700; margin: 0 0 12px 0; font-size: 18px; }
+        .guide-message p { color: #ddd; margin: 0 0 16px 0; font-size: 15px; line-height: 1.5; }
+        .guide-message .guide-btn { background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%); color: #000; border: none; padding: 10px 30px; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+        .guide-message .guide-btn:hover { transform: scale(1.05); box-shadow: 0 0 15px rgba(255,215,0,0.6); }
+        .guide-message .guide-skip { background: transparent; color: #888; border: 1px solid #555; margin-left: 10px; }
+        .guide-message .guide-skip:hover { color: #fff; border-color: #888; }
+        .guide-arrow { position: absolute; width: 0; height: 0; }
+        .guide-arrow.arrow-up { border-left: 12px solid transparent; border-right: 12px solid transparent; border-bottom: 12px solid #ffd700; top: -12px; }
+        .guide-arrow.arrow-down { border-left: 12px solid transparent; border-right: 12px solid transparent; border-top: 12px solid #ffd700; bottom: -12px; }
+        .guide-arrow.arrow-left { border-top: 12px solid transparent; border-bottom: 12px solid transparent; border-right: 12px solid #ffd700; left: -12px; }
+        .guide-arrow.arrow-right { border-top: 12px solid transparent; border-bottom: 12px solid transparent; border-left: 12px solid #ffd700; right: -12px; }
     </style>
 </head>
 <body>
 
 <div id="tooltip"></div>
 <div id="resultTooltip" class="result-tooltip" style="display:none;"></div>
+
+<!-- Strong Guide System -->
+<div class="guide-overlay" id="guideOverlay"></div>
+<div class="guide-message" id="guideMessage" style="display:none;">
+    <h3 id="guideTitle">Guide</h3>
+    <p id="guideText">...</p>
+    <div>
+        <button class="guide-btn" id="guideBtn" onclick="advanceGuide()">OK</button>
+    </div>
+</div>
 
 <div class="container" id="mainContainer">
     <div class="header">
@@ -270,11 +303,6 @@
         </div>
 
         <div class="header-right">
-            <div class="stat-block-target" id="targetContainer">
-                <div class="stat-label-target" id="lblTarget">TARGET</div>
-                <div class="stat-val-target" id="targetText">360</div>
-            </div>
-            
             <div class="debug-panel">
                 <input type="number" id="dbgGold" class="debug-input" placeholder="G">
                 <button class="debug-btn" onclick="window.debugSetGold()">$</button>
@@ -318,10 +346,14 @@
             <div class="detail-meta" id="detailMeta"></div>
             <div class="detail-desc" id="detailContent">...</div>
         </div>
-        <div class="info-box info-right">
-            <div style="font-size:14px; color:#ccc; line-height:1.8;">
-                <b id="lblLevel">Level:</b> <span id="levelNum">1</span><br>
-                <b id="lblTracks">Tracks:</b> <span id="trackNum">2</span>
+        <div class="info-box info-right" id="infoRight">
+            <div class="target-display" id="targetContainer">
+                <div class="target-label" id="lblTarget">TARGET GROOVE</div>
+                <div class="target-value" id="targetText">360</div>
+            </div>
+            <div style="font-size:14px; color:#aaa; line-height:1.6; margin: 8px 0;">
+                <span id="lblLevel">Level:</span> <span id="levelNum" style="color:#fff;">1</span> &nbsp;|&nbsp;
+                <span id="lblTracks">Tracks:</span> <span id="trackNum" style="color:#fff;">2</span>
             </div>
             <div class="action-row">
                 <button class="sim-btn" id="simBtn" onclick="runSimulation()">
@@ -452,6 +484,11 @@
     
     const AUDIO_SOURCES = {
         bgm: "LEV1_LOOP.mp3",
+        // Split tracks for dynamic mixing
+        bgm_guitar1: "3-Guitar.mp3",
+        bgm_guitar2: "4-Guitar.mp3", 
+        bgm_bass: "7-Contemporary Bass.mp3",
+        bgm_drums: "9-TS_HMD_125_drums_groovy_hats.mp3",
         SB1: "On_Beat_1.mp3", SB2: "On_Beat_2.mp3", SB3: "On_Beat_3.mp3", SB4: "On_Beat_4.mp3", SB5: "On_Beat_5.mp3",
         EB1: "Off_Beat_1.mp3", EB2: "Off_Beat_2.mp3", EB3: "Off_Beat_3.mp3", EB4: "Off_Beat_4.mp3", EB5: "Off_Beat_5.mp3", EB6: "Off_Beat_6.mp3",
         NG1: "exp_Beat_1.mp3", NG2: "exp_Beat_2.mp3", NG3: "exp_Beat_3.mp3", NG4: "exp_Beat_4.mp3",
@@ -460,7 +497,7 @@
 
     const UI_TEXT = {
         en: {
-            clear: "CLEAR", help: "HELP", history: "HISTORY", cpu: "★ CPU", target: "TARGET", funds: "FUNDS (G)",
+            clear: "CLEAR", help: "HELP", history: "HISTORY", cpu: "★ CPU", target: "TARGET GROOVE", funds: "FUNDS (G)",
             inventory: "INVENTORY", shop: "SHOP", upCpu: "UP CPU", sell: "SELL", reroll: "REROLL",
             ready: "Ready", readyDesc: "<b>Drag & Drop</b> items from Inventory to Tracks.<br>Drag off-track to remove.<br>Drag to Shop to sell.",
             level: "Level:", tracks: "Tracks:", submit: "SUBMIT", simulate: "SIMULATE",
@@ -582,6 +619,132 @@
     let dragManager = { active: false, itemData: null, sourceType: null, sourceRecord: null, sourceInvItem: null, ghostEl: null, previewEl: null, sellTooltip: null, currentHover: null, startX: 0, startY: 0 };
     let tutorialState = { l1: { aClicked: false, bClicked: false, aPlaced: false, bPlaced: false }, l2: { bought: false, clicked: false, effectActive: false }, l3: { kickBought: false, cpuBought: false, kickClicked: false, kickEffect: false }, l4: { cpuCount: 0 } };
     
+    // === STRONG GUIDE SYSTEM ===
+    let guideState = {
+        active: false,
+        currentStep: 0,
+        waitingFor: null, // 'click', 'place', 'buy', 'sell', 'shopItemClick', 'cpuBuy'
+        highlightedElement: null,
+        levelGuides: {
+            // Level 1 guides
+            0: [
+                { target: 'targetContainer', msg: { en: 'This is your TARGET GROOVE. You must reach this score to pass the level!', cn: '这是你的目标分数。你必须达到这个分数才能通关！' }, wait: 'click' },
+                { target: ['invPanel', 'trackArea'], msg: { en: 'Drag items from INVENTORY to the DAW tracks to place them. Items will generate Groove when triggered!', cn: '从库存中拖拽道具到DAW音轨上放置。道具被触发时会产生分数！' }, wait: 'place' },
+                { target: 'detailPanel', msg: { en: 'Check the DESCRIPTION panel to see how much Groove each item provides. Plan your placement wisely!', cn: '查看描述面板了解每个道具能提供多少分数。合理规划放置位置！' }, wait: 'click' },
+                { target: 'cpuContainer', msg: { en: 'Items cost CPU and SPACE. When you run out of either, you cannot place more items. Manage your resources!', cn: '道具需要消耗CPU和空间。当任一资源耗尽时，就无法放置更多道具了。合理管理资源！' }, wait: 'click' }
+            ],
+            // Level 2 guides
+            1: [
+                { target: 'shopList', msg: { en: 'Click on shop items to view their description before buying. Some items have special effects!', cn: '购买前先点击商店道具查看描述。有些道具有特殊效果！' }, wait: 'shopItemClick' }
+            ],
+            // Level 3 guides  
+            2: [
+                { target: 'btnBuyCpu', msg: { en: 'Buy CPU to permanently increase your CPU limit. More CPU = more items you can place!', cn: '购买CPU可以永久提升CPU上限。更多CPU = 可放置更多道具！' }, wait: 'cpuBuy' }
+            ],
+            // Level 4 guides
+            3: [
+                { target: 'shopPanel', msg: { en: 'Drag items from INVENTORY to the SHOP to sell them. Get gold to buy better items!', cn: '将道具从库存拖拽到商店区域可以出售。获得金币购买更好的道具！' }, wait: 'sell' }
+            ]
+        }
+    };
+    
+    function startLevelGuide(levelIdx) {
+        if (!state.isTutorial) return;
+        const guides = guideState.levelGuides[levelIdx];
+        if (!guides || guides.length === 0) return;
+        
+        guideState.active = true;
+        guideState.currentStep = 0;
+        showGuideStep(levelIdx, 0);
+    }
+    
+    function showGuideStep(levelIdx, stepIdx) {
+        const guides = guideState.levelGuides[levelIdx];
+        if (!guides || stepIdx >= guides.length) {
+            hideGuide();
+            return;
+        }
+        
+        const step = guides[stepIdx];
+        guideState.waitingFor = step.wait;
+        
+        // Show overlay
+        document.getElementById('guideOverlay').style.display = 'block';
+        
+        // Highlight target element(s)
+        clearGuideHighlight();
+        const targets = Array.isArray(step.target) ? step.target : [step.target];
+        targets.forEach(t => {
+            const el = document.getElementById(t);
+            if (el) {
+                el.classList.add('guide-highlight');
+                guideState.highlightedElement = el;
+            }
+        });
+        
+        // Position and show message
+        const msgBox = document.getElementById('guideMessage');
+        const title = state.lang === 'cn' ? '教程提示' : 'Tutorial';
+        const text = step.msg[state.lang];
+        const btnText = step.wait === 'click' ? (state.lang === 'cn' ? '知道了' : 'Got it!') : (state.lang === 'cn' ? '请操作...' : 'Try it...');
+        
+        document.getElementById('guideTitle').innerText = title;
+        document.getElementById('guideText').innerText = text;
+        document.getElementById('guideBtn').innerText = btnText;
+        document.getElementById('guideBtn').disabled = (step.wait !== 'click');
+        
+        // Position message near target
+        const targetEl = document.getElementById(targets[0]);
+        if (targetEl) {
+            const rect = targetEl.getBoundingClientRect();
+            msgBox.style.top = Math.min(rect.bottom + 20, window.innerHeight - 200) + 'px';
+            msgBox.style.left = Math.max(20, Math.min(rect.left, window.innerWidth - 480)) + 'px';
+        } else {
+            msgBox.style.top = '50%';
+            msgBox.style.left = '50%';
+            msgBox.style.transform = 'translate(-50%, -50%)';
+        }
+        
+        msgBox.style.display = 'block';
+    }
+    
+    function advanceGuide() {
+        if (!guideState.active) return;
+        
+        guideState.currentStep++;
+        const guides = guideState.levelGuides[state.levelIndex];
+        
+        if (guideState.currentStep >= guides.length) {
+            hideGuide();
+        } else {
+            showGuideStep(state.levelIndex, guideState.currentStep);
+        }
+    }
+    
+    function hideGuide() {
+        guideState.active = false;
+        guideState.waitingFor = null;
+        document.getElementById('guideOverlay').style.display = 'none';
+        document.getElementById('guideMessage').style.display = 'none';
+        clearGuideHighlight();
+    }
+    
+    function clearGuideHighlight() {
+        document.querySelectorAll('.guide-highlight').forEach(el => el.classList.remove('guide-highlight'));
+    }
+    
+    function checkGuideAction(action) {
+        if (!guideState.active || !guideState.waitingFor) return;
+        if (guideState.waitingFor === action) {
+            document.getElementById('guideBtn').disabled = false;
+            document.getElementById('guideBtn').innerText = state.lang === 'cn' ? '继续' : 'Continue';
+            // Auto advance for some actions
+            if (action === 'place' || action === 'cpuBuy' || action === 'sell') {
+                setTimeout(advanceGuide, 500);
+            }
+        }
+    }
+    
     function resetTutorialStateForLevel(idx) { if (idx === 0) tutorialState.l1 = { aClicked: false, bClicked: false, aPlaced: false, bPlaced: false }; if (idx === 1) { tutorialState.l2.clicked = false; tutorialState.l2.effectActive = false; } if (idx === 2) { tutorialState.l3.kickClicked = false; tutorialState.l3.kickEffect = false; } if (idx === 3) tutorialState.l4 = { cpuCount: 0 }; }
 
     // --- Init ---
@@ -687,7 +850,8 @@
 
     // --- Audio & Visual ---
     let visualInterval = null; let playbackStartTime = 0; let playbackTimer = null; let audioInitialized = false; let isSkipping = false;
-    let bgPlayer = null; let losePlayer = null; let samplePlayers = null; let effects = {};
+    let bgPlayers = {}; // Multi-track background players
+    let losePlayer = null; let samplePlayers = null; let effects = {};
     let activeBeams = [];
 
     async function initAudio() {
@@ -697,23 +861,68 @@
         effects.filter = new Tone.Filter(20000, "lowpass").toDestination();
         effects.crusher = new Tone.BitCrusher(16).toDestination(); 
         effects.phaser = new Tone.Phaser({ frequency: 15, octaves: 5, baseFrequency: 1000, wet: 0 }).toDestination();
-        bgPlayer = new Tone.Player({ url: AUDIO_SOURCES.bgm, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -10 });
+        
+        // Create 4 independent background track players
+        bgPlayers.drums = new Tone.Player({ url: AUDIO_SOURCES.bgm_drums, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -8 });
+        bgPlayers.guitar1 = new Tone.Player({ url: AUDIO_SOURCES.bgm_guitar1, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -10 });
+        bgPlayers.guitar2 = new Tone.Player({ url: AUDIO_SOURCES.bgm_guitar2, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -10 });
+        bgPlayers.bass = new Tone.Player({ url: AUDIO_SOURCES.bgm_bass, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -10 });
+        
+        // Fallback single player for lose state
         losePlayer = new Tone.Player({ url: AUDIO_SOURCES.bgm, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -10 }); 
-        bgPlayer.disconnect(); bgPlayer.connect(effects.filter); losePlayer.disconnect(); losePlayer.connect(effects.filter);
+        
+        // Connect to effects chain
+        Object.values(bgPlayers).forEach(p => { p.disconnect(); p.connect(effects.filter); });
+        losePlayer.disconnect(); losePlayer.connect(effects.filter);
         effects.filter.connect(effects.crusher); effects.crusher.connect(effects.phaser);
-        const itemUrls = {}; for (const [key, url] of Object.entries(AUDIO_SOURCES)) { if (key !== 'bgm') itemUrls[key] = url; }
+        
+        const itemUrls = {}; 
+        for (const [key, url] of Object.entries(AUDIO_SOURCES)) { 
+            if (!key.startsWith('bgm')) itemUrls[key] = url; 
+        }
         samplePlayers = new Tone.Players({ urls: itemUrls, fadeOut: 0.05, volume: 0 }).toDestination();
         await Tone.loaded();
-        if (bgPlayer.buffer.duration > 0) { TOTAL_DURATION = bgPlayer.buffer.duration; TICK_DURATION = TOTAL_DURATION / TICKS; }
+        
+        if (bgPlayers.drums.buffer && bgPlayers.drums.buffer.duration > 0) { 
+            TOTAL_DURATION = bgPlayers.drums.buffer.duration; 
+            TICK_DURATION = TOTAL_DURATION / TICKS; 
+        }
         if(btn) btn.innerText = UI_TEXT[state.lang].submit;
         audioInitialized = true;
+    }
+
+    function randomVolume(min, max) {
+        return min + Math.random() * (max - min);
     }
 
     function scheduleAudio() {
         if(!audioInitialized) return;
         Tone.Transport.cancel(); Tone.Transport.stop(); Tone.Transport.position = 0;
-        const player = (state.lives === 1) ? losePlayer : bgPlayer; const other = (state.lives === 1) ? bgPlayer : losePlayer;
-        if(other.state==="started") other.stop(); if(player.loaded) { Tone.Transport.schedule((t) => { player.start(t, 0).stop(t + TOTAL_DURATION); }, 0); }
+        
+        // Stop all players
+        Object.values(bgPlayers).forEach(p => { if(p.state === "started") p.stop(); });
+        if(losePlayer.state === "started") losePlayer.stop();
+        
+        if (state.lives === 1) {
+            // Low HP: use single muted track
+            if(losePlayer.loaded) { 
+                Tone.Transport.schedule((t) => { losePlayer.start(t, 0).stop(t + TOTAL_DURATION); }, 0); 
+            }
+        } else {
+            // Normal: play 4 tracks with randomized volumes
+            // Drums always at -8db, others random between -8db and -12db
+            bgPlayers.drums.volume.value = -8;
+            bgPlayers.guitar1.volume.value = randomVolume(-12, -8);
+            bgPlayers.guitar2.volume.value = randomVolume(-12, -8);
+            bgPlayers.bass.volume.value = randomVolume(-12, -8);
+            
+            Object.values(bgPlayers).forEach(p => {
+                if(p.loaded) {
+                    Tone.Transport.schedule((t) => { p.start(t, 0).stop(t + TOTAL_DURATION); }, 0);
+                }
+            });
+        }
+        
         effects.filter.frequency.value = 20000; effects.crusher.bits.value = 16; effects.phaser.wet.value = 0;
         state.placedItems.forEach(item => {
             const start = item.start * TICK_DURATION; const duration = item.data.len * TICK_DURATION; const id = item.data.id;
@@ -870,9 +1079,9 @@
         activeBeams.push({ el: line, startTime: startTime, fadeTime: fadeStartTime, endTime: fadeStartTime + 1.0 });
     }
     
-    function skipPlayback() { if (isSkipping) return; isSkipping = true; Tone.Transport.stop(); Tone.Transport.cancel(); if(bgPlayer) bgPlayer.stop(); if(losePlayer) losePlayer.stop(); if(samplePlayers) samplePlayers.stopAll(); Tone.Draw.cancel(); if (playbackTimer) clearTimeout(playbackTimer); startVisualEngine(true); }
+    function skipPlayback() { if (isSkipping) return; isSkipping = true; Tone.Transport.stop(); Tone.Transport.cancel(); Object.values(bgPlayers).forEach(p => { if(p) p.stop(); }); if(losePlayer) losePlayer.stop(); if(samplePlayers) samplePlayers.stopAll(); Tone.Draw.cancel(); if (playbackTimer) clearTimeout(playbackTimer); startVisualEngine(true); }
     function finishPlayback() {
-        Tone.Transport.stop(); Tone.Transport.cancel(); if(bgPlayer) bgPlayer.stop(); if(losePlayer) losePlayer.stop(); if(samplePlayers) samplePlayers.stopAll();
+        Tone.Transport.stop(); Tone.Transport.cancel(); Object.values(bgPlayers).forEach(p => { if(p) p.stop(); }); if(losePlayer) losePlayer.stop(); if(samplePlayers) samplePlayers.stopAll();
         if (visualInterval) clearInterval(visualInterval); document.querySelectorAll('.placed-item').forEach(el => el.classList.remove('playing-active'));
         const playhead = document.getElementById('playhead'); if(playhead) playhead.style.display = 'none'; document.getElementById('skipOverlay').style.display = 'none'; document.getElementById('combatConnections').innerHTML = '';
         state.isPlaying = false; document.getElementById('mainContainer').classList.remove('playing-lock'); document.getElementById('mainSubmitBtn').disabled = false; document.getElementById('mainSubmitBtn').innerText = UI_TEXT[state.lang].submit; 
@@ -954,6 +1163,8 @@
                 if (sourceType === 'track') state.placedItems = state.placedItems.filter(p => p !== sourceRecord);
                 state.placedItems.push({ id: Date.now(), data: itemData, track: currentHover.track, start: currentHover.tick });
                 restorePlacedItems();
+                // Tutorial guide: item placed
+                checkGuideAction('place');
             }
         } else if (hoverType === 'shop' && sourceType === 'inventory') { if (canSell()) { state.selectedInvItem = sourceInvItem; sellSelectedItem(); } }
         else if (hoverType === 'outside' && sourceType === 'track') { state.placedItems = state.placedItems.filter(p => p !== sourceRecord); restorePlacedItems(); }
@@ -1012,7 +1223,29 @@
     function skipTutorial() { document.getElementById('tutorialQueryModal').style.display = 'none'; startStandardGame(); }
     function playTutorial() { document.getElementById('tutorialQueryModal').style.display = 'none'; state.isTutorial = true; startTutorialLevel(0); }
     function startStandardGame() { state.isTutorial = false; state.inventory = []; state.ng1PermanentStacks = 0; state.lives = 3; state.gold = 150; ["SB1", "EB1", "NG2"].forEach(id => addItemToInventory(id, 0)); config.maxCpu = 12; state.placedItems = []; applyLevelConfig(0); updateUI(); }
-    function startTutorialLevel(idx) { state.levelIndex = idx; resetTutorialStateForLevel(idx); const cfg = TUTORIAL_CONFIG[idx]; config.target = cfg.target; config.activeTracks = cfg.tracks; if (idx === 0) { state.inventory = []; state.placedItems = []; state.poolIds = []; state.gold = 0; config.maxCpu = cfg.startCpu; if(cfg.initialItems) cfg.initialItems.forEach(id => addItemToInventory(id, 0)); } if (cfg.poolAdds) cfg.poolAdds.forEach(id => { if(!state.poolIds.includes(id)) state.poolIds.push(id); if (!state.poolEntryTimes[id]) state.poolEntryTimes[id] = 0; }); state.tutorialCpuBought = false; if(cfg.repeatableCpu) state.cpuPurchasedRound = 0; applyLevelConfig(idx); if (idx > 0) forceTutorialShop(idx); else { state.currentShopItems = []; renderShopFromState(); } }
+    function startTutorialLevel(idx) { 
+        state.levelIndex = idx; 
+        resetTutorialStateForLevel(idx); 
+        const cfg = TUTORIAL_CONFIG[idx]; 
+        config.target = cfg.target; 
+        config.activeTracks = cfg.tracks; 
+        if (idx === 0) { 
+            state.inventory = []; state.placedItems = []; state.poolIds = []; state.gold = 0; 
+            config.maxCpu = cfg.startCpu; 
+            if(cfg.initialItems) cfg.initialItems.forEach(id => addItemToInventory(id, 0)); 
+        } 
+        if (cfg.poolAdds) cfg.poolAdds.forEach(id => { 
+            if(!state.poolIds.includes(id)) state.poolIds.push(id); 
+            if (!state.poolEntryTimes[id]) state.poolEntryTimes[id] = 0; 
+        }); 
+        state.tutorialCpuBought = false; 
+        if(cfg.repeatableCpu) state.cpuPurchasedRound = 0; 
+        applyLevelConfig(idx); 
+        if (idx > 0) forceTutorialShop(idx); 
+        else { state.currentShopItems = []; renderShopFromState(); }
+        // Start strong guide after a short delay
+        setTimeout(() => startLevelGuide(idx), 500);
+    }
     function forceTutorialShop(idx) { state.currentShopItems = []; const cfg = TUTORIAL_CONFIG[idx]; if (cfg.poolAdds) cfg.poolAdds.forEach(id => { if (!state.inventory.some(inv => inv.data.id === id)) { const data = DB.find(i => i.id === id); if(data) state.currentShopItems.push({ data: data, price: data.price, isDiscount: false, discountPercent: 0, sold: false }); } }); renderShopFromState(); }
     function addItemToInventory(id, price) { const data = DB.find(i => i.id === id); if(data) state.inventory.push({ uid: Date.now()+Math.random(), id: id, boughtPrice: price, data: data }); }
     
@@ -1375,14 +1608,27 @@
         const price = item.boughtPrice === 0 ? 25 : Math.floor(item.boughtPrice * 0.25); 
         updateGold(price); state.inventory = state.inventory.filter(x => x !== item); state.selectedInvItem = null; 
         const itemId = item.data.id; const initialCount = state.placedItems.length; state.placedItems = state.placedItems.filter(p => p.data.id !== itemId); if (state.placedItems.length !== initialCount) { restorePlacedItems(); }
-        updateInventoryUI(); const shop = document.getElementById('shopPanel'); const float = document.createElement('div'); float.innerText = `+${price}G`; float.style.position = 'absolute'; float.style.left = '50%'; float.style.top = '50%'; float.style.color = 'gold'; float.style.fontWeight='bold'; float.style.transform='translate(-50%, -50%)'; float.style.pointerEvents='none'; shop.appendChild(float); setTimeout(()=>float.remove(), 1000);
+        updateInventoryUI(); 
+        checkGuideAction('sell'); // Tutorial guide
+        const shop = document.getElementById('shopPanel'); const float = document.createElement('div'); float.innerText = `+${price}G`; float.style.position = 'absolute'; float.style.left = '50%'; float.style.top = '50%'; float.style.color = 'gold'; float.style.fontWeight='bold'; float.style.transform='translate(-50%, -50%)'; float.style.pointerEvents='none'; shop.appendChild(float); setTimeout(()=>float.remove(), 1000);
     }
     function applyNG1Discount(count) { const minDisc = 0.05 * count; const maxDisc = 0.10 * count; alert(`NG1 Burst! ${count} stacks consumed!`); state.currentShopItems.forEach(item => { if(!item.sold) { let extra = minDisc + Math.random() * (maxDisc - minDisc); const minPrice = Math.floor(item.data.price * 0.1); let newPrice = Math.floor(item.price * (1 - extra)); if (newPrice < minPrice) newPrice = minPrice; item.price = newPrice; item.isDiscount = true; item.discountPercent += Math.round(extra * 100); } }); renderShopFromState(); }
     
     function buyCpu() { 
-        if (state.isTutorial && state.levelIndex === 2) { if (state.gold >= 30 && !state.tutorialCpuBought) { updateGold(-30, 'btnBuyCpu'); config.maxCpu++; state.tutorialCpuBought = true; tutorialState.l3.cpuBought = true; updateUI(); updateCPU(); } else if (state.gold < 30) { alert("No Gold"); } return; }
+        if (state.isTutorial && state.levelIndex === 2) { 
+            if (state.gold >= 30 && !state.tutorialCpuBought) { 
+                updateGold(-30, 'btnBuyCpu'); config.maxCpu++; state.tutorialCpuBought = true; tutorialState.l3.cpuBought = true; 
+                updateUI(); updateCPU(); 
+                checkGuideAction('cpuBuy'); // Tutorial guide
+            } else if (state.gold < 30) { alert(state.lang === 'cn' ? "金币不足" : "Not enough gold"); } 
+            return; 
+        }
         if (state.isTutorial && state.levelIndex === 3) { tutorialState.l4.cpuCount++; }
-        const cost = 30 + (Math.min(state.cpuPurchasedRound, 2) * state.roundBase); if(state.gold >= cost) { updateGold(-cost, 'btnBuyCpu'); config.maxCpu++; state.cpuPurchasedRound++; updateUI(); updateCPU(); } else { alert("No Gold"); } 
+        const cost = 30 + (Math.min(state.cpuPurchasedRound, 2) * state.roundBase); 
+        if(state.gold >= cost) { 
+            updateGold(-cost, 'btnBuyCpu'); config.maxCpu++; state.cpuPurchasedRound++; updateUI(); updateCPU();
+            checkGuideAction('cpuBuy'); // Tutorial guide
+        } else { alert(state.lang === 'cn' ? "金币不足" : "Not enough gold"); } 
     }
     
     function rerollShop() { 
@@ -1392,12 +1638,64 @@
         for(let i=0; i<4; i++) { if(candidates.length === 0) break; const rand = Math.random(); let rarityTarget = 1; if (rand > 0.6) rarityTarget = 2; if (rand > 0.9) rarityTarget = 3; let pool = candidates.filter(x => x.rarity === rarityTarget); if (pool.length === 0) pool = candidates; const itemBase = pool[0]; candidates = candidates.filter(x => x.id !== itemBase.id); const variance = Math.floor(Math.random() * 11) - 5; let finalPrice = itemBase.price + variance; const entryRound = state.poolEntryTimes[itemBase.id] || 0; const roundsInPool = state.levelIndex - entryRound; const discountChance = Math.min(0.5, 0.2 + (roundsInPool * 0.1)); let isDiscount = Math.random() < discountChance; let discountPercent = 0; if(isDiscount) { const maxOff = Math.min(0.5, 0.1 + (roundsInPool * 0.1)); const minOff = 0.1; const actualOff = minOff + Math.random() * (maxOff - minOff); finalPrice = Math.floor(finalPrice * (1 - actualOff)); discountPercent = Math.round(actualOff * 100); } state.currentShopItems.push({ data: itemBase, price: finalPrice, isDiscount: isDiscount, discountPercent: discountPercent, sold: false }); } renderShopFromState(); 
     }
     
-    function renderShopFromState() { const list = document.getElementById('shopList'); list.innerHTML = ''; state.currentShopItems.forEach(item => { 
-        let d = document.createElement('div'); d.className = 'shop-item'; 
-        const owned = state.inventory.some(inv => inv.data.id === item.data.id) || state.placedItems.some(p => p.data.id === item.data.id);
-        if (item.data.unique && owned) { d.classList.add('owned-unique'); item.sold = true; }
+    function renderShopFromState() { 
+        const list = document.getElementById('shopList'); 
+        list.innerHTML = ''; 
+        state.currentShopItems.forEach(item => { 
+            let d = document.createElement('div'); 
+            d.className = 'shop-item'; 
+            const owned = state.inventory.some(inv => inv.data.id === item.data.id) || state.placedItems.some(p => p.data.id === item.data.id);
+            if (item.data.unique && owned) { d.classList.add('owned-unique'); item.sold = true; }
 
-        d.onclick = () => { if(!state.isPlaying) showDetail(item.data); }; let btn = document.createElement('button'); btn.className = "btn-buy"; if (item.sold) { btn.disabled = true; btn.innerText = UI_TEXT[state.lang].purchased; } else { btn.innerHTML = `${item.price}G`; btn.onclick = (e) => { e.stopPropagation(); if(state.gold>=item.price){ updateGold(-item.price, 'goldText'); addItemToInventory(item.data.id, item.price); item.sold=true; if (state.isTutorial && state.levelIndex === 1 && item.data.id === 'EB1') tutorialState.l2.bought = true; if (state.isTutorial && state.levelIndex === 2 && item.data.id === 'SB1') tutorialState.l3.kickBought = true; updateInventoryUI(); renderShopFromState(); } else { alert("No Gold"); } }; } let html = `<div class="shop-row-top"><b style="color:${item.data.color}">${item.data.name[state.lang]}</b></div><div class="shop-row-btm"><span>CPU:${item.data.cpu}</span><span>Len:${item.data.len}</span></div>`; if (item.isDiscount) html += `<div class="discount-tag">-${item.discountPercent}%</div>`; d.innerHTML = html; d.querySelector('.shop-row-top').appendChild(btn); list.appendChild(d); }); 
+            d.onclick = () => { 
+                if(!state.isPlaying) {
+                    showDetail(item.data);
+                    // Tutorial L2: clicked shop item
+                    if (state.isTutorial && state.levelIndex === 1 && guideState.waitingFor === 'shopItemClick') {
+                        advanceGuide();
+                    }
+                }
+            };
+            
+            // Build HTML with clear buy button at bottom
+            let html = `<div class="shop-row-top"><b style="color:${item.data.color}">${item.data.name[state.lang]}</b></div>`;
+            html += `<div class="shop-row-btm"><span>CPU: ${item.data.cpu}</span><span>Len: ${item.data.len}</span></div>`;
+            if (item.isDiscount) html += `<div class="discount-tag">-${item.discountPercent}%</div>`;
+            
+            // Price and Buy button row
+            html += `<div class="shop-price-row">`;
+            html += `<span class="shop-price">${item.price} G</span>`;
+            html += `</div>`;
+            
+            d.innerHTML = html;
+            
+            // Create buy button
+            let btn = document.createElement('button'); 
+            btn.className = "btn-buy"; 
+            const buyText = state.lang === 'cn' ? '购买' : 'BUY';
+            if (item.sold) { 
+                btn.disabled = true; 
+                btn.innerText = UI_TEXT[state.lang].purchased; 
+            } else { 
+                btn.innerText = buyText;
+                btn.onclick = (e) => { 
+                    e.stopPropagation(); 
+                    if(state.gold >= item.price) { 
+                        updateGold(-item.price, 'goldText'); 
+                        addItemToInventory(item.data.id, item.price); 
+                        item.sold = true; 
+                        if (state.isTutorial && state.levelIndex === 1 && item.data.id === 'EB1') tutorialState.l2.bought = true; 
+                        if (state.isTutorial && state.levelIndex === 2 && item.data.id === 'SB1') tutorialState.l3.kickBought = true; 
+                        updateInventoryUI(); 
+                        renderShopFromState(); 
+                    } else { 
+                        alert(state.lang === 'cn' ? "金币不足" : "Not enough gold"); 
+                    } 
+                }; 
+            }
+            d.querySelector('.shop-price-row').appendChild(btn);
+            list.appendChild(d); 
+        }); 
     }
     
     function updateRealTimeState() { 

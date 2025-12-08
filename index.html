@@ -1000,6 +1000,9 @@
     let losePlayer = null; let samplePlayers = null; let effects = {};
     let activeBeams = [];
     let currentTier = 0; // Current audio tier (-4 to +4)
+    let playbackSpeed = 1; // Speed multiplier (1 = normal, 4 = fast forward)
+    let speedChangeTime = 0; // When speed changed
+    let positionAtSpeedChange = 0; // Position (0-1) when speed changed
 
     // === 9-TIER AUDIO QUALITY SYSTEM ===
     // Maps score ratio to audio quality tier
@@ -1233,14 +1236,31 @@
 
     function startVisualEngine(fastForward) {
         playbackStartTime = Date.now();
-        const playhead = document.getElementById('playhead'); if(playhead) { playhead.style.display = 'block'; playhead.style.left = '0%'; }
+        playbackSpeed = 1; // Reset speed
+        speedChangeTime = 0;
+        positionAtSpeedChange = 0;
+        
+        const playhead = document.getElementById('playhead'); 
+        if(playhead) { playhead.style.display = 'block'; playhead.style.left = '0%'; }
         if (visualInterval) clearInterval(visualInterval);
-        const duration = fastForward ? 0.8 : TOTAL_DURATION; const svg = document.getElementById('combatConnections');
+        const svg = document.getElementById('combatConnections');
         
         visualInterval = setInterval(() => {
-            const realElapsed = (Date.now() - playbackStartTime) / 1000; const progress = realElapsed / duration;
+            // Calculate current position accounting for speed changes
+            let progress;
+            if (playbackSpeed > 1 && speedChangeTime > 0) {
+                // After speed change: position = positionAtChange + (time since change) * speed / totalDuration
+                const timeSinceSpeedChange = (Date.now() - speedChangeTime) / 1000;
+                progress = positionAtSpeedChange + (timeSinceSpeedChange * playbackSpeed) / TOTAL_DURATION;
+            } else {
+                // Normal speed
+                const realElapsed = (Date.now() - playbackStartTime) / 1000;
+                progress = realElapsed / TOTAL_DURATION;
+            }
+            progress = Math.min(progress, 1); // Cap at 100%
+            
             if(playhead) playhead.style.left = (progress * 100) + "%";
-            const simTime = fastForward ? progress * TOTAL_DURATION : (Tone.Transport.seconds || realElapsed);
+            const simTime = progress * TOTAL_DURATION;
             
             // Beam Cleanup (Opacity Fade) - fade starts when target triggers
             for (let i = activeBeams.length - 1; i >= 0; i--) {
@@ -1358,17 +1378,86 @@
         activeBeams.push({ el: line, startTime: startTime, fadeTime: fadeStartTime, endTime: fadeStartTime + 1.0 });
     }
     
-    function skipPlayback() { if (isSkipping) return; isSkipping = true; Tone.Transport.stop(); Tone.Transport.cancel(); Object.values(bgPlayers).forEach(p => { if(p) p.stop(); }); if(losePlayer) losePlayer.stop(); if(samplePlayers) samplePlayers.stopAll(); Tone.Draw.cancel(); if (playbackTimer) clearTimeout(playbackTimer); startVisualEngine(true); }
+    function skipPlayback() { 
+        if (isSkipping) return; 
+        isSkipping = true; 
+        
+        // Record position when speed change happens
+        const elapsed = (Date.now() - playbackStartTime) / 1000;
+        positionAtSpeedChange = elapsed / TOTAL_DURATION;
+        speedChangeTime = Date.now();
+        playbackSpeed = 4; // 4x speed
+        
+        // Speed up audio players (BGM)
+        Object.values(bgPlayers).forEach(p => { 
+            if(p && p.state === "started") p.playbackRate = 4; 
+        });
+        if(losePlayer && losePlayer.state === "started") losePlayer.playbackRate = 4;
+        
+        // Note: samplePlayers (item sounds) are pre-scheduled and won't speed up,
+        // but they'll still trigger at the right visual positions
+        
+        // Calculate remaining time at 4x speed
+        if (playbackTimer) clearTimeout(playbackTimer);
+        const remaining = Math.max(0, TOTAL_DURATION * (1 - positionAtSpeedChange));
+        const fastRemaining = remaining / 4; // 4x speed for remaining portion
+        
+        playbackTimer = setTimeout(finishPlayback, (fastRemaining * 1000) + 100);
+        
+        console.log(`⏩ Fast-forward from ${(positionAtSpeedChange*100).toFixed(0)}%, remaining ${fastRemaining.toFixed(1)}s`);
+    }
+    
+    function resetAudioEffects() {
+        // Reset all effects to normal (no tier modifications)
+        // Called after playback ends so clicking items sounds normal
+        if (effects.masterFilter) effects.masterFilter.frequency.value = 20000;
+        if (effects.crusher) effects.crusher.bits.value = 16;
+        if (effects.reverb) effects.reverb.wet.value = 0;
+        if (effects.masterGain) effects.masterGain.gain.value = 1;
+        if (effects.phaser) effects.phaser.wet.value = 0;
+        
+        // Reset playback speed
+        playbackSpeed = 1;
+        speedChangeTime = 0;
+        positionAtSpeedChange = 0;
+        Object.values(bgPlayers).forEach(p => { if(p) p.playbackRate = 1; });
+        if(losePlayer) losePlayer.playbackRate = 1;
+    }
+    
     function finishPlayback() {
-        Tone.Transport.stop(); Tone.Transport.cancel(); Object.values(bgPlayers).forEach(p => { if(p) p.stop(); }); if(losePlayer) losePlayer.stop(); if(samplePlayers) samplePlayers.stopAll();
-        if (visualInterval) clearInterval(visualInterval); document.querySelectorAll('.placed-item').forEach(el => el.classList.remove('playing-active'));
-        const playhead = document.getElementById('playhead'); if(playhead) playhead.style.display = 'none'; document.getElementById('skipOverlay').style.display = 'none'; document.getElementById('combatConnections').innerHTML = '';
-        state.isPlaying = false; document.getElementById('mainContainer').classList.remove('playing-lock'); document.getElementById('mainSubmitBtn').disabled = false; document.getElementById('mainSubmitBtn').innerText = UI_TEXT[state.lang].submit; 
+        Tone.Transport.stop(); Tone.Transport.cancel(); 
+        Object.values(bgPlayers).forEach(p => { if(p) p.stop(); }); 
+        if(losePlayer) losePlayer.stop(); 
+        if(samplePlayers) samplePlayers.stopAll();
+        
+        // Reset effects so clicking items sounds normal
+        resetAudioEffects();
+        
+        if (visualInterval) clearInterval(visualInterval); 
+        document.querySelectorAll('.placed-item').forEach(el => el.classList.remove('playing-active'));
+        const playhead = document.getElementById('playhead'); 
+        if(playhead) playhead.style.display = 'none'; 
+        document.getElementById('skipOverlay').style.display = 'none'; 
+        document.getElementById('combatConnections').innerHTML = '';
+        state.isPlaying = false; 
+        document.getElementById('mainContainer').classList.remove('playing-lock'); 
+        document.getElementById('mainSubmitBtn').disabled = false; 
+        document.getElementById('mainSubmitBtn').innerText = UI_TEXT[state.lang].submit; 
         document.querySelectorAll('.engine-aura').forEach(el=>el.remove());
-        activeAuras = []; // Clear tracked auras
-        const results = state.lastResultData || calculateLogic(); let totalScore = 0; results.forEach(r => totalScore += (r.base + r.bonus) * r.mult * r.finalMultiplier);
-        if (state.isSimulation) { alert(`${UI_TEXT[state.lang].simReport}\n${UI_TEXT[state.lang].resTotal}: ${Math.floor(totalScore)} / ${UI_TEXT[state.lang].resTarget}: ${config.target}`); state.isSimulation = false; }
-        else { const currentNg1Count = state.placedItems.filter(p => p.data.id === "NG1").length; if (currentNg1Count > 0) { state.ng1PermanentStacks += currentNg1Count; } showResult(currentNg1Count, Math.floor(totalScore)); }
+        activeAuras = []; 
+        isSkipping = false; // Reset skip flag
+        
+        const results = state.lastResultData || calculateLogic(); 
+        let totalScore = 0; 
+        results.forEach(r => totalScore += (r.base + r.bonus) * r.mult * r.finalMultiplier);
+        if (state.isSimulation) { 
+            alert(`${UI_TEXT[state.lang].simReport}\n${UI_TEXT[state.lang].resTotal}: ${Math.floor(totalScore)} / ${UI_TEXT[state.lang].resTarget}: ${config.target}`); 
+            state.isSimulation = false; 
+        } else { 
+            const currentNg1Count = state.placedItems.filter(p => p.data.id === "NG1").length; 
+            if (currentNg1Count > 0) { state.ng1PermanentStacks += currentNg1Count; } 
+            showResult(currentNg1Count, Math.floor(totalScore)); 
+        }
     }
 
     // --- UI Logic ---

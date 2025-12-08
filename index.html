@@ -999,43 +999,97 @@
     let bgFilters = {}; // Per-track filters for tonal variation
     let losePlayer = null; let samplePlayers = null; let effects = {};
     let activeBeams = [];
+    let currentTier = 0; // Current audio tier (-4 to +4)
+
+    // === 9-TIER AUDIO QUALITY SYSTEM ===
+    // Maps score ratio to audio quality tier
+    // Tier -4: 60% of target (sounds bad), Tier 0: 100% (normal), Tier +4: 140% (sounds great)
+    const TIER_CONFIG = {
+        // Tier: [minRatio, maxRatio, filterFreq, crusherBits, reverbWet, volumeOffset]
+        '-4': { ratio: [0.00, 0.65], filter: 2500,  bits: 8,  reverb: 0,    volume: -4 },
+        '-3': { ratio: [0.65, 0.75], filter: 4000,  bits: 10, reverb: 0,    volume: -3 },
+        '-2': { ratio: [0.75, 0.85], filter: 7000,  bits: 12, reverb: 0,    volume: -2 },
+        '-1': { ratio: [0.85, 0.95], filter: 12000, bits: 14, reverb: 0,    volume: -1 },
+        '0':  { ratio: [0.95, 1.05], filter: 20000, bits: 16, reverb: 0,    volume: 0  },
+        '+1': { ratio: [1.05, 1.15], filter: 20000, bits: 16, reverb: 0.08, volume: 0  },
+        '+2': { ratio: [1.15, 1.25], filter: 20000, bits: 16, reverb: 0.15, volume: 1  },
+        '+3': { ratio: [1.25, 1.35], filter: 20000, bits: 16, reverb: 0.22, volume: 2  },
+        '+4': { ratio: [1.35, 9.99], filter: 20000, bits: 16, reverb: 0.30, volume: 3  }
+    };
+
+    function calculateTier(score, target) {
+        const ratio = score / target;
+        for (const [tier, cfg] of Object.entries(TIER_CONFIG)) {
+            if (ratio >= cfg.ratio[0] && ratio < cfg.ratio[1]) {
+                return parseInt(tier);
+            }
+        }
+        return ratio >= 1.35 ? 4 : -4; // Fallback
+    }
+
+    function getTierLabel(tier) {
+        const labels = {
+            '-4': { en: '😫 Dissonant', cn: '😫 刺耳' },
+            '-3': { en: '😕 Off-key', cn: '😕 走调' },
+            '-2': { en: '😐 Rough', cn: '😐 粗糙' },
+            '-1': { en: '🙂 Almost', cn: '🙂 差一点' },
+            '0':  { en: '✓ Complete', cn: '✓ 完整' },
+            '+1': { en: '🎵 Good', cn: '🎵 好听' },
+            '+2': { en: '🎶 Great', cn: '🎶 很棒' },
+            '+3': { en: '✨ Excellent', cn: '✨ 出色' },
+            '+4': { en: '🔥 Perfect!', cn: '🔥 完美！' }
+        };
+        return labels[tier.toString()] || labels['0'];
+    }
 
     async function initAudio() {
         if(audioInitialized) return;
         const btn = document.getElementById('mainSubmitBtn'); if(btn) btn.innerText = "Loading...";
         await Tone.start();
         
-        // Main effects chain (for item-triggered effects)
-        effects.filter = new Tone.Filter(20000, "lowpass").toDestination();
-        effects.crusher = new Tone.BitCrusher(16).toDestination(); 
-        effects.phaser = new Tone.Phaser({ frequency: 15, octaves: 5, baseFrequency: 1000, wet: 0 }).toDestination();
+        // === EFFECTS CHAIN FOR 9-TIER SYSTEM ===
+        // Master filter (for low-tier degradation + item effects like SB4)
+        effects.masterFilter = new Tone.Filter(20000, "lowpass");
+        // BitCrusher (for low-tier digital artifacts + item effects like EB5)
+        effects.crusher = new Tone.BitCrusher(16);
+        // Phaser (for item effects like SB5 Quantizer)
+        effects.phaser = new Tone.Phaser({ frequency: 15, octaves: 5, baseFrequency: 1000, wet: 0 });
+        // Reverb (for high-tier richness)
+        effects.reverb = new Tone.Reverb({ decay: 2.5, wet: 0 });
+        // Master gain (for tier-based volume adjustment)
+        effects.masterGain = new Tone.Gain(1);
         
-        // Create per-track filters for tonal variation
+        // Create per-track filters (for subtle per-track variation)
         bgFilters.drums = new Tone.Filter(20000, "lowpass");
-        bgFilters.melody = new Tone.Filter(20000, "lowpass"); // guitar1 = melody
-        bgFilters.rhythm = new Tone.Filter(20000, "lowpass"); // guitar2 = rhythm
+        bgFilters.melody = new Tone.Filter(20000, "lowpass");
+        bgFilters.rhythm = new Tone.Filter(20000, "lowpass");
         bgFilters.bass = new Tone.Filter(20000, "lowpass");
         
         // Create 4 independent background track players
-        // Volumes and filters will be randomized per playback in scheduleAudio()
         bgPlayers.drums = new Tone.Player({ url: AUDIO_SOURCES.bgm_drums, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -6 });
         bgPlayers.melody = new Tone.Player({ url: AUDIO_SOURCES.bgm_guitar1, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -10 });
         bgPlayers.rhythm = new Tone.Player({ url: AUDIO_SOURCES.bgm_guitar2, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -10 });
         bgPlayers.bass = new Tone.Player({ url: AUDIO_SOURCES.bgm_bass, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -10 });
         
-        // Fallback single player for lose state (low HP dramatic effect)
+        // Fallback single player for lose state
         losePlayer = new Tone.Player({ url: AUDIO_SOURCES.bgm_drums, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -10 }); 
         
-        // Connect each player through its own filter, then to main effects chain
+        // Connect players -> per-track filters -> master chain
         bgPlayers.drums.disconnect(); bgPlayers.drums.connect(bgFilters.drums);
         bgPlayers.melody.disconnect(); bgPlayers.melody.connect(bgFilters.melody);
         bgPlayers.rhythm.disconnect(); bgPlayers.rhythm.connect(bgFilters.rhythm);
         bgPlayers.bass.disconnect(); bgPlayers.bass.connect(bgFilters.bass);
         
-        // Connect per-track filters to main effects chain
-        Object.values(bgFilters).forEach(f => f.connect(effects.filter));
-        losePlayer.disconnect(); losePlayer.connect(effects.filter);
-        effects.filter.connect(effects.crusher); effects.crusher.connect(effects.phaser);
+        // Connect per-track filters -> masterGain -> crusher -> masterFilter -> phaser -> reverb -> destination
+        Object.values(bgFilters).forEach(f => f.connect(effects.masterGain));
+        effects.masterGain.connect(effects.crusher);
+        effects.crusher.connect(effects.masterFilter);
+        effects.masterFilter.connect(effects.phaser);
+        effects.phaser.connect(effects.reverb);
+        effects.reverb.toDestination();
+        
+        // Lose player uses same chain
+        losePlayer.disconnect(); losePlayer.connect(effects.masterGain);
         
         const itemUrls = {}; 
         for (const [key, url] of Object.entries(AUDIO_SOURCES)) { 
@@ -1056,7 +1110,7 @@
         return min + Math.random() * (max - min);
     }
 
-    function scheduleAudio() {
+    function scheduleAudio(preCalculatedScore) {
         if(!audioInitialized) return;
         Tone.Transport.cancel(); Tone.Transport.stop(); Tone.Transport.position = 0;
         
@@ -1064,21 +1118,38 @@
         Object.values(bgPlayers).forEach(p => { if(p.state === "started") p.stop(); });
         if(losePlayer.state === "started") losePlayer.stop();
         
+        // === 9-TIER AUDIO QUALITY SYSTEM ===
+        // Calculate tier based on pre-calculated score vs target
+        const score = preCalculatedScore || 0;
+        currentTier = calculateTier(score, config.target);
+        const tierKey = currentTier >= 0 ? '+' + currentTier : currentTier.toString();
+        const tierCfg = TIER_CONFIG[tierKey] || TIER_CONFIG['0'];
+        
+        // Apply tier effects to master chain
+        effects.masterFilter.frequency.value = tierCfg.filter;
+        effects.crusher.bits.value = tierCfg.bits;
+        effects.reverb.wet.value = tierCfg.reverb;
+        effects.masterGain.gain.value = Math.pow(10, tierCfg.volume / 20); // dB to linear
+        
+        console.log(`🎵 Tier ${currentTier} (${(score/config.target*100).toFixed(0)}%): Filter ${tierCfg.filter}Hz, Bits ${tierCfg.bits}, Reverb ${(tierCfg.reverb*100).toFixed(0)}%, Vol ${tierCfg.volume}dB`);
+        
         if (state.lives === 1) {
-            // Low HP: use single muted track with heavy filter
+            // Low HP: use single muted track with heavy filter (override tier)
+            effects.masterFilter.frequency.value = 1500;
+            effects.crusher.bits.value = 6;
             if(losePlayer.loaded) { 
                 Tone.Transport.schedule((t) => { losePlayer.start(t, 0).stop(t + TOTAL_DURATION); }, 0); 
             }
         } else {
             // === DYNAMIC MIX SYSTEM ===
-            // Volume randomization per playback (no tonal filters - keep consistent style)
+            // Volume randomization per playback
             // Drums: fixed -6dB, Others: -6 to -12 dB
             bgPlayers.drums.volume.value = -6;
             bgPlayers.melody.volume.value = randomVolume(-12, -6);
             bgPlayers.rhythm.volume.value = randomVolume(-12, -6);
             bgPlayers.bass.volume.value = randomVolume(-12, -6);
             
-            // Reset all per-track filters to full frequency (no tonal change)
+            // Reset per-track filters
             Object.values(bgFilters).forEach(f => { f.frequency.value = 20000; });
             
             // Start all 4 tracks
@@ -1087,23 +1158,35 @@
                     Tone.Transport.schedule((t) => { p.start(t, 0).stop(t + TOTAL_DURATION); }, 0);
                 }
             });
-            
-            // Debug log
-            console.log('🎵 Mix:', {
-                drums: bgPlayers.drums.volume.value.toFixed(1) + 'dB',
-                melody: bgPlayers.melody.volume.value.toFixed(1) + 'dB',
-                rhythm: bgPlayers.rhythm.volume.value.toFixed(1) + 'dB',
-                bass: bgPlayers.bass.volume.value.toFixed(1) + 'dB'
-            });
         }
         
-        effects.filter.frequency.value = 20000; effects.crusher.bits.value = 16; effects.phaser.wet.value = 0;
+        // Item-specific effects (these trigger during playback)
+        // Store tier baseline for restoration after item effects
+        const tierFilterBaseline = tierCfg.filter;
+        effects.phaser.wet.value = 0;
+        
         state.placedItems.forEach(item => {
             const start = item.start * TICK_DURATION; const duration = item.data.len * TICK_DURATION; const id = item.data.id;
             Tone.Transport.schedule((time) => { if (samplePlayers.has(id)) samplePlayers.player(id).start(time); }, start);
-            if (id === "SB4") { Tone.Transport.schedule(t => effects.filter.frequency.rampTo(400, 0.2, t), start); Tone.Transport.schedule(t => effects.filter.frequency.rampTo(20000, 0.2, t), start + duration); }
-            else if (id === "SB5") { if (start % 8 === 0) { Tone.Transport.schedule(t => effects.phaser.wet.rampTo(1, 0.2, t), start); Tone.Transport.schedule(t => effects.phaser.wet.rampTo(0, 0.2, t), start + duration); } }
-            else if (id === "EB5") { Tone.Transport.schedule(t => effects.crusher.bits.rampTo(4, 0.1, t), start); Tone.Transport.schedule(t => effects.crusher.bits.rampTo(16, 0.1, t), start + duration); }
+            
+            // Master Clock (SB4): dramatic low-pass sweep on BGM
+            if (id === "SB4") { 
+                Tone.Transport.schedule(t => effects.masterFilter.frequency.rampTo(400, 0.2, t), start); 
+                Tone.Transport.schedule(t => effects.masterFilter.frequency.rampTo(tierFilterBaseline, 0.2, t), start + duration); 
+            }
+            // Quantizer (SB5): phaser effect
+            else if (id === "SB5") { 
+                if (start % 8 === 0) { 
+                    Tone.Transport.schedule(t => effects.phaser.wet.rampTo(0.6, 0.2, t), start); 
+                    Tone.Transport.schedule(t => effects.phaser.wet.rampTo(0, 0.2, t), start + duration); 
+                } 
+            }
+            // Time Stretch (EB5): lo-fi effect
+            else if (id === "EB5") { 
+                const loFiBits = Math.max(4, tierCfg.bits - 8);
+                Tone.Transport.schedule(t => { effects.crusher.bits.value = loFiBits; }, start); 
+                Tone.Transport.schedule(t => { effects.crusher.bits.value = tierCfg.bits; }, start + duration); 
+            }
         });
     }
 
@@ -1121,9 +1204,26 @@
         document.querySelectorAll('.engine-aura').forEach(el=>el.remove());
         document.querySelectorAll('.flash-weak-fix').forEach(el=>el.classList.remove('flash-weak-fix'));
 
-        try { await initAudio(); Tone.Transport.stop(); Tone.Transport.cancel(); Tone.Draw.cancel(); scheduleAudio(); Tone.Transport.start(); } catch(e) {}
-        state.lastResultData = calculateLogic(); state.lastResultData.forEach(r => r.visualTriggered = false);
-        startVisualEngine(false); if (playbackTimer) clearTimeout(playbackTimer); playbackTimer = setTimeout(finishPlayback, (TOTAL_DURATION * 1000) + 150);
+        // Pre-calculate score for 9-tier audio system
+        state.lastResultData = calculateLogic();
+        let totalScore = 0;
+        state.lastResultData.forEach(r => {
+            r.visualTriggered = false;
+            totalScore += (r.base + r.bonus) * r.mult * r.finalMultiplier;
+        });
+
+        try { 
+            await initAudio(); 
+            Tone.Transport.stop(); 
+            Tone.Transport.cancel(); 
+            Tone.Draw.cancel(); 
+            scheduleAudio(Math.floor(totalScore)); // Pass pre-calculated score
+            Tone.Transport.start(); 
+        } catch(e) { console.error('Audio error:', e); }
+        
+        startVisualEngine(false); 
+        if (playbackTimer) clearTimeout(playbackTimer); 
+        playbackTimer = setTimeout(finishPlayback, (TOTAL_DURATION * 1000) + 150);
     }
 
     function startVisualEngine(fastForward) {

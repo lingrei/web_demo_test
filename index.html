@@ -486,7 +486,7 @@
         // System will randomly select one version per track each playback
         bgm_guitar1: "3-Guitar.mp3",     // Melody track
         bgm_guitar2: "4-Guitar.mp3",     // Rhythm track
-        bgm_bass: "7-Contemporary Bass.mp3",
+        bgm_bass: "7-ContemporaryBass.mp3",
         bgm_drums: "9-TS_HMD_125_drums_groovy_hats.mp3",
         SB1: "On_Beat_1.mp3", SB2: "On_Beat_2.mp3", SB3: "On_Beat_3.mp3", SB4: "On_Beat_4.mp3", SB5: "On_Beat_5.mp3",
         EB1: "Off_Beat_1.mp3", EB2: "Off_Beat_2.mp3", EB3: "Off_Beat_3.mp3", EB4: "Off_Beat_4.mp3", EB5: "Off_Beat_5.mp3", EB6: "Off_Beat_6.mp3",
@@ -1004,17 +1004,18 @@
     // === 9-TIER AUDIO QUALITY SYSTEM ===
     // Maps score ratio to audio quality tier
     // Tier -4: 60% of target (sounds bad), Tier 0: 100% (normal), Tier +4: 140% (sounds great)
+    // MORE DRAMATIC differences for clearer feedback
     const TIER_CONFIG = {
-        // Tier: [minRatio, maxRatio, filterFreq, crusherBits, reverbWet, volumeOffset]
-        '-4': { ratio: [0.00, 0.65], filter: 2500,  bits: 8,  reverb: 0,    volume: -4 },
-        '-3': { ratio: [0.65, 0.75], filter: 4000,  bits: 10, reverb: 0,    volume: -3 },
-        '-2': { ratio: [0.75, 0.85], filter: 7000,  bits: 12, reverb: 0,    volume: -2 },
-        '-1': { ratio: [0.85, 0.95], filter: 12000, bits: 14, reverb: 0,    volume: -1 },
-        '0':  { ratio: [0.95, 1.05], filter: 20000, bits: 16, reverb: 0,    volume: 0  },
-        '+1': { ratio: [1.05, 1.15], filter: 20000, bits: 16, reverb: 0.08, volume: 0  },
-        '+2': { ratio: [1.15, 1.25], filter: 20000, bits: 16, reverb: 0.15, volume: 1  },
-        '+3': { ratio: [1.25, 1.35], filter: 20000, bits: 16, reverb: 0.22, volume: 2  },
-        '+4': { ratio: [1.35, 9.99], filter: 20000, bits: 16, reverb: 0.30, volume: 3  }
+        // Tier: filter (Hz), bits, reverb wet, volume offset (dB)
+        '-4': { ratio: [0.00, 0.65], filter: 1200,  bits: 5,  reverb: 0,    volume: -6 },  // Very muffled, harsh digital
+        '-3': { ratio: [0.65, 0.75], filter: 2000,  bits: 7,  reverb: 0,    volume: -4 },  // Muffled, noticeable artifacts
+        '-2': { ratio: [0.75, 0.85], filter: 4000,  bits: 10, reverb: 0,    volume: -2 },  // Dull, some artifacts
+        '-1': { ratio: [0.85, 0.95], filter: 8000,  bits: 13, reverb: 0,    volume: -1 },  // Slightly muffled
+        '0':  { ratio: [0.95, 1.05], filter: 20000, bits: 16, reverb: 0,    volume: 0  },  // Clean, normal
+        '+1': { ratio: [1.05, 1.15], filter: 20000, bits: 16, reverb: 0.12, volume: 1  },  // Slight sparkle
+        '+2': { ratio: [1.15, 1.25], filter: 20000, bits: 16, reverb: 0.20, volume: 2  },  // Nice ambience
+        '+3': { ratio: [1.25, 1.35], filter: 20000, bits: 16, reverb: 0.30, volume: 3  },  // Rich, spacious
+        '+4': { ratio: [1.35, 9.99], filter: 20000, bits: 16, reverb: 0.40, volume: 4  }   // Amazing, full
     };
 
     function calculateTier(score, target) {
@@ -1066,10 +1067,11 @@
         bgFilters.bass = new Tone.Filter(20000, "lowpass");
         
         // Create 4 independent background track players
-        bgPlayers.drums = new Tone.Player({ url: AUDIO_SOURCES.bgm_drums, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -6 });
-        bgPlayers.melody = new Tone.Player({ url: AUDIO_SOURCES.bgm_guitar1, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -10 });
-        bgPlayers.rhythm = new Tone.Player({ url: AUDIO_SOURCES.bgm_guitar2, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -10 });
-        bgPlayers.bass = new Tone.Player({ url: AUDIO_SOURCES.bgm_bass, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -10 });
+        // Base volumes set here, then randomized per-playback in scheduleAudio
+        bgPlayers.drums = new Tone.Player({ url: AUDIO_SOURCES.bgm_drums, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: 0 });
+        bgPlayers.melody = new Tone.Player({ url: AUDIO_SOURCES.bgm_guitar1, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: 0 });
+        bgPlayers.rhythm = new Tone.Player({ url: AUDIO_SOURCES.bgm_guitar2, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: 0 });
+        bgPlayers.bass = new Tone.Player({ url: AUDIO_SOURCES.bgm_bass, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: 0 });
         
         // Fallback single player for lose state
         losePlayer = new Tone.Player({ url: AUDIO_SOURCES.bgm_drums, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -10 }); 
@@ -1095,7 +1097,10 @@
         for (const [key, url] of Object.entries(AUDIO_SOURCES)) { 
             if (!key.startsWith('bgm')) itemUrls[key] = url; 
         }
-        samplePlayers = new Tone.Players({ urls: itemUrls, fadeOut: 0.05, volume: 0 }).toDestination();
+        // Connect item sounds through the SAME effects chain as BGM
+        // This way items are also affected by the 9-tier quality system
+        samplePlayers = new Tone.Players({ urls: itemUrls, fadeOut: 0.05, volume: -6 });
+        samplePlayers.connect(effects.masterGain); // Route through tier effects
         await Tone.loaded();
         
         if (bgPlayers.drums.buffer && bgPlayers.drums.buffer.duration > 0) { 
@@ -1142,12 +1147,12 @@
             }
         } else {
             // === DYNAMIC MIX SYSTEM ===
-            // Volume randomization per playback
-            // Drums: fixed -6dB, Others: -6 to -12 dB
-            bgPlayers.drums.volume.value = -6;
-            bgPlayers.melody.volume.value = randomVolume(-12, -6);
-            bgPlayers.rhythm.volume.value = randomVolume(-12, -6);
-            bgPlayers.bass.volume.value = randomVolume(-12, -6);
+            // Volume randomization per playback (louder base, subtle variation)
+            // All tracks closer in volume for balanced mix
+            bgPlayers.drums.volume.value = 0;  // Drums at 0dB (reference)
+            bgPlayers.melody.volume.value = randomVolume(-6, -2);  // Melody: -6 to -2 dB
+            bgPlayers.rhythm.volume.value = randomVolume(-6, -2);  // Rhythm: -6 to -2 dB
+            bgPlayers.bass.volume.value = randomVolume(-4, 0);     // Bass: -4 to 0 dB
             
             // Reset per-track filters
             Object.values(bgFilters).forEach(f => { f.frequency.value = 20000; });

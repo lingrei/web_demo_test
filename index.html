@@ -8,6 +8,7 @@
         /* --- 基础样式 --- */
         :root { --bg-color: #1e1e1e; --panel-color: #2d2d2d; --highlight: #4caf50; --text-color: #eee; --gold-color: #ffd700; --cpu-used: #ff9800; --item-blue: #64b5f6; --border: 1px solid #444; --playhead-color: #ff5252; --lose-color: #ff5252; }
         :root { --c-score: #ffd700; --c-support: #00e5ff; --c-engine: #d500f9; --c-neg: #ff5252; }
+        :root { --kw-strong: #ff6b6b; --kw-weak: #4ecdc4; --kw-sync: #a29bfe; --kw-track: #74b9ff; --kw-empty: #ffeaa7; --kw-consume: #fd79a8; }
 
         body { background-color: var(--bg-color); color: var(--text-color); font-family: 'Segoe UI', sans-serif; margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; user-select: none; }
         
@@ -140,18 +141,18 @@
         .shop-panel.drag-target-sell { background-color: rgba(244, 67, 54, 0.2); border: 2px dashed #f44336; }
         .shop-panel.sell-hint { border-color: rgba(244, 67, 54, 0.5); background-color: rgba(244, 67, 54, 0.05); box-shadow: inset 0 0 15px rgba(244, 67, 54, 0.1); }
 
-        .shop-list { flex: 1; padding: 6px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
-        .shop-item { background: #222; padding: 6px 8px; border: 1px solid #444; border-radius: 4px; display: flex; flex-direction: column; gap: 3px; cursor: pointer; transition: all 0.2s; position: relative; }
+        .shop-list { flex: 1; padding: 4px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+        .shop-item { background: #222; padding: 5px 6px; border: 1px solid #444; border-radius: 3px; display: flex; flex-direction: column; gap: 2px; cursor: pointer; transition: all 0.2s; position: relative; }
         .shop-item:hover { background: #2a2a2a; border-color: #555; }
         .shop-item.owned-unique { opacity: 0.5; pointer-events: none; filter: grayscale(1); border-color: #555; }
-        .discount-tag { position: absolute; top: -5px; right: -5px; background: #f44336; color: white; font-size: 9px; padding: 2px 4px; border-radius: 3px; font-weight: bold; transform: rotate(15deg); box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .discount-tag { position: absolute; top: -4px; right: -4px; background: #f44336; color: white; font-size: 8px; padding: 1px 3px; border-radius: 2px; font-weight: bold; transform: rotate(15deg); }
         .shop-row-top { display: flex; justify-content: space-between; align-items: center; }
-        .shop-row-top b { font-size: 12px; }
-        .shop-row-btm { display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #888; }
-        .shop-price-row { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #333; padding-top: 5px; margin-top: 3px; }
-        .shop-price { color: var(--gold-color); font-weight: bold; font-size: 12px; }
-        .btn-buy { background: linear-gradient(135deg, var(--highlight) 0%, #388e3c 100%); border: none; color: white; cursor: pointer; padding: 5px 12px; border-radius: 3px; font-size: 11px; font-weight: bold; transition: all 0.2s; }
-        .btn-buy:hover { transform: scale(1.03); box-shadow: 0 0 8px rgba(76,175,80,0.5); }
+        .shop-row-top b { font-size: 11px; }
+        .shop-row-btm { display: flex; justify-content: space-between; align-items: center; font-size: 9px; color: #888; }
+        .shop-price-row { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #333; padding-top: 4px; margin-top: 2px; }
+        .shop-price { color: var(--gold-color); font-weight: bold; font-size: 11px; }
+        .btn-buy { background: linear-gradient(135deg, var(--highlight) 0%, #388e3c 100%); border: none; color: white; cursor: pointer; padding: 4px 10px; border-radius: 3px; font-size: 10px; font-weight: bold; transition: all 0.2s; }
+        .btn-buy:hover { transform: scale(1.03); box-shadow: 0 0 6px rgba(76,175,80,0.5); }
         .btn-buy:disabled { background: #444 !important; color: #666 !important; cursor: not-allowed; transform: none; box-shadow: none; }
         
         .shop-controls { padding: 10px; border-top: 1px solid #444; display: flex; flex-direction: column; gap: 10px; background: #252525; }
@@ -200,11 +201,6 @@
         .btn-confirm { background: #4caf50; border-color: #4caf50; }
         .btn-confirm:hover { background: #43a047; }
 
-        .tag-icon { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 3px; font-size: 11px; font-weight: bold; margin: 0 2px; vertical-align: text-bottom; color: #111; cursor: help; }
-        .tag-strong { background: #ffd700; box-shadow: 0 0 5px gold; }
-        .tag-empty { border: 1px solid #888; color: #ccc; background: transparent; }
-        .tag-sync { background: #00e5ff; }
-        .tag-track { background: #76ff03; }
 
         .floating-text { position: fixed; font-weight: bold; pointer-events: none; z-index: 10001; animation: float-anim 1.5s forwards; text-shadow: 0 2px 2px rgba(0,0,0,0.8); white-space: nowrap; font-size: 24px; }
         .ft-score { color: #ffd700; font-size: 32px; }
@@ -563,12 +559,7 @@
         }
     };
 
-    const TAG_ICONS = {
-        strong: '<span class="tag-icon tag-strong">⚡</span>',
-        empty: '<span class="tag-icon tag-empty">⬜</span>',
-        sync: '<span class="tag-icon tag-sync">↕️</span>',
-        track: '<span class="tag-icon tag-track">↔️</span>'
-    };
+    // Keyword colors defined in CSS: --kw-strong, --kw-weak, --kw-sync, --kw-track, --kw-empty, --kw-consume
 
     const DB = [
         { id: "SB1", name: {en: "Kick Drum", cn: "底鼓"}, desc: {en: "Gain 20 Groove. If placed on a [Strong Beat], gain +10.", cn: "获得 20 Groove。若放置在[强拍]上，额外 +10。"}, len: 4, cpu: 1, base: 20, type: "score", color: "#ffecb3", price: 100, rarity: 1 },
@@ -618,7 +609,6 @@
     };
 
     let dragManager = { active: false, itemData: null, sourceType: null, sourceRecord: null, sourceInvItem: null, ghostEl: null, previewEl: null, sellTooltip: null, currentHover: null, startX: 0, startY: 0 };
-    let lastClickedItemId = null; // Track last clicked item to prevent repeated sound
     let tutorialState = { l1: { aClicked: false, bClicked: false, aPlaced: false, bPlaced: false }, l2: { bought: false, clicked: false, effectActive: false }, l3: { kickBought: false, cpuBought: false, kickClicked: false, kickEffect: false }, l4: { cpuCount: 0 } };
     
     // === STRONG GUIDE SYSTEM ===
@@ -628,24 +618,24 @@
         waitingFor: null, // 'click', 'place', 'buy', 'sell', 'shopItemClick', 'cpuBuy'
         highlightedElement: null,
         levelGuides: {
-            // Level 1 guides - position: where to show message relative to target
+            // Level 1 guides - pos: 'center' places msg in center of screen
             0: [
-                { target: 'targetContainer', pos: 'left', msg: { en: 'This is your TARGET GROOVE. You must reach this score to pass the level!', cn: '这是你的目标分数。你必须达到这个分数才能通关！' }, wait: 'click' },
-                { target: ['invPanel', 'trackArea'], pos: 'top', msg: { en: 'Drag items from INVENTORY to the DAW tracks to place them. Items will generate Groove when triggered!', cn: '从库存中拖拽道具到DAW音轨上放置。道具被触发时会产生分数！' }, wait: 'place' },
-                { target: 'detailPanel', pos: 'top', msg: { en: 'Check the DESCRIPTION panel to see how much Groove each item provides. Plan your placement wisely!', cn: '查看描述面板了解每个道具能提供多少分数。合理规划放置位置！' }, wait: 'click' },
-                { target: ['cpuContainer', 'trackArea'], pos: 'right', msg: { en: 'Items cost CPU and SPACE. When you run out of either, you cannot place more items. Manage your resources!', cn: '道具需要消耗CPU和空间。当任一资源耗尽时，就无法放置更多道具了。合理管理资源！' }, wait: 'click' }
+                { target: 'targetContainer', pos: 'center', msg: { en: 'This is your TARGET GROOVE. You must reach this score to pass the level!', cn: '这是你的目标分数。你必须达到这个分数才能通关！' }, wait: 'click' },
+                { target: ['invPanel', 'trackArea'], pos: 'center', msg: { en: 'Drag items from INVENTORY to the DAW tracks to place them. Items will generate Groove when triggered!', cn: '从库存中拖拽道具到DAW音轨上放置。道具被触发时会产生分数！' }, wait: 'place' },
+                { target: 'detailPanel', pos: 'center', msg: { en: 'Check the DESCRIPTION panel to see how much Groove each item provides. Plan your placement wisely!', cn: '查看描述面板了解每个道具能提供多少分数。合理规划放置位置！' }, wait: 'click' },
+                { target: ['cpuContainer', 'trackArea'], pos: 'center', msg: { en: 'Items cost CPU and SPACE. When you run out of either, you cannot place more items. Manage your resources!', cn: '道具需要消耗CPU和空间。当任一资源耗尽时，就无法放置更多道具了。合理管理资源！' }, wait: 'click' }
             ],
             // Level 2 guides
             1: [
-                { target: 'shopList', pos: 'left', msg: { en: 'Click on shop items to view their description before buying. Some items have special effects!', cn: '购买前先点击商店道具查看描述。有些道具有特殊效果！' }, wait: 'shopItemClick' }
+                { target: 'shopList', pos: 'center', msg: { en: 'Click on shop items to view their description before buying. Some items have special effects!', cn: '购买前先点击商店道具查看描述。有些道具有特殊效果！' }, wait: 'shopItemClick' }
             ],
             // Level 3 guides  
             2: [
-                { target: 'btnBuyCpu', pos: 'left', msg: { en: 'Buy CPU to permanently increase your CPU limit. More CPU = more items you can place!', cn: '购买CPU可以永久提升CPU上限。更多CPU = 可放置更多道具！' }, wait: 'cpuBuy' }
+                { target: 'btnBuyCpu', pos: 'center', msg: { en: 'Buy CPU to permanently increase your CPU limit. More CPU = more items you can place!', cn: '购买CPU可以永久提升CPU上限。更多CPU = 可放置更多道具！' }, wait: 'cpuBuy' }
             ],
-            // Level 4 guides - highlight both inventory and shop for drag operation
+            // Level 4 guides - highlight inventory items (will be handled specially)
             3: [
-                { target: ['invPanel', 'shopPanel'], pos: 'top', msg: { en: 'Drag items from INVENTORY to the SHOP to sell them. Get gold to buy better items!', cn: '将道具从库存拖拽到商店区域可以出售。获得金币购买更好的道具！' }, wait: 'sell' }
+                { target: ['shopPanel'], pos: 'center', highlightInvItems: true, msg: { en: 'Drag Sampler A or B from INVENTORY to the SHOP to sell them. Get gold to buy better items!', cn: '将采样器A或B从库存拖拽到商店区域出售。获得金币购买更好的道具！' }, wait: 'sell' }
             ]
         }
     };
@@ -684,6 +674,13 @@
             }
         });
         
+        // Special: highlight inventory items (Sampler A/B) for sell tutorial
+        if (step.highlightInvItems) {
+            document.querySelectorAll('.inv-item').forEach(el => {
+                el.classList.add('guide-highlight');
+            });
+        }
+        
         // Position and show message
         const msgBox = document.getElementById('guideMessage');
         const title = state.lang === 'cn' ? '教程提示' : 'Tutorial';
@@ -695,37 +692,40 @@
         document.getElementById('guideBtn').innerText = btnText;
         document.getElementById('guideBtn').disabled = (step.wait !== 'click');
         
-        // Position message based on pos parameter - don't cover the target
+        // Position message - use center to avoid blocking targets
         msgBox.style.transform = '';
-        const targetEl = document.getElementById(targets[0]);
-        const pos = step.pos || 'bottom';
+        const pos = step.pos || 'center';
         
-        if (targetEl) {
-            const rect = targetEl.getBoundingClientRect();
-            const msgWidth = 450;
-            const msgHeight = 180;
-            
-            switch(pos) {
-                case 'top':
-                    msgBox.style.top = Math.max(10, rect.top - msgHeight - 20) + 'px';
-                    msgBox.style.left = Math.max(20, Math.min(rect.left, window.innerWidth - msgWidth - 20)) + 'px';
-                    break;
-                case 'left':
-                    msgBox.style.top = Math.max(10, rect.top) + 'px';
-                    msgBox.style.left = Math.max(20, rect.left - msgWidth - 30) + 'px';
-                    break;
-                case 'right':
-                    msgBox.style.top = Math.max(10, rect.top) + 'px';
-                    msgBox.style.left = Math.min(rect.right + 30, window.innerWidth - msgWidth - 20) + 'px';
-                    break;
-                default: // bottom
-                    msgBox.style.top = Math.min(rect.bottom + 20, window.innerHeight - msgHeight - 20) + 'px';
-                    msgBox.style.left = Math.max(20, Math.min(rect.left, window.innerWidth - msgWidth - 20)) + 'px';
-            }
-        } else {
+        if (pos === 'center') {
+            // Center of screen - never blocks anything
             msgBox.style.top = '50%';
             msgBox.style.left = '50%';
             msgBox.style.transform = 'translate(-50%, -50%)';
+        } else {
+            const targetEl = document.getElementById(targets[0]);
+            if (targetEl) {
+                const rect = targetEl.getBoundingClientRect();
+                const msgWidth = 420;
+                const msgHeight = 160;
+                
+                switch(pos) {
+                    case 'top':
+                        msgBox.style.top = Math.max(10, rect.top - msgHeight - 20) + 'px';
+                        msgBox.style.left = Math.max(20, Math.min(rect.left, window.innerWidth - msgWidth - 20)) + 'px';
+                        break;
+                    case 'left':
+                        msgBox.style.top = Math.max(10, rect.top) + 'px';
+                        msgBox.style.left = Math.max(20, rect.left - msgWidth - 30) + 'px';
+                        break;
+                    case 'right':
+                        msgBox.style.top = Math.max(10, rect.top) + 'px';
+                        msgBox.style.left = Math.min(rect.right + 30, window.innerWidth - msgWidth - 20) + 'px';
+                        break;
+                    default:
+                        msgBox.style.top = Math.min(rect.bottom + 20, window.innerHeight - msgHeight - 20) + 'px';
+                        msgBox.style.left = Math.max(20, Math.min(rect.left, window.innerWidth - msgWidth - 20)) + 'px';
+                }
+            }
         }
         
         msgBox.style.display = 'block';
@@ -1736,11 +1736,10 @@
     function showDetail(item) { 
         if (state.isTutorial) { if (state.levelIndex === 0) { if (item.id === 'TUT1') tutorialState.l1.aClicked = true; if (item.id === 'TUT2') tutorialState.l1.bClicked = true; } if (state.levelIndex === 1 && item.id === 'EB1') { tutorialState.l2.clicked = true; } if (state.levelIndex === 2 && item.id === 'SB1') { tutorialState.l3.kickClicked = true; } }
         
-        // Play item sound on click (only if different from last clicked)
-        if (item.id !== lastClickedItemId && audioInitialized && samplePlayers && samplePlayers.has(item.id)) {
+        // Play item sound on every click
+        if (audioInitialized && samplePlayers && samplePlayers.has(item.id)) {
             try { samplePlayers.player(item.id).start(); } catch(e) {}
         }
-        lastClickedItemId = item.id;
         
         document.getElementById('detailTitle').innerText = item.name[state.lang]; 
         document.getElementById('detailTitle').style.color = item.color; 
@@ -1773,16 +1772,17 @@
                 span.onmouseenter = (e) => showTooltip(e, matchedKey);
                 span.onmouseleave = () => hideTooltip();
                 
-                // Construct HTML with Icon - support both EN/CN keywords
-                let innerHTML = token; // default
-                if (token.includes('Strong Beat') || token.includes('强拍')) innerHTML = `${TAG_ICONS.strong} ${token}`;
-                else if (token.includes('Weak Beat') || token.includes('弱拍')) innerHTML = token; // No icon for weak beat
-                else if (token.includes('Empty') || token.includes('空拍')) innerHTML = `${TAG_ICONS.empty} ${token}`;
-                else if (token.includes('Sync') || token.includes('同步')) innerHTML = `${TAG_ICONS.sync} ${token}`;
-                else if (token.includes('Same Track') || token.includes('同轨')) innerHTML = `${TAG_ICONS.track} ${token}`;
-                else if (token.includes('Consume') || token.includes('吞噬')) innerHTML = `🔥 ${token}`;
+                // Set color based on keyword type (no icons)
+                let color = '#fff';
+                if (token.includes('Strong Beat') || token.includes('强拍')) color = 'var(--kw-strong)';
+                else if (token.includes('Weak Beat') || token.includes('弱拍')) color = 'var(--kw-weak)';
+                else if (token.includes('Empty') || token.includes('空拍')) color = 'var(--kw-empty)';
+                else if (token.includes('Sync') || token.includes('同步')) color = 'var(--kw-sync)';
+                else if (token.includes('Same Track') || token.includes('同轨')) color = 'var(--kw-track)';
+                else if (token.includes('Consume') || token.includes('吞噬')) color = 'var(--kw-consume)';
                 
-                span.innerHTML = innerHTML; // Safe innerHTML for just icon+text
+                span.style.color = color;
+                span.innerText = token;
                 container.appendChild(span);
             } else {
                 // Regular Text

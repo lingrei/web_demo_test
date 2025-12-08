@@ -1386,21 +1386,21 @@
         const elapsed = (Date.now() - playbackStartTime) / 1000;
         positionAtSpeedChange = elapsed / TOTAL_DURATION;
         speedChangeTime = Date.now();
-        playbackSpeed = 4; // 4x speed
+        playbackSpeed = 8; // 8x speed (2 seconds total)
         
         // Speed up audio players (BGM)
         Object.values(bgPlayers).forEach(p => { 
-            if(p && p.state === "started") p.playbackRate = 4; 
+            if(p && p.state === "started") p.playbackRate = 8; 
         });
-        if(losePlayer && losePlayer.state === "started") losePlayer.playbackRate = 4;
+        if(losePlayer && losePlayer.state === "started") losePlayer.playbackRate = 8;
         
         // Note: samplePlayers (item sounds) are pre-scheduled and won't speed up,
         // but they'll still trigger at the right visual positions
         
-        // Calculate remaining time at 4x speed
+        // Calculate remaining time at 8x speed
         if (playbackTimer) clearTimeout(playbackTimer);
         const remaining = Math.max(0, TOTAL_DURATION * (1 - positionAtSpeedChange));
-        const fastRemaining = remaining / 4; // 4x speed for remaining portion
+        const fastRemaining = remaining / 8; // 8x speed for remaining portion
         
         playbackTimer = setTimeout(finishPlayback, (fastRemaining * 1000) + 100);
         
@@ -1509,7 +1509,13 @@
     }
     function onGlobalDragMove(e) {
         if (!dragManager.active) return; e.preventDefault(); updateGhostPosition(e.clientX, e.clientY); updateCPU(); 
-        const gridPos = getGridFromClient(e.clientX, e.clientY); clearPreview();
+        
+        // Calculate grid position based on ghost's LEFT edge (not mouse center)
+        // Ghost is centered on mouse, so left edge = mouseX - ghostWidth/2
+        const ghostWidth = dragManager.ghostEl ? dragManager.ghostEl.offsetWidth : 0;
+        const ghostLeftX = e.clientX - ghostWidth / 2;
+        
+        const gridPos = getGridFromClient(ghostLeftX, e.clientY); clearPreview();
         if (gridPos) {
             const isValid = checkPlacementValidity(gridPos.track, gridPos.tick, dragManager.itemData); renderPreview(gridPos.track, gridPos.tick, dragManager.itemData.len, isValid);
             dragManager.currentHover = gridPos; dragManager.hoverType = 'track'; if(dragManager.sellTooltip) { dragManager.sellTooltip.remove(); dragManager.sellTooltip = null; }

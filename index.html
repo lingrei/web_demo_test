@@ -1071,48 +1071,29 @@
             }
         } else {
             // === DYNAMIC MIX SYSTEM ===
-            // Each playback gets unique volume + tonal character
+            // Volume randomization per playback (no tonal filters - keep consistent style)
+            // Drums: fixed -6dB, Others: -6 to -12 dB
+            bgPlayers.drums.volume.value = -6;
+            bgPlayers.melody.volume.value = randomVolume(-12, -6);
+            bgPlayers.rhythm.volume.value = randomVolume(-12, -6);
+            bgPlayers.bass.volume.value = randomVolume(-12, -6);
             
-            // Volume randomization
-            // Drums: -4 to -8 dB (always prominent)
-            // Others: -6 to -16 dB (wide range for variety)
-            bgPlayers.drums.volume.value = randomVolume(-8, -4);
-            bgPlayers.melody.volume.value = randomVolume(-16, -6);
-            bgPlayers.rhythm.volume.value = randomVolume(-16, -6);
-            bgPlayers.bass.volume.value = randomVolume(-16, -6);
+            // Reset all per-track filters to full frequency (no tonal change)
+            Object.values(bgFilters).forEach(f => { f.frequency.value = 20000; });
             
-            // Tonal variation via per-track lowpass filters
-            // Higher frequency = brighter/clearer, Lower = darker/muffled
-            // Drums: always clear (high cutoff)
-            bgFilters.drums.frequency.value = 18000 + Math.random() * 2000; // 18k-20k (clear)
-            
-            // Melody: sometimes bright, sometimes slightly muffled
-            bgFilters.melody.frequency.value = Math.random() < 0.7 
-                ? 12000 + Math.random() * 8000  // 70%: bright (12k-20k)
-                : 3000 + Math.random() * 5000;  // 30%: warmer/distant (3k-8k)
-            
-            // Rhythm: more variation allowed
-            bgFilters.rhythm.frequency.value = Math.random() < 0.6
-                ? 10000 + Math.random() * 10000 // 60%: normal (10k-20k)
-                : 2000 + Math.random() * 6000;  // 40%: lo-fi feel (2k-8k)
-            
-            // Bass: mostly full, occasionally filtered
-            bgFilters.bass.frequency.value = Math.random() < 0.8
-                ? 15000 + Math.random() * 5000  // 80%: full bass (15k-20k)
-                : 800 + Math.random() * 2000;   // 20%: sub-focused (800-2.8k)
-            
+            // Start all 4 tracks
             Object.values(bgPlayers).forEach(p => {
                 if(p.loaded) {
                     Tone.Transport.schedule((t) => { p.start(t, 0).stop(t + TOTAL_DURATION); }, 0);
                 }
             });
             
-            // Debug: log mix for testing (remove in production)
+            // Debug log
             console.log('🎵 Mix:', {
                 drums: bgPlayers.drums.volume.value.toFixed(1) + 'dB',
-                melody: bgPlayers.melody.volume.value.toFixed(1) + 'dB @ ' + (bgFilters.melody.frequency.value/1000).toFixed(1) + 'kHz',
-                rhythm: bgPlayers.rhythm.volume.value.toFixed(1) + 'dB @ ' + (bgFilters.rhythm.frequency.value/1000).toFixed(1) + 'kHz',
-                bass: bgPlayers.bass.volume.value.toFixed(1) + 'dB @ ' + (bgFilters.bass.frequency.value/1000).toFixed(1) + 'kHz'
+                melody: bgPlayers.melody.volume.value.toFixed(1) + 'dB',
+                rhythm: bgPlayers.rhythm.volume.value.toFixed(1) + 'dB',
+                bass: bgPlayers.bass.volume.value.toFixed(1) + 'dB'
             });
         }
         

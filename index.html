@@ -615,35 +615,48 @@
     let guideState = {
         active: false,
         currentStep: 0,
-        waitingFor: null, // 'click', 'place', 'buy', 'sell', 'shopItemClick', 'cpuBuy'
+        waitingFor: null, // 'click', 'place', 'buy', 'sell', 'sellBoth', 'shopItemClick', 'cpuBuy', 'cpuBuy3'
         highlightedElement: null,
+        completedLevels: {}, // Track which levels have shown guides
+        l4SoldCount: 0, // Track sold items in level 4
+        l4CpuBuyCount: 0, // Track CPU purchases in level 4
         levelGuides: {
-            // Level 1 guides - pos: 'center' places msg in center of screen
+            // Level 1 guides - pos: where to place message to not block target
             0: [
-                { target: 'targetContainer', pos: 'center', msg: { en: 'This is your TARGET GROOVE. You must reach this score to pass the level!', cn: '这是你的目标分数。你必须达到这个分数才能通关！' }, wait: 'click' },
-                { target: ['invPanel', 'trackArea'], pos: 'center', msg: { en: 'Drag items from INVENTORY to the DAW tracks to place them. Items will generate Groove when triggered!', cn: '从库存中拖拽道具到DAW音轨上放置。道具被触发时会产生分数！' }, wait: 'place' },
-                { target: 'detailPanel', pos: 'center', msg: { en: 'Check the DESCRIPTION panel to see how much Groove each item provides. Plan your placement wisely!', cn: '查看描述面板了解每个道具能提供多少分数。合理规划放置位置！' }, wait: 'click' },
-                { target: ['cpuContainer', 'trackArea'], pos: 'center', msg: { en: 'Items cost CPU and SPACE. When you run out of either, you cannot place more items. Manage your resources!', cn: '道具需要消耗CPU和空间。当任一资源耗尽时，就无法放置更多道具了。合理管理资源！' }, wait: 'click' }
+                { target: 'targetContainer', pos: 'left', msg: { en: 'This is your TARGET GROOVE. You must reach this score to pass the level!', cn: '这是你的目标分数。你必须达到这个分数才能通关！' }, wait: 'click' },
+                { target: ['invPanel', 'trackArea'], pos: 'bottom', msg: { en: 'Drag items from INVENTORY to the DAW tracks to place them. Items will generate Groove when triggered!', cn: '从库存中拖拽道具到DAW音轨上放置。道具被触发时会产生分数！' }, wait: 'place' },
+                { target: 'detailPanel', pos: 'above', msg: { en: 'Check the DESCRIPTION panel to see how much Groove each item provides. Plan your placement wisely!', cn: '查看描述面板了解每个道具能提供多少分数。合理规划放置位置！' }, wait: 'click' },
+                { target: ['cpuContainer', 'trackArea'], pos: 'below-header', msg: { en: 'Items cost CPU and SPACE. When you run out of either, you cannot place more items. Manage your resources!', cn: '道具需要消耗CPU和空间。当任一资源耗尽时，就无法放置更多道具了。合理管理资源！' }, wait: 'click' }
             ],
             // Level 2 guides
             1: [
-                { target: 'shopList', pos: 'center', msg: { en: 'Click on shop items to view their description before buying. Some items have special effects!', cn: '购买前先点击商店道具查看描述。有些道具有特殊效果！' }, wait: 'shopItemClick' }
+                { target: 'shopList', pos: 'left-of-shop', msg: { en: 'Click on shop items to view their description before buying. Some items have special effects!', cn: '购买前先点击商店道具查看描述。有些道具有特殊效果！' }, wait: 'shopItemClick' }
             ],
             // Level 3 guides  
             2: [
-                { target: 'btnBuyCpu', pos: 'center', msg: { en: 'Buy CPU to permanently increase your CPU limit. More CPU = more items you can place!', cn: '购买CPU可以永久提升CPU上限。更多CPU = 可放置更多道具！' }, wait: 'cpuBuy' }
+                { target: 'btnBuyCpu', pos: 'left-of-shop', msg: { en: 'Buy CPU to permanently increase your CPU limit. More CPU = more items you can place!', cn: '购买CPU可以永久提升CPU上限。更多CPU = 可放置更多道具！' }, wait: 'cpuBuy' }
             ],
-            // Level 4 guides - highlight inventory items (will be handled specially)
+            // Level 4 guides - sell both samplers, then buy CPU 3 times
             3: [
-                { target: ['shopPanel'], pos: 'center', highlightInvItems: true, msg: { en: 'Drag Sampler A or B from INVENTORY to the SHOP to sell them. Get gold to buy better items!', cn: '将采样器A或B从库存拖拽到商店区域出售。获得金币购买更好的道具！' }, wait: 'sell' }
+                { target: 'shopPanel', pos: 'left-of-shop', highlightSamplers: true, msg: { en: 'Drag Sampler A and B to the SHOP to sell them. These tutorial items are no longer needed!', cn: '将采样器A和B拖拽到商店出售。这两个教学道具已经不再需要了！' }, wait: 'sellBoth' },
+                { target: 'btnBuyCpu', pos: 'left-of-shop', msg: { en: 'You can buy CPU multiple times per level! The price increases slightly each time. Buy CPU 3 times to continue.', cn: '每关可以多次购买CPU！每次价格会略微递增。购买3次CPU后继续。' }, wait: 'cpuBuy3' }
             ]
         }
     };
     
     function startLevelGuide(levelIdx) {
         if (!state.isTutorial) return;
+        // Only show guide once per level (not on retry)
+        if (guideState.completedLevels[levelIdx]) return;
+        
         const guides = guideState.levelGuides[levelIdx];
         if (!guides || guides.length === 0) return;
+        
+        // Reset level 4 specific counters
+        if (levelIdx === 3) {
+            guideState.l4SoldCount = 0;
+            guideState.l4CpuBuyCount = 0;
+        }
         
         guideState.active = true;
         guideState.currentStep = 0;
@@ -654,6 +667,7 @@
         const guides = guideState.levelGuides[levelIdx];
         if (!guides || stepIdx >= guides.length) {
             hideGuide();
+            guideState.completedLevels[levelIdx] = true; // Mark level guide as completed
             return;
         }
         
@@ -666,25 +680,34 @@
         // Highlight target element(s)
         clearGuideHighlight();
         const targets = Array.isArray(step.target) ? step.target : [step.target];
-        targets.forEach(t => {
-            const el = document.getElementById(t);
-            if (el) {
-                el.classList.add('guide-highlight');
-                guideState.highlightedElement = el;
-            }
-        });
         
-        // Special: highlight inventory items (Sampler A/B) for sell tutorial
-        if (step.highlightInvItems) {
-            document.querySelectorAll('.inv-item').forEach(el => {
-                el.classList.add('guide-highlight');
+        // Special: highlight only Sampler A/B for sell tutorial (not all inv items)
+        if (step.highlightSamplers) {
+            highlightSamplerItems();
+        } else {
+            targets.forEach(t => {
+                const el = document.getElementById(t);
+                if (el) {
+                    el.classList.add('guide-highlight');
+                    guideState.highlightedElement = el;
+                }
             });
         }
         
         // Position and show message
         const msgBox = document.getElementById('guideMessage');
         const title = state.lang === 'cn' ? '教程提示' : 'Tutorial';
-        const text = step.msg[state.lang];
+        let text = step.msg[state.lang];
+        
+        // Show progress for sellBoth
+        if (step.wait === 'sellBoth') {
+            text += ` (${guideState.l4SoldCount}/2)`;
+        }
+        // Show progress for cpuBuy3
+        if (step.wait === 'cpuBuy3') {
+            text += ` (${guideState.l4CpuBuyCount}/3)`;
+        }
+        
         const btnText = step.wait === 'click' ? (state.lang === 'cn' ? '知道了' : 'Got it!') : (state.lang === 'cn' ? '请操作...' : 'Try it...');
         
         document.getElementById('guideTitle').innerText = title;
@@ -692,43 +715,84 @@
         document.getElementById('guideBtn').innerText = btnText;
         document.getElementById('guideBtn').disabled = (step.wait !== 'click');
         
-        // Position message - use center to avoid blocking targets
+        // Position message strategically to NOT block target
         msgBox.style.transform = '';
-        const pos = step.pos || 'center';
+        const pos = step.pos || 'bottom';
+        const msgWidth = 420;
+        const msgHeight = 160;
         
-        if (pos === 'center') {
-            // Center of screen - never blocks anything
-            msgBox.style.top = '50%';
-            msgBox.style.left = '50%';
-            msgBox.style.transform = 'translate(-50%, -50%)';
-        } else {
-            const targetEl = document.getElementById(targets[0]);
-            if (targetEl) {
-                const rect = targetEl.getBoundingClientRect();
-                const msgWidth = 420;
-                const msgHeight = 160;
-                
-                switch(pos) {
-                    case 'top':
-                        msgBox.style.top = Math.max(10, rect.top - msgHeight - 20) + 'px';
-                        msgBox.style.left = Math.max(20, Math.min(rect.left, window.innerWidth - msgWidth - 20)) + 'px';
-                        break;
-                    case 'left':
-                        msgBox.style.top = Math.max(10, rect.top) + 'px';
-                        msgBox.style.left = Math.max(20, rect.left - msgWidth - 30) + 'px';
-                        break;
-                    case 'right':
-                        msgBox.style.top = Math.max(10, rect.top) + 'px';
-                        msgBox.style.left = Math.min(rect.right + 30, window.innerWidth - msgWidth - 20) + 'px';
-                        break;
-                    default:
-                        msgBox.style.top = Math.min(rect.bottom + 20, window.innerHeight - msgHeight - 20) + 'px';
-                        msgBox.style.left = Math.max(20, Math.min(rect.left, window.innerWidth - msgWidth - 20)) + 'px';
+        switch(pos) {
+            case 'left': {
+                // Place to the left of the target (good for targetContainer on right side)
+                const targetEl = document.getElementById(targets[0]);
+                if (targetEl) {
+                    const rect = targetEl.getBoundingClientRect();
+                    msgBox.style.top = Math.max(10, rect.top) + 'px';
+                    msgBox.style.left = Math.max(20, rect.left - msgWidth - 30) + 'px';
+                } else {
+                    msgBox.style.top = '100px';
+                    msgBox.style.left = '20px';
                 }
+                break;
+            }
+            case 'above': {
+                // Place above the target (good for description panel at bottom)
+                const targetEl = document.getElementById(targets[0]);
+                if (targetEl) {
+                    const rect = targetEl.getBoundingClientRect();
+                    msgBox.style.top = Math.max(10, rect.top - msgHeight - 20) + 'px';
+                    msgBox.style.left = Math.max(20, rect.left) + 'px';
+                } else {
+                    msgBox.style.top = '50%';
+                    msgBox.style.left = '20px';
+                }
+                break;
+            }
+            case 'below-header': {
+                // Place below header but not blocking main content
+                msgBox.style.top = '80px';
+                msgBox.style.left = '50%';
+                msgBox.style.transform = 'translateX(-50%)';
+                break;
+            }
+            case 'left-of-shop': {
+                // Place to the left of shop panel (right side of screen)
+                const shopPanel = document.getElementById('shopPanel');
+                if (shopPanel) {
+                    const rect = shopPanel.getBoundingClientRect();
+                    msgBox.style.top = Math.max(80, rect.top + 50) + 'px';
+                    msgBox.style.left = Math.max(20, rect.left - msgWidth - 30) + 'px';
+                } else {
+                    msgBox.style.top = '50%';
+                    msgBox.style.left = '20px';
+                }
+                break;
+            }
+            case 'bottom': 
+            default: {
+                // Place at bottom of screen (good for inventory/DAW tutorials)
+                msgBox.style.bottom = '20px';
+                msgBox.style.top = 'auto';
+                msgBox.style.left = '50%';
+                msgBox.style.transform = 'translateX(-50%)';
+                break;
             }
         }
         
         msgBox.style.display = 'block';
+    }
+    
+    function highlightSamplerItems() {
+        // Find and highlight only Sampler A and B in inventory
+        document.querySelectorAll('.inv-item').forEach(el => {
+            const itemId = el.getAttribute('data-id');
+            if (itemId === 'TUT1' || itemId === 'TUT2') { // Sampler A and B
+                el.classList.add('guide-highlight');
+            }
+        });
+        // Also highlight shop panel as the drop target
+        const shopPanel = document.getElementById('shopPanel');
+        if (shopPanel) shopPanel.classList.add('guide-highlight');
     }
     
     function advanceGuide() {
@@ -756,8 +820,45 @@
         document.querySelectorAll('.guide-highlight').forEach(el => el.classList.remove('guide-highlight'));
     }
     
-    function checkGuideAction(action) {
+    function checkGuideAction(action, extraData) {
         if (!guideState.active || !guideState.waitingFor) return;
+        
+        // Handle sellBoth - need to sell 2 items
+        if (guideState.waitingFor === 'sellBoth' && action === 'sell') {
+            guideState.l4SoldCount++;
+            // Update message to show progress
+            const step = guideState.levelGuides[state.levelIndex][guideState.currentStep];
+            let text = step.msg[state.lang] + ` (${guideState.l4SoldCount}/2)`;
+            document.getElementById('guideText').innerText = text;
+            
+            // Re-highlight remaining samplers
+            clearGuideHighlight();
+            highlightSamplerItems();
+            
+            if (guideState.l4SoldCount >= 2) {
+                document.getElementById('guideBtn').disabled = false;
+                document.getElementById('guideBtn').innerText = state.lang === 'cn' ? '继续' : 'Continue';
+                setTimeout(advanceGuide, 500);
+            }
+            return;
+        }
+        
+        // Handle cpuBuy3 - need to buy CPU 3 times
+        if (guideState.waitingFor === 'cpuBuy3' && action === 'cpuBuy') {
+            guideState.l4CpuBuyCount++;
+            // Update message to show progress
+            const step = guideState.levelGuides[state.levelIndex][guideState.currentStep];
+            let text = step.msg[state.lang] + ` (${guideState.l4CpuBuyCount}/3)`;
+            document.getElementById('guideText').innerText = text;
+            
+            if (guideState.l4CpuBuyCount >= 3) {
+                document.getElementById('guideBtn').disabled = false;
+                document.getElementById('guideBtn').innerText = state.lang === 'cn' ? '继续' : 'Continue';
+                setTimeout(advanceGuide, 500);
+            }
+            return;
+        }
+        
         if (guideState.waitingFor === action) {
             document.getElementById('guideBtn').disabled = false;
             document.getElementById('guideBtn').innerText = state.lang === 'cn' ? '继续' : 'Continue';
@@ -1117,8 +1218,16 @@
 
     // --- UI Logic ---
     function updateTutorialVisuals() {
+        // Remove all existing soft guides first
+        document.querySelectorAll('.soft-guide').forEach(el => el.classList.remove('soft-guide')); 
+        document.querySelectorAll('.soft-guide-gentle').forEach(el => el.classList.remove('soft-guide-gentle'));
+        
+        // No soft guides in non-tutorial levels
         if (!state.isTutorial) return;
-        document.querySelectorAll('.soft-guide').forEach(el => el.classList.remove('soft-guide')); document.querySelectorAll('.soft-guide-gentle').forEach(el => el.classList.remove('soft-guide-gentle'));
+        
+        // No soft guides when strong guide is active - avoid visual conflict
+        if (guideState.active) return;
+        
         if (state.levelIndex === 0) {
             addGuide('targetContainer');
             // FIX: Always glow inventory items until placed - support both EN/CN
@@ -1134,7 +1243,7 @@
         }
         if (state.levelIndex === 1) { addGuide('targetContainer'); if (!tutorialState.l2.bought) { addGuideGentle('goldText'); document.querySelectorAll('.shop-item').forEach(el => { if (el.innerText.includes("Rest") || el.innerText.includes("休止")) addGuideGentleEl(el); }); } else if (!tutorialState.l2.effectActive) { document.querySelectorAll('.inv-item').forEach(el => { if (el.innerText.includes("Rest") || el.innerText.includes("休止")) addGuideGentleEl(el); }); if (state.selectedInvItem && state.selectedInvItem.data.id === 'EB1') addGuideGentle('detailPanel'); } }
         if (state.levelIndex === 2) { addGuide('targetContainer'); const needKick = !tutorialState.l3.kickBought; const needCpu = !tutorialState.l3.cpuBought; if (needKick || needCpu) { addGuideGentle('goldText'); if (needCpu) addGuide('btnBuyCpu'); if (needKick) document.querySelectorAll('.shop-item').forEach(el => { if (el.innerText.includes("Kick") || el.innerText.includes("底鼓")) addGuideGentleEl(el); }); } else if (!tutorialState.l3.kickEffect) { document.querySelectorAll('.inv-item').forEach(el => { if (el.innerText.includes("Kick") || el.innerText.includes("底鼓")) addGuideGentleEl(el); }); if (state.selectedInvItem && state.selectedInvItem.data.id === 'SB1') addGuideGentle('detailPanel'); } }
-        if (state.levelIndex === 3 && tutorialState.l4.cpuCount < 3) { addGuideGentle('goldText'); addGuide('btnBuyCpu'); }
+        // Level 4: No soft guides - we use strong guides now (sell both + buy 3 CPU)
     }
     function addGuide(id) { const el = document.getElementById(id); if (el) el.classList.add('soft-guide'); }
     function addGuideGentle(id) { const el = document.getElementById(id); if (el) el.classList.add('soft-guide-gentle'); }
@@ -1192,6 +1301,14 @@
         } else if (hoverType === 'shop' && sourceType === 'inventory') { if (canSell()) { state.selectedInvItem = sourceInvItem; sellSelectedItem(); } }
         else if (hoverType === 'outside' && sourceType === 'track') { state.placedItems = state.placedItems.filter(p => p !== sourceRecord); restorePlacedItems(); }
         dragManager.active = false; dragManager.ghostEl = null; updateCPU(); updateUI();
+        
+        // Re-highlight sampler items if guide is still waiting for sellBoth
+        if (guideState.active && guideState.waitingFor === 'sellBoth') {
+            setTimeout(() => {
+                clearGuideHighlight();
+                highlightSamplerItems();
+            }, 50);
+        }
     }
     function getGridFromClient(cx, cy) {
         const tracks = document.querySelectorAll('.track'); for (let i = 0; i < tracks.length; i++) { const rect = tracks[i].getBoundingClientRect(); if (cy >= rect.top && cy <= rect.bottom && cx >= rect.left && cx <= rect.right) { if (i >= config.activeTracks) return null; const xInTrack = cx - rect.left; const widthPerTick = rect.width / TICKS; let tick = Math.floor(xInTrack / widthPerTick); if (tick < 0) tick = 0; if (tick >= TICKS) tick = TICKS - 1; return { track: i, tick: tick }; } } return null;
@@ -1246,7 +1363,7 @@
     function skipTutorial() { document.getElementById('tutorialQueryModal').style.display = 'none'; startStandardGame(); }
     function playTutorial() { document.getElementById('tutorialQueryModal').style.display = 'none'; state.isTutorial = true; startTutorialLevel(0); }
     function startStandardGame() { state.isTutorial = false; state.inventory = []; state.ng1PermanentStacks = 0; state.lives = 3; state.gold = 150; ["SB1", "EB1", "NG2"].forEach(id => addItemToInventory(id, 0)); config.maxCpu = 12; state.placedItems = []; applyLevelConfig(0); updateUI(); }
-    function startTutorialLevel(idx) { 
+    function startTutorialLevel(idx, isRetry = false) { 
         state.levelIndex = idx; 
         resetTutorialStateForLevel(idx); 
         const cfg = TUTORIAL_CONFIG[idx]; 
@@ -1264,12 +1381,42 @@
         state.tutorialCpuBought = false; 
         if(cfg.repeatableCpu) state.cpuPurchasedRound = 0; 
         applyLevelConfig(idx); 
-        if (idx > 0) forceTutorialShop(idx); 
+        if (idx > 0) forceTutorialShop(idx, isRetry); 
         else { state.currentShopItems = []; renderShopFromState(); }
-        // Start strong guide after a short delay
-        setTimeout(() => startLevelGuide(idx), 500);
+        // Start strong guide after a short delay (only if not retry)
+        if (!isRetry) setTimeout(() => startLevelGuide(idx), 500);
     }
-    function forceTutorialShop(idx) { state.currentShopItems = []; const cfg = TUTORIAL_CONFIG[idx]; if (cfg.poolAdds) cfg.poolAdds.forEach(id => { if (!state.inventory.some(inv => inv.data.id === id)) { const data = DB.find(i => i.id === id); if(data) state.currentShopItems.push({ data: data, price: data.price, isDiscount: false, discountPercent: 0, sold: false }); } }); renderShopFromState(); }
+    function forceTutorialShop(idx, isRetry = false) { 
+        state.currentShopItems = []; 
+        const cfg = TUTORIAL_CONFIG[idx]; 
+        
+        // For level 4 retry: Check for sold essential items and add them to shop
+        if (idx === 3 && isRetry) {
+            const essentialItems = ['EB4', 'SB1', 'EB1']; // Pre-Delay, Kick, Rest
+            essentialItems.forEach(id => {
+                if (!state.inventory.some(inv => inv.data.id === id)) {
+                    const data = DB.find(i => i.id === id);
+                    if (data) {
+                        state.currentShopItems.push({ 
+                            data: data, 
+                            price: data.price, 
+                            isDiscount: false, 
+                            discountPercent: 0, 
+                            sold: false 
+                        });
+                    }
+                }
+            });
+        }
+        
+        if (cfg.poolAdds) cfg.poolAdds.forEach(id => { 
+            if (!state.inventory.some(inv => inv.data.id === id)) { 
+                const data = DB.find(i => i.id === id); 
+                if(data) state.currentShopItems.push({ data: data, price: data.price, isDiscount: false, discountPercent: 0, sold: false }); 
+            } 
+        }); 
+        renderShopFromState(); 
+    }
     function addItemToInventory(id, price) { const data = DB.find(i => i.id === id); if(data) state.inventory.push({ uid: Date.now()+Math.random(), id: id, boughtPrice: price, data: data }); }
     
     function applyLevelConfig(idx) { 
@@ -1348,7 +1495,7 @@
     function clearAllItems() { if(state.isPlaying) return; if(!confirm("Clear all items?")) return; state.placedItems = []; restorePlacedItems(); }
     function restorePlacedItems() { const ta = document.getElementById('trackArea'); const items = ta.querySelectorAll('.placed-item'); items.forEach(e => e.remove()); state.placedItems.forEach(record => { const trEl = document.getElementsByClassName('track')[record.track]; if (trEl) createPlacedElement(record, trEl); }); updateRealTimeState(); }
     function createPlacedElement(record, parent) { let el = document.createElement('div'); el.className = 'placed-item'; if (record.data.type) el.classList.add('type-' + record.data.type); el.style.left = (record.start/TICKS*100) + "%"; el.style.width = (record.data.len/TICKS*100) + "%"; el.style.backgroundColor = record.data.color; el.innerText = record.data.name[state.lang]; el.onmousedown = (e) => startDragPlaced(e, record); el.oncontextmenu = (e) => { if(state.isPlaying) return; e.preventDefault(); el.remove(); state.placedItems = state.placedItems.filter(x => x !== record); updateRealTimeState(); }; parent.appendChild(el); record.el = el; }
-    function updateInventoryUI() { const list = document.getElementById('inventoryList'); list.innerHTML = ''; state.inventory.forEach(item => { let d = document.createElement('div'); d.className = 'inv-item'; d.style.borderLeftColor = item.data.color; if(state.selectedInvItem === item) d.classList.add('selected'); if(state.isPlaying) d.classList.add('disabled'); d.innerHTML = `<b style="color:${item.data.color}">${item.data.name[state.lang]}</b><div class="inv-meta"><span>CPU:${item.data.cpu}</span><span>Len:${item.data.len}</span></div>`; d.onmousedown = (e) => startDragInventory(e, item); list.appendChild(d); }); }
+    function updateInventoryUI() { const list = document.getElementById('inventoryList'); list.innerHTML = ''; state.inventory.forEach(item => { let d = document.createElement('div'); d.className = 'inv-item'; d.setAttribute('data-id', item.data.id); d.style.borderLeftColor = item.data.color; if(state.selectedInvItem === item) d.classList.add('selected'); if(state.isPlaying) d.classList.add('disabled'); d.innerHTML = `<b style="color:${item.data.color}">${item.data.name[state.lang]}</b><div class="inv-meta"><span>CPU:${item.data.cpu}</span><span>Len:${item.data.len}</span></div>`; d.onmousedown = (e) => startDragInventory(e, item); list.appendChild(d); }); }
     
     function runSimulation() { const cost = 50 + (state.levelIndex * 20); if (state.gold < cost) return; updateGold(-cost, 'simBtn'); runPlaybackSequence(true); }
     function showHistory() { if (!state.lastResultData) { alert("No history available yet."); return; } showResult(0, 0, true); }
@@ -1624,7 +1771,16 @@
     }
     function closeResult() { document.getElementById('resultModal').style.display = 'none'; }
     function nextLevel() { updateGold(state.pendingReward); document.getElementById('resultModal').style.display = 'none'; if (state.isTutorial) { startTutorialLevel(state.levelIndex + 1); } else { const next = state.levelIndex + 1; if(next >= LEVEL_CONFIG.length) showVictory(); else applyLevelConfig(next); } }
-    function retryLevel() { updateGold(state.pendingReward); document.getElementById('resultModal').style.display = 'none'; if (state.isTutorial) { startTutorialLevel(state.levelIndex); } else { updateUI(); rerollShop(); } }
+    function retryLevel() { 
+        updateGold(state.pendingReward); 
+        document.getElementById('resultModal').style.display = 'none'; 
+        if (state.isTutorial) { 
+            startTutorialLevel(state.levelIndex, true); // Pass isRetry = true
+        } else { 
+            updateUI(); 
+            rerollShop(); 
+        } 
+    }
     function sellSelectedItem() { 
         if (!state.selectedInvItem) return; const item = state.selectedInvItem; 
         if(item.id === "NG1" && state.ng1PermanentStacks > 0) { applyNG1Discount(state.ng1PermanentStacks); state.ng1PermanentStacks = 0; } 
@@ -1733,8 +1889,13 @@
     }
 
     // --- TOOLTIP FIX V25.0: SAFER & CLEANER ---
-    function showDetail(item) { 
+    async function showDetail(item) { 
         if (state.isTutorial) { if (state.levelIndex === 0) { if (item.id === 'TUT1') tutorialState.l1.aClicked = true; if (item.id === 'TUT2') tutorialState.l1.bClicked = true; } if (state.levelIndex === 1 && item.id === 'EB1') { tutorialState.l2.clicked = true; } if (state.levelIndex === 2 && item.id === 'SB1') { tutorialState.l3.kickClicked = true; } }
+        
+        // Initialize audio on first item click if not already initialized
+        if (!audioInitialized) {
+            try { await initAudio(); } catch(e) { console.log('Audio init on click failed:', e); }
+        }
         
         // Play item sound on every click
         if (audioInitialized && samplePlayers && samplePlayers.has(item.id)) {

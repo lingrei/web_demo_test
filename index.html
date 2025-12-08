@@ -480,9 +480,12 @@
     let TICK_DURATION = TOTAL_DURATION / TICKS;
     
     const AUDIO_SOURCES = {
-        // Split tracks for dynamic mixing
-        bgm_guitar1: "3-Guitar.mp3",
-        bgm_guitar2: "4-Guitar.mp3", 
+        // === DYNAMIC BGM SYSTEM ===
+        // 4 track types: drums, bass, melody (guitar1), rhythm (guitar2)
+        // Future: Add multiple versions per track (e.g., bgm_drums_A, bgm_drums_B)
+        // System will randomly select one version per track each playback
+        bgm_guitar1: "3-Guitar.mp3",     // Melody track
+        bgm_guitar2: "4-Guitar.mp3",     // Rhythm track
         bgm_bass: "7-Contemporary Bass.mp3",
         bgm_drums: "9-TS_HMD_125_drums_groovy_hats.mp3",
         SB1: "On_Beat_1.mp3", SB2: "On_Beat_2.mp3", SB3: "On_Beat_3.mp3", SB4: "On_Beat_4.mp3", SB5: "On_Beat_5.mp3",
@@ -993,6 +996,7 @@
     // --- Audio & Visual ---
     let visualInterval = null; let playbackStartTime = 0; let playbackTimer = null; let audioInitialized = false; let isSkipping = false;
     let bgPlayers = {}; // Multi-track background players
+    let bgFilters = {}; // Per-track filters for tonal variation
     let losePlayer = null; let samplePlayers = null; let effects = {};
     let activeBeams = [];
 
@@ -1000,22 +1004,36 @@
         if(audioInitialized) return;
         const btn = document.getElementById('mainSubmitBtn'); if(btn) btn.innerText = "Loading...";
         await Tone.start();
+        
+        // Main effects chain (for item-triggered effects)
         effects.filter = new Tone.Filter(20000, "lowpass").toDestination();
         effects.crusher = new Tone.BitCrusher(16).toDestination(); 
         effects.phaser = new Tone.Phaser({ frequency: 15, octaves: 5, baseFrequency: 1000, wet: 0 }).toDestination();
         
+        // Create per-track filters for tonal variation
+        bgFilters.drums = new Tone.Filter(20000, "lowpass");
+        bgFilters.melody = new Tone.Filter(20000, "lowpass"); // guitar1 = melody
+        bgFilters.rhythm = new Tone.Filter(20000, "lowpass"); // guitar2 = rhythm
+        bgFilters.bass = new Tone.Filter(20000, "lowpass");
+        
         // Create 4 independent background track players
-        // Initial volumes will be randomized per playback in scheduleAudio()
+        // Volumes and filters will be randomized per playback in scheduleAudio()
         bgPlayers.drums = new Tone.Player({ url: AUDIO_SOURCES.bgm_drums, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -6 });
-        bgPlayers.guitar1 = new Tone.Player({ url: AUDIO_SOURCES.bgm_guitar1, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -10 });
-        bgPlayers.guitar2 = new Tone.Player({ url: AUDIO_SOURCES.bgm_guitar2, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -10 });
+        bgPlayers.melody = new Tone.Player({ url: AUDIO_SOURCES.bgm_guitar1, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -10 });
+        bgPlayers.rhythm = new Tone.Player({ url: AUDIO_SOURCES.bgm_guitar2, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -10 });
         bgPlayers.bass = new Tone.Player({ url: AUDIO_SOURCES.bgm_bass, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -10 });
         
-        // Fallback single player for lose state
-        losePlayer = new Tone.Player({ url: AUDIO_SOURCES.bgm, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -10 }); 
+        // Fallback single player for lose state (low HP dramatic effect)
+        losePlayer = new Tone.Player({ url: AUDIO_SOURCES.bgm_drums, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -10 }); 
         
-        // Connect to effects chain
-        Object.values(bgPlayers).forEach(p => { p.disconnect(); p.connect(effects.filter); });
+        // Connect each player through its own filter, then to main effects chain
+        bgPlayers.drums.disconnect(); bgPlayers.drums.connect(bgFilters.drums);
+        bgPlayers.melody.disconnect(); bgPlayers.melody.connect(bgFilters.melody);
+        bgPlayers.rhythm.disconnect(); bgPlayers.rhythm.connect(bgFilters.rhythm);
+        bgPlayers.bass.disconnect(); bgPlayers.bass.connect(bgFilters.bass);
+        
+        // Connect per-track filters to main effects chain
+        Object.values(bgFilters).forEach(f => f.connect(effects.filter));
         losePlayer.disconnect(); losePlayer.connect(effects.filter);
         effects.filter.connect(effects.crusher); effects.crusher.connect(effects.phaser);
         
@@ -1047,22 +1065,54 @@
         if(losePlayer.state === "started") losePlayer.stop();
         
         if (state.lives === 1) {
-            // Low HP: use single muted track
+            // Low HP: use single muted track with heavy filter
             if(losePlayer.loaded) { 
                 Tone.Transport.schedule((t) => { losePlayer.start(t, 0).stop(t + TOTAL_DURATION); }, 0); 
             }
         } else {
-            // Normal: play 4 tracks with randomized volumes
-            // Drums always at -6db, others random between -6db and -14db (each playback)
-            bgPlayers.drums.volume.value = -6;
-            bgPlayers.guitar1.volume.value = randomVolume(-14, -6);
-            bgPlayers.guitar2.volume.value = randomVolume(-14, -6);
-            bgPlayers.bass.volume.value = randomVolume(-14, -6);
+            // === DYNAMIC MIX SYSTEM ===
+            // Each playback gets unique volume + tonal character
+            
+            // Volume randomization
+            // Drums: -4 to -8 dB (always prominent)
+            // Others: -6 to -16 dB (wide range for variety)
+            bgPlayers.drums.volume.value = randomVolume(-8, -4);
+            bgPlayers.melody.volume.value = randomVolume(-16, -6);
+            bgPlayers.rhythm.volume.value = randomVolume(-16, -6);
+            bgPlayers.bass.volume.value = randomVolume(-16, -6);
+            
+            // Tonal variation via per-track lowpass filters
+            // Higher frequency = brighter/clearer, Lower = darker/muffled
+            // Drums: always clear (high cutoff)
+            bgFilters.drums.frequency.value = 18000 + Math.random() * 2000; // 18k-20k (clear)
+            
+            // Melody: sometimes bright, sometimes slightly muffled
+            bgFilters.melody.frequency.value = Math.random() < 0.7 
+                ? 12000 + Math.random() * 8000  // 70%: bright (12k-20k)
+                : 3000 + Math.random() * 5000;  // 30%: warmer/distant (3k-8k)
+            
+            // Rhythm: more variation allowed
+            bgFilters.rhythm.frequency.value = Math.random() < 0.6
+                ? 10000 + Math.random() * 10000 // 60%: normal (10k-20k)
+                : 2000 + Math.random() * 6000;  // 40%: lo-fi feel (2k-8k)
+            
+            // Bass: mostly full, occasionally filtered
+            bgFilters.bass.frequency.value = Math.random() < 0.8
+                ? 15000 + Math.random() * 5000  // 80%: full bass (15k-20k)
+                : 800 + Math.random() * 2000;   // 20%: sub-focused (800-2.8k)
             
             Object.values(bgPlayers).forEach(p => {
                 if(p.loaded) {
                     Tone.Transport.schedule((t) => { p.start(t, 0).stop(t + TOTAL_DURATION); }, 0);
                 }
+            });
+            
+            // Debug: log mix for testing (remove in production)
+            console.log('🎵 Mix:', {
+                drums: bgPlayers.drums.volume.value.toFixed(1) + 'dB',
+                melody: bgPlayers.melody.volume.value.toFixed(1) + 'dB @ ' + (bgFilters.melody.frequency.value/1000).toFixed(1) + 'kHz',
+                rhythm: bgPlayers.rhythm.volume.value.toFixed(1) + 'dB @ ' + (bgFilters.rhythm.frequency.value/1000).toFixed(1) + 'kHz',
+                bass: bgPlayers.bass.volume.value.toFixed(1) + 'dB @ ' + (bgFilters.bass.frequency.value/1000).toFixed(1) + 'kHz'
             });
         }
         

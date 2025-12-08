@@ -205,8 +205,17 @@
         .floating-text { position: fixed; font-weight: bold; pointer-events: none; z-index: 10001; animation: float-anim 1.5s forwards; text-shadow: 0 2px 2px rgba(0,0,0,0.8); white-space: nowrap; font-size: 24px; }
         .ft-score { color: #ffd700; font-size: 32px; }
         .ft-buff { color: #00e5ff; font-size: 20px; }
+        .ft-active { color: #76ff03; font-size: 18px; }
+        .ft-perfect { color: #ff4081; font-size: 28px; text-shadow: 0 0 10px #ff4081, 0 2px 4px rgba(0,0,0,0.8); }
         .ft-neg { color: #ff5252; font-size: 20px; }
         @keyframes float-anim { 0% { opacity: 0; transform: translateY(0) scale(0.5); } 10% { opacity: 1; transform: translateY(-20px) scale(1.2); } 100% { opacity: 0; transform: translateY(-60px) scale(1); } }
+        
+        /* Support item perfect trigger glow */
+        .support-perfect { animation: perfect-glow 0.8s ease-out; }
+        @keyframes perfect-glow { 
+            0% { box-shadow: 0 0 20px #ff4081, 0 0 40px #ff4081; transform: scale(1.15); } 
+            100% { box-shadow: 0 0 5px rgba(255,64,129,0.3); transform: scale(1); } 
+        }
         
         /* RESULT GRID 2.0 */
         .result-daw-container { position: relative; background: #111; padding: 10px; border-radius: 4px; border: 1px solid #444; margin: 20px 0; overflow: hidden; }
@@ -393,10 +402,10 @@
 </div>
 
 <div class="modal" id="tutorialCompleteModal">
-    <div class="modal-content" style="width: 500px;">
-        <h2 style="color:var(--highlight);">Tutorial Complete!</h2>
-        <p style="color:#aaa; margin-bottom:30px;" id="lblTutCompDesc">You are now ready for the real challenge.</p>
-        <button class="submit-btn" onclick="finishTutorialFlow()">ENTER GAME</button>
+    <div class="modal-content" style="width: 550px;">
+        <h2 style="color:var(--highlight);" id="lblTutCompTitle">Tutorial Complete!</h2>
+        <p style="color:#aaa; margin-bottom:30px; white-space:pre-line; line-height:1.6;" id="lblTutCompDesc">You are now ready for the real challenge.</p>
+        <button class="submit-btn" onclick="finishTutorialFlow()" id="btnEnterGame">ENTER GAME</button>
     </div>
 </div>
 
@@ -511,7 +520,7 @@
             helpTitle: "HOW TO PLAY", helpControlTitle: "CONTROLS",
             helpControlTxt: "• <b>Drag Inventory -> Track</b>: Place Item<br>• <b>Drag Track -> Track</b>: Move Item<br>• <b>Drag Track -> Outside</b>: Remove Item (Refund CPU)<br>• <b>Drag Inventory -> Shop</b>: Sell Item<br>• <b>Right Click</b>: Quick Remove",
             tutTitle: "Tutorial", tutDesc: "Recommended for new players.", skip: "Skip", playTut: "Play Tutorial",
-            tutComp: "Tutorial Complete!", tutCompDesc: "You are now ready for the real challenge.", enterGame: "ENTER GAME",
+            tutComp: "Tutorial Complete!", tutCompDesc: "You are now ready for the real challenge.\n\n⚠️ WARNING: In the main game, death is PERMANENT! If you fail 3 times, you must start over from the beginning.", enterGame: "ENTER GAME",
             soldOutQAQ: "Sold Out QAQ", simReport: "SIMULATION REPORT",
             self: "Self Effect", global: "Global Rule",
             discordMsg: "Thanks for playing! Join our Discord to share feedback and connect with other players.",
@@ -533,7 +542,7 @@
             helpTitle: "玩法说明", helpControlTitle: "操作方式",
             helpControlTxt: "• <b>左键拖拽 (库存->音轨)</b>: 放置道具<br>• <b>左键拖拽 (音轨->音轨)</b>: 移动位置<br>• <b>拖拽至音轨外</b>: 移除道具 (返还CPU)<br>• <b>拖拽至商店区域</b>: 出售道具<br>• <b>右键点击</b>: 快速移除",
             tutTitle: "新手教程", tutDesc: "强烈建议新玩家游玩。", skip: "跳过", playTut: "进入教程",
-            tutComp: "教程结束!", tutCompDesc: "恭喜完成! 现在进入正式挑战。", enterGame: "进入正式关卡",
+            tutComp: "教程结束!", tutCompDesc: "恭喜完成！现在进入正式挑战。\n\n⚠️ 警告：在正式关卡中，死亡是永久的！一旦失败3次，你将必须从头再来。", enterGame: "进入正式关卡",
             soldOutQAQ: "商店卖断货了 QAQ", simReport: "模拟运行报告",
             self: "自身效果", global: "全局规则",
             discordMsg: "感谢游玩！扫码加入我们的Discord社区，分享反馈、与其他玩家交流！",
@@ -566,13 +575,13 @@
 
     const DB = [
         { id: "SB1", name: {en: "Kick Drum", cn: "底鼓"}, desc: {en: "Gain 20 Groove on trigger.<br>If the Start Point is on a [Strong Beat], gain an additional 10 Groove.", cn: "触发时获得 20 Groove。<br>若起始点位于[强拍]，额外获得 10 Groove。"}, len: 4, cpu: 1, base: 20, type: "score", color: "#ffecb3", price: 100, rarity: 1 },
-        { id: "SB2", name: {en: "Sidechain", cn: "侧链"}, desc: {en: "Increase Groove of all [Sync] items by +50%.<br>If the Start Point is on a [Strong Beat], increase this effect by an additional +25%.", cn: "使所有[同步]道具 Groove +50%。<br>若起始点位于[强拍]，该增幅额外 +25%。"}, len: 4, cpu: 1, base: 0, type: "support", color: "#b2ebf2", price: 75, rarity: 1 },
+        { id: "SB2", name: {en: "Sidechain", cn: "侧链"}, desc: {en: "Increase Groove of all items [Sync] with self by +50%.<br>If the Start Point is on a [Strong Beat], increase this effect by an additional +25%.", cn: "使所有与自身[同步]的道具 Groove +50%。<br>若起始点位于[强拍]，该增幅额外 +25%。"}, len: 4, cpu: 1, base: 0, type: "support", color: "#b2ebf2", price: 75, rarity: 1 },
         { id: "SB3", name: {en: "Accent", cn: "重音标记"}, desc: {en: "Increase Groove of the Next item on [Same Track] by +100%.<br>If the Start Point is on a [Strong Beat], the Next item is forcibly treated as being triggered on a [Strong Beat].", cn: "[同轨]使下一个道具 Groove +100%。<br>若起始点位于[强拍]，下一个道具将被强制视为在[强拍]触发。"}, len: 4, cpu: 2, base: 0, type: "support", color: "#80deea", price: 100, rarity: 2 },
         { id: "SB4", name: {en: "Master Clock", cn: "主时钟"}, desc: {en: "Unique (Only one copy allowed).<br>Engine: If the Start Point is on a [Strong Beat], and at least 5 [Strong Beat] effects have triggered before this:<br>Multiply Groove of all subsequent [Strong Beat] items in this loop by 1.5x.", cn: "唯一，只能同时存在一个同名道具。<br>若起始点位于[强拍]，且触发前已触发至少 5次[强拍]效果：<br>本轮后续触发的所有[强拍]道具 Groove x 1.5。"}, len: 4, cpu: 4, base: 0, type: "engine", color: "#e1bee7", price: 150, rarity: 3, unique: true },
         { id: "SB5", name: {en: "Quantizer", cn: "量化器"}, desc: {en: "Unique (Only one copy allowed).<br>Engine: If the Start Point is on a [Strong Beat],<br>all [Weak Beat] on the field are treated as [Strong Beat].", cn: "唯一，只能同时存在一个同名道具。<br>若起始点位于[强拍]的起始点，全场所有的[弱拍]位置均被视为[强拍]。"}, len: 8, cpu: 4, base: 0, type: "engine", color: "#ce93d8", price: 150, rarity: 3, unique: true },
         { id: "EB1", name: {en: "Rest Note", cn: "休止符"}, desc: {en: "Gain 14 Groove on trigger.<br>If the Previous item on the [Same Track] is at least 4 [Empty Slots] away, gain an additional 20 Groove.", cn: "触发时获得 14 Groove。<br>若[同轨]前一个道具与自身间隔 ≥ 4个[空拍]，额外获得 20 Groove。"}, len: 2, cpu: 1, base: 14, type: "score", color: "#ffe082", price: 100, rarity: 1 },
-        { id: "EB2", name: {en: "Pre-Delay", cn: "预延时"}, desc: {en: "Increase Groove of the Next item on the [Same Track] by +35%.<br>For every 1 [Empty Slot] between self and that item, increase this effect by an additional +12.5% (Max 125%).", cn: "使[同轨]下一个道具 Groove +35%。<br>自身与该道具每间隔 1个[空拍]，增幅效果额外 +12.5%（上限125%）。"}, len: 2, cpu: 1, base: 0, type: "support", color: "#4dd0e1", price: 100, rarity: 1 },
-        { id: "EB3", name: {en: "Isolation Booth", cn: "隔离室"}, desc: {en: "Increase Groove of all [Sync] items by +10.<br>For every 1 [Empty Slot] between self and [Same Track] neighbors (Previous/Next), increase Groove of [Sync] items by +7.5% (Max 240%).", cn: "使所有[同步]道具 Groove +10。<br>自身与[同轨]前后道具每间隔 1个[空拍]，使[同步]道具 Groove +7.5%（上限240%）。"}, len: 4, cpu: 2, base: 0, type: "support", color: "#00bcd4", price: 100, rarity: 2 },
+        { id: "EB2", name: {en: "Pre-Delay", cn: "预延时"}, desc: {en: "Increase Groove of the Next item on the [Same Track] by +35%.<br>For every 1 [Empty Slot] between self and that item, increase this effect by an additional +12.5%.<br><b>Max Bonus: +125%</b>", cn: "使[同轨]下一个道具 Groove +35%。<br>自身与该道具每间隔 1个[空拍]，增幅效果额外 +12.5%。<br><b>上限：+125%</b>"}, len: 2, cpu: 1, base: 0, type: "support", color: "#4dd0e1", price: 100, rarity: 1 },
+        { id: "EB3", name: {en: "Isolation Booth", cn: "隔离室"}, desc: {en: "Increase Groove of all items [Sync] with self by +10.<br>For every 1 [Empty Slot] between self and [Same Track] neighbors (Previous/Next), increase Groove of [Sync] items by +7.5%.<br><b>Max Bonus: +240%</b>", cn: "使所有与自身[同步]的道具 Groove +10。<br>自身与[同轨]前后道具每间隔 1个[空拍]，使[同步]道具 Groove +7.5%。<br><b>上限：+240%</b>"}, len: 4, cpu: 2, base: 0, type: "support", color: "#00bcd4", price: 100, rarity: 2 },
         { id: "EB4", name: {en: "Atmosphere", cn: "氛围采样"}, desc: {en: "Gain 30 Groove on trigger.<br>For every 1 [Empty Slot] that appeared before trigger, gain +5% Groove.", cn: "触发时获得 30 Groove。<br>触发前每出现 1个[空拍]，自身 Groove +5%。"}, len: 4, cpu: 3, base: 30, type: "score", color: "#ffd54f", price: 150, rarity: 3 },
         { id: "EB5", name: {en: "Time Stretch", cn: "时间拉伸"}, desc: {en: "Unique (Only one copy allowed).<br>Engine: In calculations after this item finishes triggering:<br>Every 1 [Empty Slot] counts as 2 [Empty Slots].", cn: "唯一，只能同时存在一个同名道具。<br>引擎：当该道具触发结束后的计算中：<br>每1个[空拍]将被视为 2个[空拍]。"}, len: 8, cpu: 4, base: 0, type: "engine", color: "#ba68c8", price: 150, rarity: 3, unique: true },
         { id: "EB6", name: {en: "Pad", cn: "铺底音色"}, desc: {en: "Gain 30 Groove on trigger.<br>During Duration: For every 1 [Empty Slot] currently on the field, gain +5% Groove.", cn: "触发时获得 30 Groove。<br>持续期间全场每存在 1个[空拍]，自身 Groove +5%。"}, len: 8, cpu: 2, base: 30, type: "score", color: "#ffca28", price: 100, rarity: 2 },
@@ -612,7 +621,12 @@
     };
 
     let dragManager = { active: false, itemData: null, sourceType: null, sourceRecord: null, sourceInvItem: null, ghostEl: null, previewEl: null, sellTooltip: null, currentHover: null, startX: 0, startY: 0 };
-    let tutorialState = { l1: { aClicked: false, bClicked: false, aPlaced: false, bPlaced: false }, l2: { bought: false, clicked: false, effectActive: false }, l3: { kickBought: false, cpuBought: false, kickClicked: false, kickEffect: false }, l4: { cpuCount: 0 } };
+    let tutorialState = { 
+        l1: { aClicked: false, bClicked: false, aPlaced: false, bPlaced: false }, 
+        l2: { bought: false, clicked: false, effectActive: false }, 
+        l3: { kickBought: false, cpuBought: false, kickClicked: false, kickEffect: false }, 
+        l4: { cpuCount: 0, trackUnlocked: false, resultGuideShown: false } 
+    };
     
     // === STRONG GUIDE SYSTEM ===
     let guideState = {
@@ -1291,12 +1305,33 @@
                 if (r.record.el) { if (simTime >= start && simTime < end) r.record.el.classList.add('playing-active'); else r.record.el.classList.remove('playing-active'); }
                 if (!r.visualTriggered && simTime >= start) {
                     r.visualTriggered = true;
-                    if (r.triggered || r.record.data.type === 'score') {
+                    // Show effects for score items OR support items that did something
+                    const hasBuffedItems = r.buffsGiven.length > 0;
+                    const hasOwnEffect = r.triggered; // Own condition triggered (e.g., Strong Beat bonus)
+                    
+                    if (hasBuffedItems || hasOwnEffect || r.record.data.type === 'score') {
                         const el = r.record.el;
                         if(el) {
                             const rect = el.getBoundingClientRect(); const x = rect.left + rect.width / 2; const y = rect.top;
-                            if (r.record.data.type === 'score') { const score = Math.floor((r.base + r.bonus) * r.mult * r.finalMultiplier); spawnFloatingText(`+${score}`, x, y, 'ft-score'); } 
-                            else if (r.record.data.type === 'support') { spawnFloatingText(`Buff!`, x, y, 'ft-buff'); }
+                            if (r.record.data.type === 'score') { 
+                                const score = Math.floor((r.base + r.bonus) * r.mult * r.finalMultiplier); 
+                                spawnFloatingText(`+${score}`, x, y, 'ft-score'); 
+                            } 
+                            else if (r.record.data.type === 'support') { 
+                                // Support item visual feedback based on what triggered
+                                if (hasBuffedItems && hasOwnEffect) {
+                                    // BEST: Both buffed items AND own condition triggered
+                                    spawnFloatingText(`✨ PERFECT!`, x, y, 'ft-perfect');
+                                    el.classList.add('support-perfect');
+                                    setTimeout(() => el.classList.remove('support-perfect'), 800);
+                                } else if (hasBuffedItems) {
+                                    // Buffed other items
+                                    spawnFloatingText(`Buff!`, x, y, 'ft-buff');
+                                } else if (hasOwnEffect) {
+                                    // Own condition triggered but didn't buff anyone
+                                    spawnFloatingText(`✓ Active`, x, y, 'ft-active');
+                                }
+                            }
                             
                             if (r.record.data.id === 'SB4') { // Master Clock - each aura fades independently when target triggers
                                 spawnFloatingText(`MASTER`, x, y, 'ft-buff');
@@ -1679,7 +1714,10 @@
         // Track Logic V23.5: Std Mode starts with 2 unlocked
         if (!state.isTutorial && idx === 0) state.unlockedTracks = 2; 
         else if (idx === 0) state.unlockedTracks = 1;
-        else if (state.isTutorial && idx === 3) state.unlockedTracks = 1; 
+        else if (state.isTutorial && idx === 3) {
+            // Tutorial L4: If player already unlocked track 2, keep it unlocked on retry
+            state.unlockedTracks = tutorialState.l4.trackUnlocked ? 2 : 1;
+        }
         else if (!state.isTutorial && idx === 2) state.unlockedTracks = 2; 
         else state.unlockedTracks = config.activeTracks; 
 
@@ -1736,6 +1774,10 @@
             overlay.classList.add('unlocking');
             setTimeout(() => {
                 state.unlockedTracks++;
+                // Remember that track was unlocked in tutorial L4
+                if (state.isTutorial && state.levelIndex === 3) {
+                    tutorialState.l4.trackUnlocked = true;
+                }
                 initGrid();
                 restorePlacedItems();
             }, 600);
@@ -1973,6 +2015,50 @@
         state.pendingReward = rewardVal;
         const results = state.lastResultData || calculateLogic(); renderResultGrid(results);
         document.getElementById('resTotalScore').innerText = Math.floor(totalScore); document.getElementById('resTargetDisplay').innerText = config.target; document.getElementById('resultModal').style.display = 'flex';
+        
+        // Tutorial L4: Show result hover guide on first result screen
+        if (state.isTutorial && state.levelIndex === 3 && !tutorialState.l4.resultGuideShown) {
+            setTimeout(() => showResultGuide(), 500);
+        }
+    }
+    
+    function showResultGuide() {
+        tutorialState.l4.resultGuideShown = true;
+        
+        // Create guide overlay for result screen
+        const overlay = document.createElement('div');
+        overlay.id = 'resultGuideOverlay';
+        overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10000; display:flex; justify-content:center;';
+        
+        // Highlight the result track area
+        const resTrackArea = document.getElementById('resTrackArea');
+        if (resTrackArea) resTrackArea.style.cssText += ';position:relative; z-index:10001; box-shadow: 0 0 30px rgba(255,215,0,0.8);';
+        
+        // Create guide message - position at top, bottom edge touching the DAW area
+        const msg = document.createElement('div');
+        msg.className = 'guide-message';
+        const resTrackRect = resTrackArea ? resTrackArea.getBoundingClientRect() : { top: 200 };
+        msg.style.cssText = `position:fixed; top:${resTrackRect.top - 140}px; left:50%; transform:translateX(-50%); z-index:10002;`;
+        
+        const title = state.lang === 'cn' ? '💡 提示' : '💡 Tip';
+        const text = state.lang === 'cn' 
+            ? '将鼠标悬停在下方道具上，可以查看每个道具的具体分数和构成来源！' 
+            : 'Hover over items below to see detailed score breakdown and sources!';
+        const btnText = state.lang === 'cn' ? '知道了' : 'Got it!';
+        
+        msg.innerHTML = `<h3>${title}</h3><p>${text}</p><button class="guide-btn" onclick="closeResultGuide()">${btnText}</button>`;
+        
+        overlay.appendChild(msg);
+        document.body.appendChild(overlay);
+    }
+    
+    function closeResultGuide() {
+        const overlay = document.getElementById('resultGuideOverlay');
+        if (overlay) overlay.remove();
+        
+        // Remove highlight from result track area
+        const resTrackArea = document.getElementById('resTrackArea');
+        if (resTrackArea) resTrackArea.style.boxShadow = '';
     }
 
     function showTutorialComplete() { document.getElementById('resultModal').style.display = 'none'; document.getElementById('tutorialCompleteModal').style.display = 'flex'; }

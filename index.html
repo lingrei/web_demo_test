@@ -850,9 +850,9 @@
                 el.classList.add('guide-highlight');
             }
         });
-        // Also highlight shop panel as the drop target
-        const shopPanel = document.getElementById('shopPanel');
-        if (shopPanel) shopPanel.classList.add('guide-highlight');
+        // Also highlight shop list as the drop target (NOT the whole shopPanel with CPU button)
+        const shopList = document.getElementById('shopList');
+        if (shopList) shopList.classList.add('guide-highlight');
     }
     
     function advanceGuide() {
@@ -929,7 +929,7 @@
         }
     }
     
-    function resetTutorialStateForLevel(idx) { if (idx === 0) tutorialState.l1 = { aClicked: false, bClicked: false, aPlaced: false, bPlaced: false }; if (idx === 1) { tutorialState.l2.clicked = false; tutorialState.l2.effectActive = false; } if (idx === 2) { tutorialState.l3.kickClicked = false; tutorialState.l3.kickEffect = false; } if (idx === 3) tutorialState.l4 = { cpuCount: 0 }; }
+    function resetTutorialStateForLevel(idx) { if (idx === 0) tutorialState.l1 = { aClicked: false, bClicked: false, aPlaced: false, bPlaced: false }; if (idx === 1) { tutorialState.l2.clicked = false; tutorialState.l2.effectActive = false; } if (idx === 2) { tutorialState.l3.kickClicked = false; tutorialState.l3.kickEffect = false; } if (idx === 3) { tutorialState.l4.cpuCount = 0; /* Keep trackUnlocked and resultGuideShown */ } }
 
     // --- Init ---
     window.addEventListener('DOMContentLoaded', () => { 
@@ -2059,11 +2059,11 @@
         const resTrackArea = document.getElementById('resTrackArea');
         if (resTrackArea) resTrackArea.style.cssText += ';position:relative; z-index:10001; box-shadow: 0 0 30px rgba(255,215,0,0.8);';
         
-        // Create guide message - position at top, bottom edge touching the DAW area
+        // Create guide message - position at top, above the DAW area
         const msg = document.createElement('div');
         msg.className = 'guide-message';
         const resTrackRect = resTrackArea ? resTrackArea.getBoundingClientRect() : { top: 200 };
-        msg.style.cssText = `position:fixed; top:${resTrackRect.top - 140}px; left:50%; transform:translateX(-50%); z-index:10002;`;
+        msg.style.cssText = `position:fixed; top:${Math.max(20, resTrackRect.top - 180)}px; left:50%; transform:translateX(-50%); z-index:10002;`;
         
         const title = state.lang === 'cn' ? '💡 提示' : '💡 Tip';
         const text = state.lang === 'cn' 

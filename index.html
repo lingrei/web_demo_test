@@ -466,7 +466,7 @@
 
 <div class="modal" id="resultModal">
     <div class="modal-content" style="width: 1000px;">
-        <h2 id="resTitle">INSIGHT</h2>
+        <h2 id="resTitle">DATA ANALYSIS</h2>
         <div id="campaignStatusContainer" class="campaign-status-modal"></div>
         
         <h3 id="resOutcome" style="font-size:28px; margin: 5px 0;"></h3>
@@ -593,7 +593,7 @@
             ready: "Ready", readyDesc: "<b>Drag & Drop</b> items from Inventory to Tracks.<br>Drag off-track to remove.<br>Drag to Shop to sell.",
             level: "Level:", tracks: "Tracks:", submit: "SUBMIT", simulate: "SIMULATE",
             startTitle: "Music Roguelike Deckbuilder", startGame: "START GAME",
-            report: "INSIGHT", resTarget: "Target", resTotal: "Total",
+            report: "DATA ANALYSIS", resTarget: "Target", resTotal: "Total",
             nextLevel: "NEXT LEVEL", victory: "VICTORY", retry: "RETRY", acceptFate: "ACCEPT FATE",
             youWin: "YOU WIN!", winMsg: "You have completed all levels.", playAgain: "PLAY AGAIN",
             gameOver: "GAME OVER", loseMsg: "You failed to reach the target. Back to Level 1.", tryAgain: "TRY AGAIN",
@@ -616,7 +616,7 @@
             ready: "准备就绪", readyDesc: "<b>操作指南:</b><br>• <b>拖拽</b>: 库存 -> 音轨 (放置)<br>• <b>拖拽</b>: 音轨 -> 音轨 (移动)<br>• <b>拖出</b>: 移出音轨 (移除)<br>• <b>拖拽至商店</b>: 出售道具",
             level: "当前关卡:", tracks: "轨道数量:", submit: "结算", simulate: "试听",
             startTitle: "音乐构筑 Roguelike MVP 演示", startGame: "开始游戏",
-            report: "数据透视", resTarget: "目标", resTotal: "总分",
+            report: "数据分析", resTarget: "目标", resTotal: "总分",
             nextLevel: "下一关", victory: "加冕时刻", retry: "重试", acceptFate: "接受结局",
             youWin: "恭喜通关!", winMsg: "你已经完成了所有挑战。", playAgain: "再次开始",
             gameOver: "游戏结束", loseMsg: "未能达到目标分数，回到第一关重新开始。", tryAgain: "重头再来",
@@ -2427,7 +2427,7 @@
             document.getElementById('campaignStatusContainer').style.display = 'none';
             document.querySelector('#resultModal .modal-content > div:nth-child(4)').style.display = 'none'; // Hide target row
             
-            outcomeEl.innerText = state.lang === 'cn' ? '最新版本' : 'LATEST VERSION'; 
+            outcomeEl.innerText = state.lang === 'cn' ? '数据分析' : 'DATA ANALYSIS'; 
             outcomeEl.style.color = "#aaa"; 
             outcomeEl.style.fontSize = '24px';
             info.innerHTML = `<span style="font-size:18px; color:#888;">${state.lang === 'cn' ? '总分' : 'Total'}:</span> <span style="font-size:36px; color:gold; font-weight:bold;">${Math.floor(totalScore)}</span>`;

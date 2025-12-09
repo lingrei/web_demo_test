@@ -377,35 +377,35 @@
             <div class="detail-meta" id="detailMeta"></div>
             <div class="detail-desc" id="detailContent">...</div>
         </div>
-        <div class="info-box info-right" id="infoRight">
-            <div class="target-display" id="targetContainer">
-                <div class="target-label" id="lblTarget">TARGET GROOVE</div>
-                <div class="target-value" id="targetText">360</div>
+        <div class="info-box info-right" id="infoRight" style="padding:8px 12px;">
+            <div class="target-display" id="targetContainer" style="padding:5px 10px;">
+                <div class="target-label" id="lblTarget" style="font-size:9px; margin-bottom:1px;">TARGET GROOVE</div>
+                <div class="target-value" id="targetText" style="font-size:22px;">360</div>
             </div>
-            <div class="tier-display" id="tierContainer" style="display:none; margin-top:8px; font-size:12px; line-height:1.6;">
-                <div style="display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid #333;">
+            <div class="tier-display" id="tierContainer" style="display:none; margin-top:4px; font-size:11px; line-height:1.4;">
+                <div style="display:flex; justify-content:space-between; padding:2px 0; border-bottom:1px solid #333;">
                     <span style="color:#76ff03;">★</span>
                     <span id="tier1Score" style="color:#76ff03;">360</span>
                 </div>
-                <div style="display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid #333;">
+                <div style="display:flex; justify-content:space-between; padding:2px 0; border-bottom:1px solid #333;">
                     <span style="color:#ffd700;">★★</span>
                     <span id="tier2Score" style="color:#ffd700;">396</span>
                 </div>
-                <div style="display:flex; justify-content:space-between; padding:3px 0;">
+                <div style="display:flex; justify-content:space-between; padding:2px 0;">
                     <span style="color:#ff4081;">★★★</span>
                     <span id="tier3Score" style="color:#ff4081;">450</span>
                 </div>
             </div>
-            <div style="font-size:14px; color:#aaa; line-height:1.6; margin: 8px 0;">
+            <div style="font-size:12px; color:#aaa; line-height:1.4; margin:4px 0;">
                 <span id="lblLevel">Level:</span> <span id="levelNum" style="color:#fff;">1</span> &nbsp;|&nbsp;
                 <span id="lblTracks">Tracks:</span> <span id="trackNum" style="color:#fff;">2</span>
             </div>
-            <div class="action-row">
-                <button class="sim-btn" id="simBtn" onclick="runSimulation()">
+            <div class="action-row" style="gap:6px;">
+                <button class="sim-btn" id="simBtn" onclick="runSimulation()" style="padding:8px 12px;">
                     <span>SIMULATE</span>
                     <b id="simCostText">50G</b>
                 </button>
-                <button class="submit-btn" id="mainSubmitBtn" onclick="trySubmit()">SUBMIT</button>
+                <button class="submit-btn" id="mainSubmitBtn" onclick="trySubmit()" style="padding:8px 16px;">SUBMIT</button>
             </div>
         </div>
     </div>
@@ -710,12 +710,12 @@
             2: [
                 { target: 'btnBuyCpu', pos: 'near-cpu-btn', msg: { en: 'Buy CPU to permanently increase your CPU limit. More CPU = more items you can place!', cn: '购买CPU可以永久提升CPU上限。更多CPU = 可放置更多道具！' }, wait: 'cpuBuy' }
             ],
-            // Level 4 guides - sell samplers, buy CPU, learn tiers, use preview (score breakdown shown after simulate)
+            // Level 4 guides - sell samplers, buy CPU, learn tiers and preview
             3: [
                 { target: 'shopList', pos: 'center-down', highlightSamplers: true, msg: { en: 'Drag Sampler A and B to the SHOP to sell them. These tutorial items are no longer needed!', cn: '将采样器A和B拖拽到商店出售。这两个教学道具已经不再需要了！' }, wait: 'sellBoth' },
                 { target: 'btnBuyCpu', pos: 'near-cpu-btn', msg: { en: 'You can buy CPU multiple times per level! The price increases slightly each time. Buy CPU 3 times to continue.', cn: '每关可以多次购买CPU！每次价格会略微递增。购买3次CPU后继续。' }, wait: 'cpuBuy3' },
-                { target: 'tierContainer', pos: 'left', msg: { en: 'In standard mode, there are THREE tiers of success! Higher scores give better rewards. Aim for ★★★ to earn bonus CPU and rare items!', cn: '在正式关卡中，有三个通关等级！分数越高奖励越好。追求★★★可以获得额外CPU和稀有道具奖励！' }, wait: 'click' },
-                { target: 'simBtn', pos: 'center-down', msg: { en: 'Use PREVIEW to see your current score without risk. Place some items, then click Preview to check!', cn: '使用试听功能可以无风险查看当前分数。放置一些道具后，点击试听来检查！' }, wait: 'simulate' }
+                { target: 'tierContainer', pos: 'above-tier', msg: { en: 'In standard mode, there are THREE tiers of success! Higher scores give better rewards. Aim for ★★★ to earn bonus CPU and rare items!', cn: '在正式关卡中，有三个通关等级！分数越高奖励越好。追求★★★可以获得额外CPU和稀有道具奖励！' }, wait: 'click' },
+                { target: 'simBtn', pos: 'center', msg: { en: 'TIP: Before submitting, use PREVIEW to check your score without risk. You can see detailed score breakdown by hovering over items!', cn: '提示：正式提交前，可以使用试听功能无风险查看当前分数。悬停在道具上可以查看详细的分数构成！' }, wait: 'click' }
             ]
         }
     };
@@ -835,6 +835,27 @@
                 msgBox.style.transform = 'translate(-50%, -50%)';
                 break;
             }
+            case 'center': {
+                // True center of screen
+                msgBox.style.top = '50%';
+                msgBox.style.left = '50%';
+                msgBox.style.transform = 'translate(-50%, -50%)';
+                break;
+            }
+            case 'above-tier': {
+                // Above the tier display area (bottom right info panel)
+                const tierEl = document.getElementById('tierContainer');
+                if (tierEl) {
+                    const rect = tierEl.getBoundingClientRect();
+                    msgBox.style.top = Math.max(60, rect.top - 200) + 'px';
+                    msgBox.style.left = Math.max(20, rect.left - 400) + 'px';
+                } else {
+                    msgBox.style.top = '40%';
+                    msgBox.style.left = '50%';
+                    msgBox.style.transform = 'translate(-50%, -50%)';
+                }
+                break;
+            }
             case 'near-cpu-btn': {
                 // Right side, near the CPU upgrade button
                 const cpuBtn = document.getElementById('btnBuyCpu');
@@ -950,13 +971,6 @@
                 document.getElementById('guideBtn').innerText = state.lang === 'cn' ? '继续' : 'Continue';
                 setTimeout(advanceGuide, 500);
             }
-            return;
-        }
-        
-        // Handle simulate - player used preview function
-        if (guideState.waitingFor === 'simulate' && action === 'simulate') {
-            // Will advance guide after simulation completes
-            guideState.pendingSimulateAdvance = true;
             return;
         }
         
@@ -1552,7 +1566,8 @@
         let totalScore = 0; 
         results.forEach(r => totalScore += (r.base + r.bonus) * r.mult * r.finalMultiplier);
         if (state.isSimulation) { 
-            alert(`${UI_TEXT[state.lang].simReport}\n${UI_TEXT[state.lang].resTotal}: ${Math.floor(totalScore)} / ${UI_TEXT[state.lang].resTarget}: ${config.target}`); 
+            // Show full result screen for simulation (same as real submit, but with isHistoryMode = true)
+            showResult(0, Math.floor(totalScore), true); 
             state.isSimulation = false; 
         } else { 
             const currentNg1Count = state.placedItems.filter(p => p.data.id === "NG1").length; 
@@ -2140,8 +2155,9 @@
             renderResultGrid(results); 
             document.getElementById('resultModal').style.display = 'flex'; 
             
-            // Tutorial L4: Show score breakdown guide after first simulate
-            if (state.isTutorial && state.levelIndex === 3 && guideState.pendingSimulateAdvance) {
+            // Tutorial L4: Show score breakdown guide on first simulate
+            if (state.isTutorial && state.levelIndex === 3 && !tutorialState.l4.resultGuideShown) {
+                tutorialState.l4.resultGuideShown = true;
                 setTimeout(() => showSimulateResultGuide(), 500);
             }
             return; 
@@ -2255,10 +2271,6 @@
         // Remove highlight from result track area
         const resTrackArea = document.getElementById('resTrackArea');
         if (resTrackArea) resTrackArea.style.boxShadow = '';
-        
-        // Mark simulate guide as completed and advance
-        guideState.pendingSimulateAdvance = false;
-        guideState.completedLevels[3] = true; // Mark L4 guide as completed
     }
     
     function showResultGuide() {
@@ -2346,11 +2358,6 @@
     }
     function closeResult() { 
         document.getElementById('resultModal').style.display = 'none'; 
-        // Check if we need to advance guide after simulation
-        if (guideState.pendingSimulateAdvance) {
-            guideState.pendingSimulateAdvance = false;
-            setTimeout(() => advanceGuide(), 300);
-        }
     }
     function nextLevel() { updateGold(state.pendingReward); document.getElementById('resultModal').style.display = 'none'; if (state.isTutorial) { startTutorialLevel(state.levelIndex + 1); } else { const next = state.levelIndex + 1; if(next >= LEVEL_CONFIG.length) showVictory(); else applyLevelConfig(next); } }
     function retryLevel() { 

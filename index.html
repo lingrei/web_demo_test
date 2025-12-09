@@ -537,6 +537,17 @@
     </div>
 </div>
 
+<div class="modal" id="simRequiredModal">
+    <div class="modal-content" style="width: 450px; text-align: center;">
+        <h2 style="color: #4caf50; margin-bottom: 15px;">💡 <span id="txtSimRequiredTitle">Simulate First</span></h2>
+        <p style="color: #ddd; margin-bottom: 15px; font-size: 15px; line-height: 1.6;" id="txtSimRequiredMsg">Before submitting, you must simulate your build and achieve a score that meets or exceeds the target score.</p>
+        <p style="color: #ffd700; margin-bottom: 20px; font-size: 14px;" id="txtSimRequiredWarning">Use the SIMULATE button to test your build!</p>
+        <div style="display: flex; gap: 12px; justify-content: center;">
+            <button class="submit-btn" style="background: #4caf50; padding: 12px 30px;" onclick="closeSimRequired()" id="btnSimRequiredOK">Got it</button>
+        </div>
+    </div>
+</div>
+
 <script>
     // --- Constants ---
     const TICKS = 32;
@@ -703,7 +714,7 @@
         l1: { aClicked: false, bClicked: false, aPlaced: false, bPlaced: false }, 
         l2: { bought: false, clicked: false, effectActive: false }, 
         l3: { kickBought: false, cpuBought: false, kickClicked: false, kickEffect: false }, 
-        l4: { cpuCount: 0, trackUnlocked: false, resultGuideShown: false, padGiven: false } 
+        l4: { cpuCount: 0, trackUnlocked: false, resultGuideShown: false, padGiven: false, simScore: null } 
     };
     
     // === STRONG GUIDE SYSTEM ===
@@ -1005,7 +1016,7 @@
         }
     }
     
-    function resetTutorialStateForLevel(idx) { if (idx === 0) tutorialState.l1 = { aClicked: false, bClicked: false, aPlaced: false, bPlaced: false }; if (idx === 1) { tutorialState.l2.clicked = false; tutorialState.l2.effectActive = false; } if (idx === 2) { tutorialState.l3.kickClicked = false; tutorialState.l3.kickEffect = false; } if (idx === 3) { tutorialState.l4.cpuCount = 0; /* Keep trackUnlocked and resultGuideShown */ } }
+    function resetTutorialStateForLevel(idx) { if (idx === 0) tutorialState.l1 = { aClicked: false, bClicked: false, aPlaced: false, bPlaced: false }; if (idx === 1) { tutorialState.l2.clicked = false; tutorialState.l2.effectActive = false; } if (idx === 2) { tutorialState.l3.kickClicked = false; tutorialState.l3.kickEffect = false; } if (idx === 3) { tutorialState.l4.cpuCount = 0; tutorialState.l4.simScore = null; /* Keep trackUnlocked and resultGuideShown */ } }
 
     // --- Init ---
     window.addEventListener('DOMContentLoaded', () => { 
@@ -1375,6 +1386,16 @@
     async function runPlaybackSequence(isSim) {
         if(state.isPlaying) return;
         state.isSimulation = !!isSim; state.isPlaying = true; isSkipping = false;
+        
+        // CRITICAL: Reset playback speed at the START of every playback
+        // This prevents fast-forward from persisting between playbacks
+        playbackSpeed = 1;
+        speedChangeTime = 0;
+        positionAtSpeedChange = 0;
+        Object.values(bgPlayers).forEach(p => { if(p) p.playbackRate = 1; });
+        activeBgmPlayers.forEach(p => { if(p) p.playbackRate = 1; });
+        if(losePlayer) losePlayer.playbackRate = 1;
+        
         const btn = document.getElementById('mainSubmitBtn'); btn.disabled = true; btn.innerText = "Running..."; 
         document.getElementById('mainContainer').classList.add('playing-lock'); document.getElementById('skipOverlay').style.display = 'flex'; 
         document.querySelectorAll('.placed-item').forEach(el => el.classList.remove('playing-active')); 
@@ -2012,6 +2033,14 @@
     function trySubmit() {
         if (state.isPlaying) return;
         if (state.isTutorial) {
+            // Tutorial Level 4: Must simulate and reach target score first
+            if (state.levelIndex === 3) {
+                const simScore = tutorialState.l4.simScore;
+                if (simScore === null || simScore < config.target) {
+                    showSimRequired();
+                    return;
+                }
+            }
             // Tutorial mode: no confirmation needed
             runPlaybackSequence(false);
         } else {
@@ -2025,6 +2054,23 @@
     function confirmSubmit() {
         document.getElementById('confirmSubmitModal').style.display = 'none';
         runPlaybackSequence(false);
+    }
+    
+    // Tutorial L4: Simulate required modal
+    function showSimRequired() {
+        const t = UI_TEXT[state.lang];
+        document.getElementById('txtSimRequiredTitle').innerText = state.lang === 'cn' ? '需要先模拟' : 'Simulate First';
+        document.getElementById('txtSimRequiredMsg').innerText = state.lang === 'cn' 
+            ? '提交前必须先进行模拟，且模拟分数需要达到目标分数才能提交。' 
+            : 'Before submitting, you must simulate your build and achieve a score that meets or exceeds the target score.';
+        document.getElementById('txtSimRequiredWarning').innerText = state.lang === 'cn' 
+            ? '使用"试听"按钮来测试你的组合！' 
+            : 'Use the SIMULATE button to test your build!';
+        document.getElementById('btnSimRequiredOK').innerText = state.lang === 'cn' ? '知道了' : 'Got it';
+        document.getElementById('simRequiredModal').style.display = 'flex';
+    }
+    function closeSimRequired() {
+        document.getElementById('simRequiredModal').style.display = 'none';
     }
     
     function showHistory() { if (!state.lastResultData) { alert("No history available yet."); return; } showResult(0, 0, true); }
@@ -2259,6 +2305,11 @@
             outcomeEl.style.color = "#aaa"; 
             outcomeEl.style.fontSize = '24px';
             info.innerHTML = `<span style="font-size:18px; color:#888;">${state.lang === 'cn' ? '总分' : 'Total'}:</span> <span style="font-size:36px; color:gold; font-weight:bold;">${Math.floor(totalScore)}</span>`;
+            
+            // Tutorial L4: Record simulation score for submit gate
+            if (state.isTutorial && state.levelIndex === 3) {
+                tutorialState.l4.simScore = totalScore;
+            }
             
             document.getElementById('simCloseBtn').style.display = "block"; 
             renderResultGrid(state.lastResultData); 

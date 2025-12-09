@@ -1230,7 +1230,17 @@
         // This way items are also affected by the 9-tier quality system
         samplePlayers = new Tone.Players({ urls: itemUrls, fadeOut: 0.05, volume: -6 });
         samplePlayers.connect(effects.masterGain); // Route through tier effects
-        await Tone.loaded();
+        
+        try {
+            await Tone.loaded();
+            console.log('✅ All audio files loaded successfully');
+        } catch(e) {
+            console.warn('⚠️ Some audio files failed to load:', e);
+            // Continue anyway - some tracks may still work
+        }
+        
+        // Log which tracks are available
+        console.log('📀 Available bgmPool tracks:', bgmPool ? Object.keys(bgmPool._players || {}) : 'none');
         
         if (bgPlayers.drums.buffer && bgPlayers.drums.buffer.duration > 0) { 
             TOTAL_DURATION = bgPlayers.drums.buffer.duration; 
@@ -1258,7 +1268,8 @@
         // Calculate tier based on pre-calculated score vs target
         const score = preCalculatedScore || 0;
         currentTier = calculateTier(score, config.target);
-        const tierKey = currentTier >= 0 ? '+' + currentTier : currentTier.toString();
+        // tierKey: '0' for tier 0, '+1' for positive, '-1' for negative
+        const tierKey = currentTier === 0 ? '0' : (currentTier > 0 ? '+' + currentTier : currentTier.toString());
         const tierCfg = TIER_CONFIG[tierKey] || TIER_CONFIG['0'];
         
         // Apply tier effects to master chain
@@ -1298,13 +1309,25 @@
             
             // Schedule each selected track with random volume (-6 to -12 dB)
             selectedTracks.forEach(trackKey => {
-                if (bgmPool.has(trackKey)) {
-                    const player = bgmPool.player(trackKey);
-                    player.volume.value = randomVolume(-12, -6);
-                    activeBgmPlayers.push(player);
-                    Tone.Transport.schedule((t) => { 
-                        player.start(t, 0).stop(t + TOTAL_DURATION); 
-                    }, 0);
+                try {
+                    if (bgmPool && bgmPool.has(trackKey)) {
+                        const player = bgmPool.player(trackKey);
+                        // Check if buffer is loaded before playing
+                        if (player && player.buffer && player.buffer.loaded) {
+                            player.loop = true; // Ensure looping
+                            player.volume.value = randomVolume(-12, -6);
+                            activeBgmPlayers.push(player);
+                            Tone.Transport.schedule((t) => { 
+                                player.start(t, 0).stop(t + TOTAL_DURATION); 
+                            }, 0);
+                        } else {
+                            console.warn(`⚠️ Track ${trackKey} buffer not loaded, skipping`);
+                        }
+                    } else {
+                        console.warn(`⚠️ Track ${trackKey} not found in bgmPool`);
+                    }
+                } catch(e) {
+                    console.error(`❌ Error playing track ${trackKey}:`, e);
                 }
             });
             
@@ -1508,7 +1531,7 @@
                     }
                 }
             });
-            if (realElapsed >= duration) { clearInterval(visualInterval); if (fastForward) finishPlayback(); }
+            if (progress >= 1) { clearInterval(visualInterval); if (fastForward) finishPlayback(); }
         }, 16);
     }
     
@@ -2348,9 +2371,14 @@
             // Progress display (no hearts anymore)
             let dots = ""; for(let i=0; i<LEVEL_CONFIG.length; i++) { let cls = "status-dot"; if(i < state.levelIndex) cls += " done"; if(i === state.levelIndex && tier > 0) cls += " current done"; dots += `<div class="${cls}"></div>`; }
             
-            // Milestone progress display (show the value BEFORE reset, so 2/2 when reached)
-            const milestoneText = state.lang === 'cn' ? `稀有道具进度: ${displayMilestone}/2` : `Rare Item Progress: ${displayMilestone}/2`;
-            statusContainer.innerHTML = `<div class="status-item" style="margin-right:20px;"><span>Progress:</span><div class="status-dots">${dots}</div></div><div class="status-item"><span style="color:#d500f9;">${milestoneText}</span></div>`;
+            // Milestone progress display - only show for Tier 3 (3-star) pass
+            if (tier === 3) {
+                const milestoneText = state.lang === 'cn' ? `稀有道具进度: ${displayMilestone}/2` : `Rare Item Progress: ${displayMilestone}/2`;
+                statusContainer.innerHTML = `<div class="status-item" style="margin-right:20px;"><span>Progress:</span><div class="status-dots">${dots}</div></div><div class="status-item"><span style="color:#d500f9;">${milestoneText}</span></div>`;
+            } else {
+                // For tier 1, 2 or fail - just show level progress, no milestone
+                statusContainer.innerHTML = `<div class="status-item"><span>Progress:</span><div class="status-dots">${dots}</div></div>`;
+            }
             
             if (tier > 0) {
                 // === PASSED ===

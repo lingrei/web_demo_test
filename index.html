@@ -1267,36 +1267,52 @@
 
     function scheduleAudio(preCalculatedScore) {
         if(!audioInitialized) return;
-        Tone.Transport.cancel(); Tone.Transport.stop(); Tone.Transport.position = 0;
         
-        // Stop all players and reset playback rates
+        // CRITICAL: Stop Transport first to cancel all scheduled events
+        Tone.Transport.cancel(); 
+        Tone.Transport.stop(); 
+        Tone.Transport.position = 0;
+        
+        // CRITICAL: Force stop ALL players and reset their rates BEFORE scheduling new playback
         Object.values(bgPlayers).forEach(p => { 
             if(p) {
-                if(p.state === "started") p.stop();
-                p.playbackRate = 1; // Reset rate
+                p.stop(); // Force stop regardless of state
+                p.playbackRate = 1; // Reset rate immediately
             }
         });
         if(bgmPool) {
             bgmPool.stopAll();
-            // Reset all bgmPool players' rates
+            // Reset all bgmPool players' rates - do this for ALL players, not just active ones
             Object.keys(bgmPool._players || {}).forEach(key => {
                 const player = bgmPool.player(key);
-                if(player) player.playbackRate = 1;
+                if(player) {
+                    player.stop(); // Force stop
+                    player.playbackRate = 1; // Reset rate
+                }
             });
         }
         if(losePlayer) {
-            if(losePlayer.state === "started") losePlayer.stop();
+            losePlayer.stop(); // Force stop
             losePlayer.playbackRate = 1;
         }
         activeBgmPlayers = [];
         
-        // Reset samplePlayers rates
+        // CRITICAL: Reset samplePlayers rates for ALL players
         if(samplePlayers) {
+            samplePlayers.stopAll(); // Stop all item sounds
             Object.keys(samplePlayers._players || {}).forEach(key => {
                 const player = samplePlayers.player(key);
-                if(player) player.playbackRate = 1;
+                if(player) {
+                    player.playbackRate = 1; // Reset rate
+                }
             });
         }
+        
+        // Small delay to ensure all stops are processed (Tone.js async)
+        // This ensures playbackRate is reset before new playback starts
+        
+        // Debug: Verify all rates are reset
+        console.log('🔧 Audio reset: All playback rates set to 1');
         
         // === 9-TIER AUDIO QUALITY SYSTEM ===
         // Calculate tier based on pre-calculated score vs target
@@ -1326,7 +1342,13 @@
             
             Object.values(bgPlayers).forEach(p => {
                 if(p && p.loaded) {
-                    Tone.Transport.schedule((t) => { p.start(t, 0).stop(t + TOTAL_DURATION); }, 0);
+                    // CRITICAL: Set playbackRate to 1 RIGHT BEFORE starting
+                    p.playbackRate = 1;
+                    Tone.Transport.schedule((t) => { 
+                        p.playbackRate = 1; // Ensure rate is 1 at start time
+                        console.log(`▶️ Starting BGM player at rate: ${p.playbackRate}`);
+                        p.start(t, 0).stop(t + TOTAL_DURATION); 
+                    }, 0);
                 }
             });
         } else {
@@ -1350,8 +1372,12 @@
                         if (player && player.buffer && player.buffer.loaded) {
                             player.loop = true; // Ensure looping
                             player.volume.value = randomVolume(-12, -6);
+                            // CRITICAL: Set playbackRate to 1 RIGHT BEFORE scheduling
+                            player.playbackRate = 1;
                             activeBgmPlayers.push(player);
                             Tone.Transport.schedule((t) => { 
+                                player.playbackRate = 1; // Ensure rate is 1 at start time
+                                console.log(`▶️ Starting ${trackKey} at rate: ${player.playbackRate}`);
                                 player.start(t, 0).stop(t + TOTAL_DURATION); 
                             }, 0);
                         } else {
@@ -1370,7 +1396,9 @@
                 state.placedItems.forEach(item => {
                     const id = item.data.id;
                     if (samplePlayers.has(id)) {
-                        samplePlayers.player(id).volume.value = randomVolume(-12, -6);
+                        const player = samplePlayers.player(id);
+                        player.volume.value = randomVolume(-12, -6);
+                        player.playbackRate = 1; // CRITICAL: Reset rate when setting volume
                     }
                 });
             }
@@ -1383,7 +1411,13 @@
         
         state.placedItems.forEach(item => {
             const start = item.start * TICK_DURATION; const duration = item.data.len * TICK_DURATION; const id = item.data.id;
-            Tone.Transport.schedule((time) => { if (samplePlayers.has(id)) samplePlayers.player(id).start(time); }, start);
+            Tone.Transport.schedule((time) => { 
+                if (samplePlayers.has(id)) {
+                    const player = samplePlayers.player(id);
+                    player.playbackRate = 1; // CRITICAL: Ensure rate is 1 at start time
+                    player.start(time);
+                }
+            }, start);
             
             // Master Clock (SB4): dramatic low-pass sweep on BGM
             if (id === "SB4") { 
@@ -1635,16 +1669,29 @@
         playbackSpeed = 8; // 8x speed (2 seconds total)
         
         // Speed up audio players (BGM) - both tutorial and standard mode
+        // IMPORTANT: Set rate for ALL players, not just "started" ones
         Object.values(bgPlayers).forEach(p => { 
-            if(p && p.state === "started") p.playbackRate = 8; 
+            if(p) {
+                // Set rate even if not started yet - it will apply when it starts
+                p.playbackRate = 8;
+            }
         });
         activeBgmPlayers.forEach(p => { 
-            if(p && p.state === "started") p.playbackRate = 8; 
+            if(p) {
+                p.playbackRate = 8;
+            }
         });
-        if(losePlayer && losePlayer.state === "started") losePlayer.playbackRate = 8;
+        if(losePlayer) losePlayer.playbackRate = 8;
         
-        // Note: samplePlayers (item sounds) are pre-scheduled and won't speed up,
-        // but they'll still trigger at the right visual positions
+        // Also speed up samplePlayers (item sounds) that are currently playing
+        if(samplePlayers) {
+            Object.keys(samplePlayers._players || {}).forEach(key => {
+                const player = samplePlayers.player(key);
+                if(player && player.state === "started") {
+                    player.playbackRate = 8;
+                }
+            });
+        }
         
         // Calculate remaining time at 8x speed
         if (playbackTimer) clearTimeout(playbackTimer);

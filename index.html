@@ -705,7 +705,7 @@
         ng1PermanentStacks: 0, lastRoundReward: 0,
         milestoneProgress: 0, // Tier 3 milestone progress (0, 1, or 2)
         lang: 'en', isTutorial: false, tutorialCpuBought: false,
-        lastResultData: null, isSimulation: false, unlockedTracks: 1,
+        lastResultData: null, lastTotalScore: 0, isSimulation: false, unlockedTracks: 1,
         discordShown: false
     };
 
@@ -747,7 +747,7 @@
                 { target: 'shopList', pos: 'center-down', highlightSamplers: true, msg: { en: 'Drag Sampler A and B to the SHOP to sell them. These tutorial items are no longer needed!', cn: '将采样器A和B拖拽到商店出售。这两个教学道具已经不再需要了！' }, wait: 'sellBoth' },
                 { target: 'btnBuyCpu', pos: 'near-cpu-btn', msg: { en: 'You can buy CPU multiple times per level! The price increases slightly each time. Buy CPU 3 times to continue.', cn: '每关可以多次购买CPU！每次价格会略微递增。购买3次CPU后继续。' }, wait: 'cpuBuy3' },
                 { target: 'tierContainer', pos: 'above-tier', msg: { en: 'In standard mode, there are THREE tiers of success! Higher scores give better rewards. Aim for ★★★ to earn bonus CPU and rare items! In this tutorial level, achieving ★★★ will grant you a powerful item that carries over to standard mode!', cn: '在正式关卡中，有三个通关等级！分数越高奖励越好。追求★★★可以获得额外CPU和稀有道具奖励！在这一关达成★★★，你可以在接下来的正式关卡中获得一个额外的强力道具！' }, wait: 'click' },
-                { target: 'simBtn', pos: 'center', msg: { en: 'TIP: Before submitting, use PREVIEW to check your current score without risk!', cn: '提示：正式提交前，可以使用试听功能无风险查看当前分数！' }, wait: 'click' }
+                { target: 'simBtn', pos: 'center', msg: { en: 'TIP: Before submitting, use SIMULATE to check your current score without risk!', cn: '提示：正式提交前，可以使用试听功能无风险查看当前分数！' }, wait: 'click' }
             ]
         }
     };
@@ -1243,7 +1243,7 @@
         samplePlayers.connect(effects.masterGain); // Route through tier effects
         
         try {
-            await Tone.loaded();
+        await Tone.loaded();
             console.log('✅ All audio files loaded successfully');
         } catch(e) {
             console.warn('⚠️ Some audio files failed to load:', e);
@@ -1391,13 +1391,13 @@
                 }
             });
             
-            // Randomize item sounds volume (-6 to -12 dB) for each item
+            // Set item sounds volume to fixed -6 dB for each item
             if (samplePlayers) {
                 state.placedItems.forEach(item => {
                     const id = item.data.id;
                     if (samplePlayers.has(id)) {
                         const player = samplePlayers.player(id);
-                        player.volume.value = randomVolume(-12, -6);
+                        player.volume.value = -6; // Fixed -6 dB
                         player.playbackRate = 1; // CRITICAL: Reset rate when setting volume
                     }
                 });
@@ -1791,12 +1791,14 @@
         results.forEach(r => totalScore += (r.base + r.bonus) * r.mult * r.finalMultiplier);
         if (state.isSimulation) { 
             // Show full result screen for simulation (same as real submit, but with isHistoryMode = true)
-            showResult(0, Math.floor(totalScore), true); 
+            state.lastTotalScore = Math.floor(totalScore); // Save score for history
+            showResult(0, state.lastTotalScore, true); 
             state.isSimulation = false; 
         } else { 
             const currentNg1Count = state.placedItems.filter(p => p.data.id === "NG1").length; 
             if (currentNg1Count > 0) { state.ng1PermanentStacks += currentNg1Count; } 
-            showResult(currentNg1Count, Math.floor(totalScore)); 
+            state.lastTotalScore = Math.floor(totalScore); // Save score for history
+            showResult(currentNg1Count, state.lastTotalScore); 
         }
     }
 
@@ -2190,7 +2192,14 @@
         document.getElementById('simRequiredModal').style.display = 'none';
     }
     
-    function showHistory() { if (!state.lastResultData) { alert("No history available yet."); return; } showResult(0, 0, true); }
+    function showHistory() { 
+        if (!state.lastResultData || state.lastTotalScore === 0) { 
+            alert(state.lang === 'cn' ? "暂无历史记录。" : "No history available yet."); 
+            return; 
+        } 
+        // Restore the last result layout and score
+        showResult(0, state.lastTotalScore, true); 
+    }
     
     // Grant milestone reward (rare item or +3 CPU if all collected)
     function grantMilestoneReward() {
@@ -2418,7 +2427,7 @@
             document.getElementById('campaignStatusContainer').style.display = 'none';
             document.querySelector('#resultModal .modal-content > div:nth-child(4)').style.display = 'none'; // Hide target row
             
-            outcomeEl.innerText = state.lang === 'cn' ? '试听结果' : 'PREVIEW'; 
+            outcomeEl.innerText = state.lang === 'cn' ? '最新版本' : 'LATEST VERSION'; 
             outcomeEl.style.color = "#aaa"; 
             outcomeEl.style.fontSize = '24px';
             info.innerHTML = `<span style="font-size:18px; color:#888;">${state.lang === 'cn' ? '总分' : 'Total'}:</span> <span style="font-size:36px; color:gold; font-weight:bold;">${Math.floor(totalScore)}</span>`;

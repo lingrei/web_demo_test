@@ -1269,11 +1269,34 @@
         if(!audioInitialized) return;
         Tone.Transport.cancel(); Tone.Transport.stop(); Tone.Transport.position = 0;
         
-        // Stop all players
-        Object.values(bgPlayers).forEach(p => { if(p && p.state === "started") p.stop(); });
-        if(bgmPool) bgmPool.stopAll();
-        if(losePlayer && losePlayer.state === "started") losePlayer.stop();
+        // Stop all players and reset playback rates
+        Object.values(bgPlayers).forEach(p => { 
+            if(p) {
+                if(p.state === "started") p.stop();
+                p.playbackRate = 1; // Reset rate
+            }
+        });
+        if(bgmPool) {
+            bgmPool.stopAll();
+            // Reset all bgmPool players' rates
+            Object.keys(bgmPool._players || {}).forEach(key => {
+                const player = bgmPool.player(key);
+                if(player) player.playbackRate = 1;
+            });
+        }
+        if(losePlayer) {
+            if(losePlayer.state === "started") losePlayer.stop();
+            losePlayer.playbackRate = 1;
+        }
         activeBgmPlayers = [];
+        
+        // Reset samplePlayers rates
+        if(samplePlayers) {
+            Object.keys(samplePlayers._players || {}).forEach(key => {
+                const player = samplePlayers.player(key);
+                if(player) player.playbackRate = 1;
+            });
+        }
         
         // === 9-TIER AUDIO QUALITY SYSTEM ===
         // Calculate tier based on pre-calculated score vs target
@@ -1395,6 +1418,13 @@
         Object.values(bgPlayers).forEach(p => { if(p) p.playbackRate = 1; });
         activeBgmPlayers.forEach(p => { if(p) p.playbackRate = 1; });
         if(losePlayer) losePlayer.playbackRate = 1;
+        // Reset samplePlayers (item sounds) playback rate
+        if(samplePlayers) {
+            Object.keys(samplePlayers._players || {}).forEach(key => {
+                const player = samplePlayers.player(key);
+                if(player) player.playbackRate = 1;
+            });
+        }
         
         const btn = document.getElementById('mainSubmitBtn'); btn.disabled = true; btn.innerText = "Running..."; 
         document.getElementById('mainContainer').classList.add('playing-lock'); document.getElementById('skipOverlay').style.display = 'flex'; 
@@ -1642,15 +1672,55 @@
         Object.values(bgPlayers).forEach(p => { if(p) p.playbackRate = 1; });
         activeBgmPlayers.forEach(p => { if(p) p.playbackRate = 1; });
         if(losePlayer) losePlayer.playbackRate = 1;
+        // Reset samplePlayers rates
+        if(samplePlayers) {
+            Object.keys(samplePlayers._players || {}).forEach(key => {
+                const player = samplePlayers.player(key);
+                if(player) player.playbackRate = 1;
+            });
+        }
+        // Reset bgmPool rates
+        if(bgmPool) {
+            Object.keys(bgmPool._players || {}).forEach(key => {
+                const player = bgmPool.player(key);
+                if(player) player.playbackRate = 1;
+            });
+        }
     }
     
     function finishPlayback() {
         Tone.Transport.stop(); Tone.Transport.cancel(); 
-        Object.values(bgPlayers).forEach(p => { if(p) p.stop(); }); 
-        if(bgmPool) bgmPool.stopAll();
+        
+        // Stop all players and IMMEDIATELY reset their playback rates
+        Object.values(bgPlayers).forEach(p => { 
+            if(p) {
+                p.stop();
+                p.playbackRate = 1; // Reset immediately after stopping
+            }
+        }); 
+        if(bgmPool) {
+            bgmPool.stopAll();
+            // Reset all bgmPool players' rates immediately
+            Object.keys(bgmPool._players || {}).forEach(key => {
+                const player = bgmPool.player(key);
+                if(player) {
+                    player.playbackRate = 1;
+                }
+            });
+        }
         activeBgmPlayers = [];
-        if(losePlayer) losePlayer.stop(); 
-        if(samplePlayers) samplePlayers.stopAll();
+        if(losePlayer) {
+            losePlayer.stop();
+            losePlayer.playbackRate = 1;
+        }
+        if(samplePlayers) {
+            samplePlayers.stopAll();
+            // Reset all samplePlayers rates immediately
+            Object.keys(samplePlayers._players || {}).forEach(key => {
+                const player = samplePlayers.player(key);
+                if(player) player.playbackRate = 1;
+            });
+        }
         
         // Reset effects so clicking items sounds normal
         resetAudioEffects();

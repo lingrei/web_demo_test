@@ -545,19 +545,35 @@
     let TICK_DURATION = TOTAL_DURATION / TICKS;
     
     const AUDIO_SOURCES = {
-        // === DYNAMIC BGM SYSTEM ===
-        // 4 track types: drums, bass, melody (guitar1), rhythm (guitar2)
-        // Future: Add multiple versions per track (e.g., bgm_drums_A, bgm_drums_B)
-        // System will randomly select one version per track each playback
-        bgm_guitar1: "3-Guitar.mp3",     // Melody track
-        bgm_guitar2: "4-Guitar.mp3",     // Rhythm track
+        // === DYNAMIC BGM SYSTEM V2 ===
+        // Tutorial mode: use original 4 tracks
+        // Standard mode: random selection from expanded pool
+        
+        // Original tracks (for tutorial)
+        bgm_guitar1: "3-Guitar.mp3",
+        bgm_guitar2: "4-Guitar.mp3",
         bgm_bass: "7-ContemporaryBass.mp3",
         bgm_drums: "9-TS_HMD_125_drums_groovy_hats.mp3",
+        
+        // New tracks for standard mode
+        bgm_db1: "down_DB_1.mp3",
+        bgm_db2: "down_DB_2.mp3",
+        bgm_guitar_2: "down_2-Guitar.mp3",
+        bgm_guitar_3: "Down_3-Guitar.mp3",
+        bgm_guitar_4: "down_4-Guitar.mp3",
+        bgm_guitar_5: "down_5-Guitar.mp3",
+        bgm_guitar_6: "down_6-Fourths_Lead.mp3",
+        
+        // Item sounds
         SB1: "On_Beat_1.mp3", SB2: "On_Beat_2.mp3", SB3: "On_Beat_3.mp3", SB4: "On_Beat_4.mp3", SB5: "On_Beat_5.mp3",
         EB1: "Off_Beat_1.mp3", EB2: "Off_Beat_2.mp3", EB3: "Off_Beat_3.mp3", EB4: "Off_Beat_4.mp3", EB5: "Off_Beat_5.mp3", EB6: "Off_Beat_6.mp3",
         NG1: "exp_Beat_1.mp3", NG2: "exp_Beat_2.mp3", NG3: "exp_Beat_3.mp3", NG4: "exp_Beat_4.mp3",
         TUT1: "On_Beat_2.mp3", TUT2: "On_Beat_3.mp3"
     };
+    
+    // Track pools for standard mode random selection
+    const BGM_DRUMS_POOL = ['bgm_db1', 'bgm_db2'];  // Random 1 from 2
+    const BGM_GUITAR_POOL = ['bgm_guitar_2', 'bgm_guitar_3', 'bgm_guitar_4', 'bgm_guitar_5', 'bgm_guitar_6'];  // Random 3 from 5
 
     const UI_TEXT = {
         en: {
@@ -1094,7 +1110,9 @@
 
     // --- Audio & Visual ---
     let visualInterval = null; let playbackStartTime = 0; let playbackTimer = null; let audioInitialized = false; let isSkipping = false;
-    let bgPlayers = {}; // Multi-track background players
+    let bgPlayers = {}; // Multi-track background players (tutorial mode)
+    let bgmPool = null; // All BGM tracks pool for standard mode (Tone.Players)
+    let activeBgmPlayers = []; // Currently selected BGM players for this playback
     let bgFilters = {}; // Per-track filters for tonal variation
     let losePlayer = null; let samplePlayers = null; let effects = {};
     let activeBeams = [];
@@ -1168,21 +1186,30 @@
         bgFilters.rhythm = new Tone.Filter(20000, "lowpass");
         bgFilters.bass = new Tone.Filter(20000, "lowpass");
         
-        // Create 4 independent background track players
-        // Base volumes set here, then randomized per-playback in scheduleAudio
+        // === TUTORIAL MODE: Original 4 tracks ===
         bgPlayers.drums = new Tone.Player({ url: AUDIO_SOURCES.bgm_drums, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: 0 });
         bgPlayers.melody = new Tone.Player({ url: AUDIO_SOURCES.bgm_guitar1, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: 0 });
         bgPlayers.rhythm = new Tone.Player({ url: AUDIO_SOURCES.bgm_guitar2, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: 0 });
         bgPlayers.bass = new Tone.Player({ url: AUDIO_SOURCES.bgm_bass, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: 0 });
         
+        // === STANDARD MODE: All BGM tracks pool for random selection ===
+        const bgmUrls = {};
+        for (const [key, url] of Object.entries(AUDIO_SOURCES)) { 
+            if (key.startsWith('bgm_')) bgmUrls[key] = url; 
+        }
+        bgmPool = new Tone.Players({ urls: bgmUrls, fadeOut: 0.1, fadeIn: 0.1, volume: 0 });
+        
         // Fallback single player for lose state
         losePlayer = new Tone.Player({ url: AUDIO_SOURCES.bgm_drums, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -10 }); 
         
-        // Connect players -> per-track filters -> master chain
+        // Connect tutorial players -> per-track filters -> master chain
         bgPlayers.drums.disconnect(); bgPlayers.drums.connect(bgFilters.drums);
         bgPlayers.melody.disconnect(); bgPlayers.melody.connect(bgFilters.melody);
         bgPlayers.rhythm.disconnect(); bgPlayers.rhythm.connect(bgFilters.rhythm);
         bgPlayers.bass.disconnect(); bgPlayers.bass.connect(bgFilters.bass);
+        
+        // Connect standard mode pool directly to masterGain
+        bgmPool.connect(effects.masterGain);
         
         // Connect per-track filters -> masterGain -> crusher -> masterFilter -> phaser -> reverb -> destination
         Object.values(bgFilters).forEach(f => f.connect(effects.masterGain));
@@ -1222,8 +1249,10 @@
         Tone.Transport.cancel(); Tone.Transport.stop(); Tone.Transport.position = 0;
         
         // Stop all players
-        Object.values(bgPlayers).forEach(p => { if(p.state === "started") p.stop(); });
-        if(losePlayer.state === "started") losePlayer.stop();
+        Object.values(bgPlayers).forEach(p => { if(p && p.state === "started") p.stop(); });
+        if(bgmPool) bgmPool.stopAll();
+        if(losePlayer && losePlayer.state === "started") losePlayer.stop();
+        activeBgmPlayers = [];
         
         // === 9-TIER AUDIO QUALITY SYSTEM ===
         // Calculate tier based on pre-calculated score vs target
@@ -1240,31 +1269,54 @@
         
         console.log(`🎵 Tier ${currentTier} (${(score/config.target*100).toFixed(0)}%): Filter ${tierCfg.filter}Hz, Bits ${tierCfg.bits}, Reverb ${(tierCfg.reverb*100).toFixed(0)}%, Vol ${tierCfg.volume}dB`);
         
-        if (false) { // Low HP effect removed - no lives system
-            // Previously: use single muted track with heavy filter
-            effects.masterFilter.frequency.value = 1500;
-            effects.crusher.bits.value = 6;
-            if(losePlayer.loaded) { 
-                Tone.Transport.schedule((t) => { losePlayer.start(t, 0).stop(t + TOTAL_DURATION); }, 0); 
-            }
-        } else {
-            // === DYNAMIC MIX SYSTEM ===
-            // Volume randomization per playback (louder base, subtle variation)
-            // All tracks closer in volume for balanced mix
-            bgPlayers.drums.volume.value = 0;  // Drums at 0dB (reference)
-            bgPlayers.melody.volume.value = randomVolume(-6, -2);  // Melody: -6 to -2 dB
-            bgPlayers.rhythm.volume.value = randomVolume(-6, -2);  // Rhythm: -6 to -2 dB
-            bgPlayers.bass.volume.value = randomVolume(-4, 0);     // Bass: -4 to 0 dB
+        // Reset per-track filters
+        Object.values(bgFilters).forEach(f => { f.frequency.value = 20000; });
+        
+        if (state.isTutorial) {
+            // === TUTORIAL MODE: Original 4 fixed tracks ===
+            bgPlayers.drums.volume.value = 0;
+            bgPlayers.melody.volume.value = randomVolume(-6, -2);
+            bgPlayers.rhythm.volume.value = randomVolume(-6, -2);
+            bgPlayers.bass.volume.value = randomVolume(-4, 0);
             
-            // Reset per-track filters
-            Object.values(bgFilters).forEach(f => { f.frequency.value = 20000; });
-            
-            // Start all 4 tracks
             Object.values(bgPlayers).forEach(p => {
-                if(p.loaded) {
+                if(p && p.loaded) {
                     Tone.Transport.schedule((t) => { p.start(t, 0).stop(t + TOTAL_DURATION); }, 0);
                 }
             });
+        } else {
+            // === STANDARD MODE: Random selection from expanded pool ===
+            // Select 1 random drum from DB1/DB2
+            const selectedDrum = BGM_DRUMS_POOL[Math.floor(Math.random() * BGM_DRUMS_POOL.length)];
+            
+            // Select 3 random guitars from 5
+            const shuffledGuitars = [...BGM_GUITAR_POOL].sort(() => Math.random() - 0.5);
+            const selectedGuitars = shuffledGuitars.slice(0, 3);
+            
+            const selectedTracks = [selectedDrum, ...selectedGuitars];
+            console.log(`🎸 Selected tracks: ${selectedTracks.join(', ')}`);
+            
+            // Schedule each selected track with random volume (-6 to -12 dB)
+            selectedTracks.forEach(trackKey => {
+                if (bgmPool.has(trackKey)) {
+                    const player = bgmPool.player(trackKey);
+                    player.volume.value = randomVolume(-12, -6);
+                    activeBgmPlayers.push(player);
+                    Tone.Transport.schedule((t) => { 
+                        player.start(t, 0).stop(t + TOTAL_DURATION); 
+                    }, 0);
+                }
+            });
+            
+            // Randomize item sounds volume (-6 to -12 dB) for each item
+            if (samplePlayers) {
+                state.placedItems.forEach(item => {
+                    const id = item.data.id;
+                    if (samplePlayers.has(id)) {
+                        samplePlayers.player(id).volume.value = randomVolume(-12, -6);
+                    }
+                });
+            }
         }
         
         // Item-specific effects (these trigger during playback)
@@ -1508,8 +1560,11 @@
         speedChangeTime = Date.now();
         playbackSpeed = 8; // 8x speed (2 seconds total)
         
-        // Speed up audio players (BGM)
+        // Speed up audio players (BGM) - both tutorial and standard mode
         Object.values(bgPlayers).forEach(p => { 
+            if(p && p.state === "started") p.playbackRate = 8; 
+        });
+        activeBgmPlayers.forEach(p => { 
             if(p && p.state === "started") p.playbackRate = 8; 
         });
         if(losePlayer && losePlayer.state === "started") losePlayer.playbackRate = 8;
@@ -1541,12 +1596,15 @@
         speedChangeTime = 0;
         positionAtSpeedChange = 0;
         Object.values(bgPlayers).forEach(p => { if(p) p.playbackRate = 1; });
+        activeBgmPlayers.forEach(p => { if(p) p.playbackRate = 1; });
         if(losePlayer) losePlayer.playbackRate = 1;
     }
     
     function finishPlayback() {
         Tone.Transport.stop(); Tone.Transport.cancel(); 
         Object.values(bgPlayers).forEach(p => { if(p) p.stop(); }); 
+        if(bgmPool) bgmPool.stopAll();
+        activeBgmPlayers = [];
         if(losePlayer) losePlayer.stop(); 
         if(samplePlayers) samplePlayers.stopAll();
         
@@ -1739,7 +1797,27 @@
     function selectLang(lang) { state.lang = lang; updateAllText(); document.getElementById('langSelectModal').style.display = 'none'; document.getElementById('tutorialQueryModal').style.display = 'flex'; }
     function skipTutorial() { document.getElementById('tutorialQueryModal').style.display = 'none'; startStandardGame(); }
     function playTutorial() { document.getElementById('tutorialQueryModal').style.display = 'none'; state.isTutorial = true; startTutorialLevel(0); }
-    function startStandardGame() { state.isTutorial = false; state.inventory = []; state.ng1PermanentStacks = 0; state.milestoneProgress = 0; state.gold = 150; ["SB1", "EB1", "NG2"].forEach(id => addItemToInventory(id, 0)); config.maxCpu = 12; state.placedItems = []; applyLevelConfig(0); updateUI(); }
+    function startStandardGame() { 
+        // Check if player earned Pad (EB6) from tutorial before clearing inventory
+        const hasPadFromTutorial = tutorialState.l4.padGiven && state.inventory.some(i => i.data.id === 'EB6');
+        
+        state.isTutorial = false; 
+        state.inventory = []; 
+        state.ng1PermanentStacks = 0; 
+        state.milestoneProgress = 0; 
+        state.gold = 150; 
+        ["SB1", "EB1", "NG2"].forEach(id => addItemToInventory(id, 0)); 
+        
+        // Add Pad if earned from tutorial
+        if (hasPadFromTutorial) {
+            addItemToInventory('EB6', 0);
+        }
+        
+        config.maxCpu = 12; 
+        state.placedItems = []; 
+        applyLevelConfig(0); 
+        updateUI(); 
+    }
     function startTutorialLevel(idx, isRetry = false) { 
         state.levelIndex = idx; 
         resetTutorialStateForLevel(idx); 
@@ -2251,24 +2329,27 @@
             else if (totalScore >= tier1Threshold) tier = 1;
             
             // Calculate milestone progress FIRST (before displaying)
-            let currentMilestone = state.milestoneProgress;
+            let displayMilestone = state.milestoneProgress;
             let rareRewardName = null;
+            let milestoneReached = false;
             
             if (tier === 3) {
-                currentMilestone++;
-                if (currentMilestone >= 2) {
+                displayMilestone++;
+                if (displayMilestone >= 2) {
+                    milestoneReached = true;
                     rareRewardName = grantMilestoneReward();
-                    currentMilestone = 0;
+                    state.milestoneProgress = 0; // Reset after granting reward
+                } else {
+                    state.milestoneProgress = displayMilestone;
                 }
-                state.milestoneProgress = currentMilestone;
                 config.maxCpu += 2; // +2 CPU bonus
             }
             
             // Progress display (no hearts anymore)
             let dots = ""; for(let i=0; i<LEVEL_CONFIG.length; i++) { let cls = "status-dot"; if(i < state.levelIndex) cls += " done"; if(i === state.levelIndex && tier > 0) cls += " current done"; dots += `<div class="${cls}"></div>`; }
             
-            // Milestone progress display (show updated value)
-            const milestoneText = state.lang === 'cn' ? `稀有道具进度: ${state.milestoneProgress}/2` : `Rare Item Progress: ${state.milestoneProgress}/2`;
+            // Milestone progress display (show the value BEFORE reset, so 2/2 when reached)
+            const milestoneText = state.lang === 'cn' ? `稀有道具进度: ${displayMilestone}/2` : `Rare Item Progress: ${displayMilestone}/2`;
             statusContainer.innerHTML = `<div class="status-item" style="margin-right:20px;"><span>Progress:</span><div class="status-dots">${dots}</div></div><div class="status-item"><span style="color:#d500f9;">${milestoneText}</span></div>`;
             
             if (tier > 0) {

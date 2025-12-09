@@ -382,6 +382,20 @@
                 <div class="target-label" id="lblTarget">TARGET GROOVE</div>
                 <div class="target-value" id="targetText">360</div>
             </div>
+            <div class="tier-display" id="tierContainer" style="display:none; margin-top:8px; font-size:12px; line-height:1.6;">
+                <div style="display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid #333;">
+                    <span style="color:#76ff03;">★</span>
+                    <span id="tier1Score" style="color:#76ff03;">360</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid #333;">
+                    <span style="color:#ffd700;">★★</span>
+                    <span id="tier2Score" style="color:#ffd700;">396</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding:3px 0;">
+                    <span style="color:#ff4081;">★★★</span>
+                    <span id="tier3Score" style="color:#ff4081;">450</span>
+                </div>
+            </div>
             <div style="font-size:14px; color:#aaa; line-height:1.6; margin: 8px 0;">
                 <span id="lblLevel">Level:</span> <span id="levelNum" style="color:#fff;">1</span> &nbsp;|&nbsp;
                 <span id="lblTracks">Tracks:</span> <span id="trackNum" style="color:#fff;">2</span>
@@ -568,7 +582,7 @@
             clear: "清空", help: "帮助", history: "历史", cpu: "★ CPU", target: "目标 Groove", funds: "资金 (G)",
             inventory: "库存", shop: "商店", upCpu: "升级 CPU", sell: "出售", reroll: "刷新",
             ready: "准备就绪", readyDesc: "<b>操作指南:</b><br>• <b>拖拽</b>: 库存 -> 音轨 (放置)<br>• <b>拖拽</b>: 音轨 -> 音轨 (移动)<br>• <b>拖出</b>: 移出音轨 (移除)<br>• <b>拖拽至商店</b>: 出售道具",
-            level: "当前关卡:", tracks: "轨道数量:", submit: "结算", simulate: "付费模拟",
+            level: "当前关卡:", tracks: "轨道数量:", submit: "结算", simulate: "试听",
             startTitle: "音乐构筑 Roguelike MVP 演示", startGame: "开始游戏",
             report: "数据透视", resTarget: "目标", resTotal: "总分",
             nextLevel: "下一关", victory: "加冕时刻", retry: "重试", acceptFate: "接受结局",
@@ -696,10 +710,12 @@
             2: [
                 { target: 'btnBuyCpu', pos: 'near-cpu-btn', msg: { en: 'Buy CPU to permanently increase your CPU limit. More CPU = more items you can place!', cn: '购买CPU可以永久提升CPU上限。更多CPU = 可放置更多道具！' }, wait: 'cpuBuy' }
             ],
-            // Level 4 guides - sell both samplers, then buy CPU 3 times
+            // Level 4 guides - sell samplers, buy CPU, learn tiers, use preview (score breakdown shown after simulate)
             3: [
                 { target: 'shopList', pos: 'center-down', highlightSamplers: true, msg: { en: 'Drag Sampler A and B to the SHOP to sell them. These tutorial items are no longer needed!', cn: '将采样器A和B拖拽到商店出售。这两个教学道具已经不再需要了！' }, wait: 'sellBoth' },
-                { target: 'btnBuyCpu', pos: 'near-cpu-btn', msg: { en: 'You can buy CPU multiple times per level! The price increases slightly each time. Buy CPU 3 times to continue.', cn: '每关可以多次购买CPU！每次价格会略微递增。购买3次CPU后继续。' }, wait: 'cpuBuy3' }
+                { target: 'btnBuyCpu', pos: 'near-cpu-btn', msg: { en: 'You can buy CPU multiple times per level! The price increases slightly each time. Buy CPU 3 times to continue.', cn: '每关可以多次购买CPU！每次价格会略微递增。购买3次CPU后继续。' }, wait: 'cpuBuy3' },
+                { target: 'tierContainer', pos: 'left', msg: { en: 'In standard mode, there are THREE tiers of success! Higher scores give better rewards. Aim for ★★★ to earn bonus CPU and rare items!', cn: '在正式关卡中，有三个通关等级！分数越高奖励越好。追求★★★可以获得额外CPU和稀有道具奖励！' }, wait: 'click' },
+                { target: 'simBtn', pos: 'center-down', msg: { en: 'Use PREVIEW to see your current score without risk. Place some items, then click Preview to check!', cn: '使用试听功能可以无风险查看当前分数。放置一些道具后，点击试听来检查！' }, wait: 'simulate' }
             ]
         }
     };
@@ -934,6 +950,13 @@
                 document.getElementById('guideBtn').innerText = state.lang === 'cn' ? '继续' : 'Continue';
                 setTimeout(advanceGuide, 500);
             }
+            return;
+        }
+        
+        // Handle simulate - player used preview function
+        if (guideState.waitingFor === 'simulate' && action === 'simulate') {
+            // Will advance guide after simulation completes
+            guideState.pendingSimulateAdvance = true;
             return;
         }
         
@@ -1778,10 +1801,31 @@
         updateUI(); initGrid(); restorePlacedItems(); if(!state.isTutorial) rerollShop(); 
     }
 
-    function updateUI() { document.getElementById('levelNum').innerText = `${state.levelIndex + 1}`; document.getElementById('trackNum').innerText = config.activeTracks; document.getElementById('maxCpuText').innerText = `Max: ${config.maxCpu}`; document.getElementById('targetText').innerText = config.target; document.getElementById('goldText').innerText = state.gold + " G"; updateInventoryUI(); updateCpuButton(); updateSimButton(); updateCPU(); document.getElementById('btnReroll').style.display = state.isTutorial ? 'none' : 'block'; }
+    function updateUI() { 
+        document.getElementById('levelNum').innerText = `${state.levelIndex + 1}`; 
+        document.getElementById('trackNum').innerText = config.activeTracks; 
+        document.getElementById('maxCpuText').innerText = `Max: ${config.maxCpu}`; 
+        document.getElementById('targetText').innerText = config.target; 
+        document.getElementById('goldText').innerText = state.gold + " G"; 
+        updateInventoryUI(); updateCpuButton(); updateSimButton(); updateCPU(); 
+        document.getElementById('btnReroll').style.display = state.isTutorial ? 'none' : 'block';
+        
+        // Update tier display (show only in tutorial L4+ or standard mode)
+        const tierContainer = document.getElementById('tierContainer');
+        if (tierContainer) {
+            const showTiers = !state.isTutorial || state.levelIndex >= 3;
+            tierContainer.style.display = showTiers ? 'block' : 'none';
+            if (showTiers) {
+                const target = config.target;
+                document.getElementById('tier1Score').innerText = target;
+                document.getElementById('tier2Score').innerText = Math.ceil(target * 1.10);
+                document.getElementById('tier3Score').innerText = Math.ceil(target * 1.25);
+            }
+        }
+    }
     function updateGold(amount, animationTargetId) { state.gold += amount; document.getElementById('goldText').innerText = state.gold + " G"; if (amount < 0 && animationTargetId) { const target = document.getElementById(animationTargetId); if(target) { const float = document.createElement('div'); float.innerText = `${amount}G`; float.className = 'float-text'; float.style.color = '#ff5252'; const rect = target.getBoundingClientRect(); float.style.left = (rect.left + rect.width/2) + 'px'; float.style.top = rect.top + 'px'; document.body.appendChild(float); setTimeout(()=>float.remove(), 1000); } } updateSimButton(); updateCpuButton(); }
     function updateCpuButton() { const btn = document.getElementById('btnBuyCpu'); if (state.isTutorial && state.levelIndex < 2) { btn.style.display = 'none'; return; } else { btn.style.display = 'flex'; } if (state.isTutorial && state.levelIndex === 2) { if (state.tutorialCpuBought) { btn.disabled = true; document.getElementById('txtUpCpu').innerText = UI_TEXT[state.lang].soldOutQAQ; document.getElementById('cpuPriceText').innerText = ""; return; } else { btn.disabled = false; document.getElementById('txtUpCpu').innerText = UI_TEXT[state.lang].upCpu; document.getElementById('cpuPriceText').innerText = "30G"; return; } } btn.disabled = false; document.getElementById('txtUpCpu').innerText = UI_TEXT[state.lang].upCpu; const cost = 30 + (Math.min(state.cpuPurchasedRound, 2) * state.roundBase); document.getElementById('cpuPriceText').innerText = `${cost}G`; }
-    function updateSimButton() { const btn = document.getElementById('simBtn'); if (state.isTutorial) { btn.style.display = 'none'; return; } document.getElementById('simCostText').innerText = state.lang === 'cn' ? '免费' : 'FREE'; if (state.isPlaying) btn.disabled = true; else btn.disabled = false; btn.style.display = 'flex'; }
+    function updateSimButton() { const btn = document.getElementById('simBtn'); if (state.isTutorial && state.levelIndex < 3) { btn.style.display = 'none'; return; } document.getElementById('simCostText').style.display = 'none'; if (state.isPlaying) btn.disabled = true; else btn.disabled = false; btn.style.display = 'flex'; }
     function updateCPU() { const used = state.placedItems.reduce((a, b) => a + b.data.cpu, 0); const max = config.maxCpu; const usedPct = Math.min(100, (used / max) * 100); const bar = document.getElementById('cpuBar'); const previewBar = document.getElementById('cpuPreviewBar'); if (!previewBar) return; if (dragManager.active && dragManager.sourceType === 'inventory' && dragManager.itemData) { const itemCost = dragManager.itemData.cpu; const projectedTotal = used + itemCost; const previewWidthPct = (itemCost / max) * 100; previewBar.style.left = usedPct + "%"; previewBar.style.width = previewWidthPct + "%"; previewBar.style.display = 'block'; if (projectedTotal > max) { previewBar.className = "cpu-preview invalid"; if (bar) bar.className = "cpu-fill overload"; document.getElementById('cpuText').style.color = '#ff5252'; document.getElementById('cpuText').innerText = `${used} + ${itemCost}`; } else { previewBar.className = "cpu-preview valid"; if (bar) bar.className = "cpu-fill " + (used >= max ? "danger" : ""); document.getElementById('cpuText').style.color = '#ffd700'; document.getElementById('cpuText').innerText = `${used} + ${itemCost}`; } } else { previewBar.style.display = 'none'; if (bar) bar.className = "cpu-fill " + (used >= max ? "danger" : ""); document.getElementById('cpuText').style.color = '#ccc'; document.getElementById('cpuText').innerText = `${used}`; } if (bar) bar.style.width = usedPct + "%"; }
     
     function initGrid() { 
@@ -1838,7 +1882,10 @@
     function createPlacedElement(record, parent) { let el = document.createElement('div'); el.className = 'placed-item'; if (record.data.type) el.classList.add('type-' + record.data.type); el.style.left = (record.start/TICKS*100) + "%"; el.style.width = (record.data.len/TICKS*100) + "%"; el.style.backgroundColor = record.data.color; el.innerText = record.data.name[state.lang]; el.onmousedown = (e) => startDragPlaced(e, record); el.oncontextmenu = (e) => { if(state.isPlaying) return; e.preventDefault(); el.remove(); state.placedItems = state.placedItems.filter(x => x !== record); updateRealTimeState(); }; parent.appendChild(el); record.el = el; }
     function updateInventoryUI() { const list = document.getElementById('inventoryList'); list.innerHTML = ''; state.inventory.forEach(item => { let d = document.createElement('div'); d.className = 'inv-item'; d.setAttribute('data-id', item.data.id); d.style.borderLeftColor = item.data.color; if(state.selectedInvItem === item) d.classList.add('selected'); if(state.isPlaying) d.classList.add('disabled'); d.innerHTML = `<b style="color:${item.data.color}">${item.data.name[state.lang]}</b><div class="inv-meta"><span>CPU:${item.data.cpu}</span><span>Len:${item.data.len}</span></div>`; d.onmousedown = (e) => startDragInventory(e, item); list.appendChild(d); }); }
     
-    function runSimulation() { runPlaybackSequence(true); }
+    function runSimulation() { 
+        checkGuideAction('simulate'); 
+        runPlaybackSequence(true); 
+    }
     
     // Submit confirmation system (only for standard game, not tutorial)
     function trySubmit() {
@@ -2081,7 +2128,24 @@
         const btns = ['nextLevelBtn','finishGameBtn','retryLevelBtn','dieBtn','simCloseBtn']; btns.forEach(id => document.getElementById(id).style.display = 'none');
         const info = document.getElementById('resRewardInfo'); const statusContainer = document.getElementById('campaignStatusContainer'); const t = UI_TEXT[state.lang];
 
-        if (isHistoryMode) { outcomeEl.innerText = "HISTORY REVIEW"; outcomeEl.style.color = "#aaa"; info.innerText = ""; document.getElementById('simCloseBtn').style.display = "block"; const results = state.lastResultData; let histScore = 0; results.forEach(r => histScore += (r.base + r.bonus) * r.mult * r.finalMultiplier); document.getElementById('resTotalScore').innerText = Math.floor(histScore); renderResultGrid(results); document.getElementById('resultModal').style.display = 'flex'; return; }
+        if (isHistoryMode) { 
+            outcomeEl.innerText = state.lang === 'cn' ? '试听结果' : 'PREVIEW'; 
+            outcomeEl.style.color = "#aaa"; 
+            info.innerText = ""; 
+            document.getElementById('simCloseBtn').style.display = "block"; 
+            const results = state.lastResultData; 
+            let histScore = 0; 
+            results.forEach(r => histScore += (r.base + r.bonus) * r.mult * r.finalMultiplier); 
+            document.getElementById('resTotalScore').innerText = Math.floor(histScore); 
+            renderResultGrid(results); 
+            document.getElementById('resultModal').style.display = 'flex'; 
+            
+            // Tutorial L4: Show score breakdown guide after first simulate
+            if (state.isTutorial && state.levelIndex === 3 && guideState.pendingSimulateAdvance) {
+                setTimeout(() => showSimulateResultGuide(), 500);
+            }
+            return; 
+        }
 
         let rewardVal = 0;
         if (state.isTutorial) {
@@ -2092,8 +2156,8 @@
             const baseReward = LEVEL_CONFIG[state.levelIndex].reward;
             const target = config.target;
             const tier1Threshold = target;           // 100%
-            const tier2Threshold = target * 1.15;    // 115%
-            const tier3Threshold = target * 1.35;    // 135%
+            const tier2Threshold = target * 1.10;    // 110%
+            const tier3Threshold = target * 1.25;    // 125%
             
             // Determine tier achieved
             let tier = 0;
@@ -2153,11 +2217,48 @@
         state.pendingReward = rewardVal;
         const results = state.lastResultData || calculateLogic(); renderResultGrid(results);
         document.getElementById('resTotalScore').innerText = Math.floor(totalScore); document.getElementById('resTargetDisplay').innerText = config.target; document.getElementById('resultModal').style.display = 'flex';
+    }
+    
+    // Show guide overlay on result screen (used after simulate in tutorial L4)
+    function showSimulateResultGuide() {
+        // Create guide overlay for result screen
+        const overlay = document.createElement('div');
+        overlay.id = 'resultGuideOverlay';
+        overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10000; display:flex; justify-content:center;';
         
-        // Tutorial L4: Show result hover guide on first result screen
-        if (state.isTutorial && state.levelIndex === 3 && !tutorialState.l4.resultGuideShown) {
-            setTimeout(() => showResultGuide(), 500);
-        }
+        // Highlight the result track area
+        const resTrackArea = document.getElementById('resTrackArea');
+        if (resTrackArea) resTrackArea.style.cssText += ';position:relative; z-index:10001; box-shadow: 0 0 30px rgba(255,215,0,0.8);';
+        
+        // Create guide message - position at top, above the DAW area
+        const msg = document.createElement('div');
+        msg.className = 'guide-message';
+        const resTrackRect = resTrackArea ? resTrackArea.getBoundingClientRect() : { top: 200 };
+        msg.style.cssText = `position:fixed; top:${Math.max(20, resTrackRect.top - 180)}px; left:50%; transform:translateX(-50%); z-index:10002;`;
+        
+        const title = state.lang === 'cn' ? '💡 提示' : '💡 Tip';
+        const text = state.lang === 'cn' 
+            ? '将鼠标悬停在下方道具上，可以查看每个道具的具体分数和构成来源！' 
+            : 'Hover over items below to see detailed score breakdown and sources!';
+        const btnText = state.lang === 'cn' ? '知道了' : 'Got it!';
+        
+        msg.innerHTML = `<h3>${title}</h3><p>${text}</p><button class="guide-btn" onclick="closeSimulateResultGuide()">${btnText}</button>`;
+        
+        overlay.appendChild(msg);
+        document.body.appendChild(overlay);
+    }
+    
+    function closeSimulateResultGuide() {
+        const overlay = document.getElementById('resultGuideOverlay');
+        if (overlay) overlay.remove();
+        
+        // Remove highlight from result track area
+        const resTrackArea = document.getElementById('resTrackArea');
+        if (resTrackArea) resTrackArea.style.boxShadow = '';
+        
+        // Mark simulate guide as completed and advance
+        guideState.pendingSimulateAdvance = false;
+        guideState.completedLevels[3] = true; // Mark L4 guide as completed
     }
     
     function showResultGuide() {
@@ -2243,7 +2344,14 @@
         }
         pendingAction = null;
     }
-    function closeResult() { document.getElementById('resultModal').style.display = 'none'; }
+    function closeResult() { 
+        document.getElementById('resultModal').style.display = 'none'; 
+        // Check if we need to advance guide after simulation
+        if (guideState.pendingSimulateAdvance) {
+            guideState.pendingSimulateAdvance = false;
+            setTimeout(() => advanceGuide(), 300);
+        }
+    }
     function nextLevel() { updateGold(state.pendingReward); document.getElementById('resultModal').style.display = 'none'; if (state.isTutorial) { startTutorialLevel(state.levelIndex + 1); } else { const next = state.levelIndex + 1; if(next >= LEVEL_CONFIG.length) showVictory(); else applyLevelConfig(next); } }
     function retryLevel() { 
         updateGold(state.pendingReward); 

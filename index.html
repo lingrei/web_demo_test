@@ -265,7 +265,7 @@
         .soft-guide { border: 2px solid gold !important; animation: guide-pulse-strong 2s infinite ease-in-out; }
         @keyframes guide-pulse-strong { 0% { box-shadow: 0 0 3px rgba(255,215,0,0.4); } 50% { box-shadow: 0 0 15px rgba(255,215,0,0.9); } 100% { box-shadow: 0 0 3px rgba(255,215,0,0.4); } }
         
-        .result-tooltip { position: fixed; background: rgba(0,0,0,0.95); border: 1px solid #666; padding: 10px; border-radius: 4px; color: #fff; z-index: 10002; pointer-events: none; text-align: left; font-size: 12px; min-width: 200px; box-shadow: 0 5px 20px black; }
+        .result-tooltip { position: fixed; background: rgba(0,0,0,0.95); border: 1px solid #666; padding: 10px; border-radius: 4px; color: #fff; z-index: 20000; pointer-events: none; text-align: left; font-size: 12px; min-width: 200px; box-shadow: 0 5px 20px black; }
         .rt-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
         .rt-formula { border-top: 1px solid #444; margin-top: 5px; padding-top: 5px; color: #aaa; font-style: italic; font-size: 11px; text-align: center; }
         .rt-total { margin-top: 5px; font-weight: bold; color: gold; font-size: 14px; text-align: center; }
@@ -296,9 +296,601 @@
         .guide-arrow.arrow-down { border-left: 12px solid transparent; border-right: 12px solid transparent; border-top: 12px solid #ffd700; bottom: -12px; }
         .guide-arrow.arrow-left { border-top: 12px solid transparent; border-bottom: 12px solid transparent; border-right: 12px solid #ffd700; left: -12px; }
         .guide-arrow.arrow-right { border-top: 12px solid transparent; border-bottom: 12px solid transparent; border-left: 12px solid #ffd700; right: -12px; }
+        
+        /* === PERFORMANCE STAGE V26.2 === */
+        .performance-stage {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: 10000;
+            display: none;
+            overflow: hidden;
+            background: #000; /* Black background to hide main UI */
+        }
+        .performance-stage.active { display: flex; justify-content: center; align-items: center; }
+        
+        /* Stage wrapper maintains aspect ratio */
+        .stage-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 177.78vh; /* 16:9 aspect ratio */
+            max-height: 56.25vw;
+        }
+        
+        .stage-bg {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            transition: opacity 0.3s ease;
+        }
+        .stage-bg.hidden { opacity: 0; }
+        
+        /* Heart layer - covers full stage, positioned to match background */
+        .stage-heart-layer {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+        }
+        
+        /* Heart container - uses same sizing as background */
+        .stage-heart-container {
+            position: absolute;
+            width: 100%; height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+        }
+        .stage-heart-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            object-position: center;
+        }
+        .stage-heart-container.pulse-tiny { animation: heartPulseTiny 0.12s ease-out; }
+        .stage-heart-container.pulse-small { animation: heartPulseSmall 0.15s ease-out; }
+        .stage-heart-container.pulse-medium { animation: heartPulseMedium 0.2s ease-out; }
+        .stage-heart-container.pulse-large { animation: heartPulseLarge 0.25s ease-out; }
+        .stage-heart-container.pulse-huge { animation: heartPulseHuge 0.3s ease-out; }
+        
+        @keyframes heartPulseTiny { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.01); } }
+        @keyframes heartPulseSmall { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.02); } }
+        @keyframes heartPulseMedium { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+        @keyframes heartPulseLarge { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.07); } }
+        @keyframes heartPulseHuge { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+        
+        /* Score display in heart center */
+        .heart-score-display {
+            position: absolute;
+            top: 42%; left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(0,0,0,0.9), 0 2px 6px rgba(0,0,0,0.8);
+            pointer-events: none;
+            z-index: 10004;
+        }
+        .heart-score-label {
+            font-size: clamp(12px, 1.5vw, 20px);
+            color: #ffcccc;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 5px;
+        }
+        .heart-score-value {
+            font-size: clamp(36px, 5vw, 72px);
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 30px rgba(255,100,100,0.8), 0 0 60px rgba(255,50,50,0.4);
+        }
+        
+        /* Floating score text */
+        .stage-float-score {
+            position: absolute;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 10005;
+            animation: stageFloatUp 1.2s ease-out forwards;
+            text-shadow: 0 2px 6px rgba(0,0,0,0.9);
+        }
+        .stage-float-score.score { color: #ffd700; font-size: clamp(18px, 2.5vw, 36px); }
+        .stage-float-score.buff { color: #00e5ff; font-size: clamp(14px, 2vw, 28px); }
+        
+        @keyframes stageFloatUp {
+            0% { opacity: 0; transform: translateY(0) scale(0.5); }
+            15% { opacity: 1; transform: translateY(-20px) scale(1.2); }
+            100% { opacity: 0; transform: translateY(-60px) scale(1); }
+        }
+        
+        /* Computer screen area for DAW - positioned relative to stage */
+        .stage-computer-screen {
+            position: absolute;
+            background: rgba(0,0,0,0.95);
+            border: 3px solid #444;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        }
+        
+        .stage-daw-container {
+            width: 100%; height: 100%;
+            position: relative;
+        }
+        
+        .stage-track {
+            position: absolute;
+            left: 0; right: 0;
+            background: #1a1a1a;
+            border-bottom: 1px solid #333;
+        }
+        .stage-track:last-child { border-bottom: none; }
+        
+        .stage-grid-cell {
+            position: absolute;
+            top: 0; height: 100%;
+            border-right: 1px solid #2a2a2a;
+        }
+        .stage-grid-cell:nth-child(4n) { border-right-color: #444; }
+        .stage-grid-cell.cell-strong { background-color: rgba(0,0,0,0.4); }
+        
+        .stage-placed-item {
+            position: absolute;
+            height: 60%;
+            top: 20%;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(8px, 0.8vw, 12px);
+            color: #000;
+            font-weight: bold;
+            border: 2px solid rgba(255,255,255,0.3);
+            transition: filter 0.1s, box-shadow 0.1s;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .stage-placed-item.playing-active {
+            filter: brightness(2) contrast(1.3);
+            box-shadow: 0 0 20px white, 0 0 40px rgba(255,255,255,0.5);
+            animation: stageItemPulse 0.3s ease-out;
+        }
+        @keyframes stageItemPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+            100% { transform: scale(1); }
+        }
+        
+        /* Floating score text for stage DAW */
+        .stage-daw-float {
+            position: absolute;
+            font-weight: bold;
+            color: #ffd700;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 200;
+            animation: stageDawFloat 0.8s ease-out forwards;
+            text-shadow: 0 0 8px rgba(255,200,0,0.8), 0 2px 4px rgba(0,0,0,0.8);
+        }
+        .stage-daw-float.buff {
+            color: #00ffcc;
+            text-shadow: 0 0 8px rgba(0,255,200,0.8), 0 2px 4px rgba(0,0,0,0.8);
+        }
+        @keyframes stageDawFloat {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-25px) scale(1.2); }
+        }
+        
+        /* Connection beam for stage DAW */
+        .stage-daw-beam {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #00ffcc, #00ffcc, transparent);
+            opacity: 0.8;
+            pointer-events: none;
+            z-index: 50;
+            transform-origin: left center;
+            animation: stageBeamFade 0.6s ease-out forwards;
+        }
+        @keyframes stageBeamFade {
+            0% { opacity: 0.8; }
+            100% { opacity: 0; }
+        }
+        
+        .stage-playhead {
+            position: absolute;
+            top: 0; bottom: 0;
+            left: 0;
+            width: 3px;
+            background: #ff5252;
+            box-shadow: 0 0 15px #ff5252;
+            z-index: 100;
+        }
+        
+        /* Energy beam/ray effects */
+        .stage-beam {
+            position: absolute;
+            pointer-events: none;
+            z-index: 10003;
+        }
+        .stage-beam-head {
+            position: absolute;
+            width: 12px; height: 12px;
+            background: radial-gradient(circle, #fff 0%, #00ffcc 50%, transparent 80%);
+            border-radius: 50%;
+            box-shadow: 0 0 15px #00ffcc, 0 0 30px rgba(0,255,200,0.8);
+            transform: translate(-50%, -50%);
+        }
+        .stage-beam-trail {
+            position: absolute;
+            height: 4px;
+            background: linear-gradient(90deg, transparent 0%, rgba(0,255,200,0.8) 30%, #00ffcc 100%);
+            border-radius: 2px;
+            transform-origin: right center;
+            box-shadow: 0 0 8px rgba(0,255,200,0.5);
+        }
+        
+        /* Settlement screen V26.1 */
+        .settlement-screen {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: 10010;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .settlement-screen.active { display: flex; }
+        
+        .settlement-bg {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-size: cover;
+            background-position: center;
+            filter: blur(8px) brightness(0.3);
+        }
+        
+        .settlement-content {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            gap: 30px;
+            align-items: stretch;
+            max-width: 1200px;
+            max-height: 90vh;
+            overflow: auto;
+        }
+        
+        .settlement-left {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            flex: 1;
+            min-width: 500px;
+        }
+        
+        /* DAW Preview in Settlement - Full track display */
+        .settlement-track-preview {
+            background: #111;
+            border: 2px solid #444;
+            border-radius: 8px;
+            padding: 15px;
+            min-width: 500px;
+            margin-top: 30px; /* Move down */
+        }
+        
+        /* Settlement DAW Track display */
+        .settle-daw-row {
+            display: flex;
+            height: 35px;
+            margin-bottom: 8px;
+            position: relative;
+            border: 1px solid #333;
+            background: #1a1a1a;
+        }
+        .settle-grid-bg {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: flex;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .settle-grid-cell {
+            flex: 1;
+            border-right: 1px solid #2a2a2a;
+        }
+        .settle-grid-cell:nth-child(4n) { border-right-color: #444; }
+        .settle-item {
+            position: absolute;
+            height: 100%;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+            color: #111;
+            cursor: pointer;
+            border: 2px solid rgba(255,255,255,0.2);
+            z-index: 10;
+            transition: all 0.2s;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            padding: 0 4px;
+        }
+        .settle-item:hover {
+            z-index: 15;
+            transform: scale(1.05);
+            border-color: white;
+            box-shadow: 0 0 15px rgba(255,255,255,0.3);
+        }
+        
+        .settlement-stamp {
+            position: relative;
+            width: 220px;
+            min-width: 220px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding-top: 20px;
+        }
+        
+        .stamp-circle {
+            width: 180px;
+            height: 180px;
+            border: 6px solid;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transform: rotate(-15deg);
+            animation: stampDrop 0.5s ease-out;
+            background: rgba(0,0,0,0.5);
+        }
+        .stamp-circle.victory { border-color: #4caf50; color: #4caf50; }
+        .stamp-circle.failed { border-color: #f44336; color: #f44336; }
+        
+        @keyframes stampDrop {
+            0% { transform: rotate(-15deg) scale(2); opacity: 0; }
+            60% { transform: rotate(-15deg) scale(0.9); opacity: 1; }
+            100% { transform: rotate(-15deg) scale(1); opacity: 1; }
+        }
+        
+        .stamp-score {
+            font-size: 32px;
+            font-weight: bold;
+        }
+        .stamp-label {
+            font-size: 18px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .settlement-right {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            color: #fff;
+            min-width: 200px;
+        }
+        
+        .settlement-stars {
+            display: flex;
+            gap: 8px;
+            font-size: 28px;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+        .settlement-star { color: #333; }
+        .settlement-star.earned { color: #ffd700; text-shadow: 0 0 10px rgba(255,215,0,0.5); }
+        
+        /* Rewards section */
+        .settlement-rewards {
+            background: rgba(0,0,0,0.6);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #444;
+        }
+        .settlement-rewards-title {
+            font-size: 14px;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+        .reward-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid #333;
+        }
+        .reward-row:last-child { border-bottom: none; }
+        .reward-label { color: #aaa; font-size: 13px; }
+        .reward-value { font-weight: bold; font-size: 16px; }
+        .reward-value.gold { color: #ffd700; }
+        .reward-value.cpu { color: #4fc3f7; }
+        .reward-value.item { color: #d500f9; }
+        
+        /* Milestone progress */
+        .milestone-container {
+            background: rgba(213,0,249,0.1);
+            border: 1px solid #d500f9;
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 5px;
+        }
+        .milestone-label {
+            font-size: 11px;
+            color: #d500f9;
+            margin-bottom: 5px;
+        }
+        .milestone-bar {
+            height: 8px;
+            background: #222;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .milestone-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #d500f9, #ff4081);
+            transition: width 0.5s;
+        }
+        
+        .settlement-stat {
+            background: rgba(0,0,0,0.6);
+            padding: 12px 15px;
+            border-radius: 8px;
+            border: 1px solid #444;
+        }
+        
+        .settlement-stat-label {
+            font-size: 11px;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 3px;
+        }
+        
+        .settlement-stat-value {
+            font-size: 22px;
+            font-weight: bold;
+        }
+        .settlement-stat-value.gold { color: #ffd700; }
+        .settlement-stat-value.cpu { color: #4fc3f7; }
+        
+        .settlement-stat-change {
+            font-size: 14px;
+            margin-left: 8px;
+        }
+        .settlement-stat-change.positive { color: #4caf50; }
+        
+        .settlement-stars {
+            display: flex;
+            gap: 10px;
+            font-size: 32px;
+        }
+        .settlement-star { color: #333; }
+        .settlement-star.earned { color: #ffd700; text-shadow: 0 0 10px rgba(255,215,0,0.5); }
+        
+        .settlement-progress {
+            display: flex;
+            gap: 8px;
+        }
+        .progress-dot {
+            width: 20px; height: 20px;
+            border-radius: 50%;
+            background: #333;
+            border: 2px solid #555;
+        }
+        .progress-dot.done { background: #4caf50; border-color: #4caf50; }
+        .progress-dot.current { background: #ffd700; border-color: #ffd700; }
+        
+        .settlement-btn {
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 20px;
+        }
+        .settlement-btn.next { background: #4caf50; color: #fff; }
+        .settlement-btn.next:hover { background: #43a047; transform: scale(1.05); }
+        .settlement-btn.retry { background: #f44336; color: #fff; }
+        .settlement-btn.retry:hover { background: #e53935; transform: scale(1.05); }
     </style>
 </head>
 <body>
+
+<!-- Performance Stage V26.1 - Responsive -->
+<div class="performance-stage" id="performanceStage">
+    <div class="stage-wrapper" id="stageWrapper">
+        <!-- Background layers for expression switching -->
+        <div class="stage-bg" id="stageBgNeutral" style="background-image: url('bg_neutral.png');"></div>
+        <div class="stage-bg hidden" id="stageBgHappy" style="background-image: url('bg_happy.png');"></div>
+        <div class="stage-bg hidden" id="stageBgAngry" style="background-image: url('bg_angry.png');"></div>
+        
+        <!-- Heart UI layer - overlays background at same position -->
+        <div class="stage-heart-container" id="stageHeartContainer">
+            <img src="heart_big.png" id="stageHeartImg">
+        </div>
+        
+        <!-- Score display in heart center -->
+        <div class="heart-score-display" id="heartScoreDisplay">
+            <div class="heart-score-label" id="heartScoreLabel">Total Groove</div>
+            <div class="heart-score-value" id="heartScoreValue">0</div>
+        </div>
+        
+        <!-- Computer screen for DAW playback -->
+        <div class="stage-computer-screen" id="stageComputerScreen">
+            <div class="stage-daw-container" id="stageDawContainer">
+                <div class="stage-playhead" id="stagePlayhead"></div>
+            </div>
+        </div>
+        
+        <!-- Particle container -->
+        <div id="stageParticleContainer"></div>
+    </div>
+</div>
+
+<!-- Settlement Screen V26.1 -->
+<div class="settlement-screen" id="settlementScreen">
+    <div class="settlement-bg" id="settlementBg"></div>
+    <div class="settlement-content">
+        <div class="settlement-left">
+            <div class="settlement-track-preview" id="settlementTrackPreview">
+                <!-- DAW tracks rendered here -->
+            </div>
+        </div>
+        <div class="settlement-stamp">
+            <div class="stamp-circle" id="stampCircle">
+                <div class="stamp-score" id="stampScore">0</div>
+                <div class="stamp-label" id="stampLabel">VICTORY</div>
+            </div>
+        </div>
+        <div class="settlement-right">
+            <div class="settlement-stars" id="settlementStars">
+                <span class="settlement-star">★</span>
+                <span class="settlement-star">★</span>
+                <span class="settlement-star">★</span>
+            </div>
+            <div class="settlement-rewards" id="settlementRewards">
+                <div class="settlement-rewards-title" id="lblRewardsTitle">REWARDS</div>
+                <div id="rewardsList">
+                    <!-- Rewards rendered here -->
+                </div>
+                <div class="milestone-container" id="milestoneContainer" style="display:none;">
+                    <div class="milestone-label" id="milestoneLabel">Rare Item Progress: 0/2</div>
+                    <div class="milestone-bar">
+                        <div class="milestone-fill" id="milestoneFill" style="width:0%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="settlement-stat">
+                <div class="settlement-stat-label" id="lblSettleProgress">PROGRESS</div>
+                <div class="settlement-progress" id="settleProgress"></div>
+            </div>
+            <button class="settlement-btn next" id="settlementNextBtn" onclick="settlementNext()">NEXT</button>
+        </div>
+    </div>
+</div>
 
 <div id="tooltip"></div>
 <div id="resultTooltip" class="result-tooltip" style="display:none;"></div>
@@ -556,35 +1148,18 @@
     let TICK_DURATION = TOTAL_DURATION / TICKS;
     
     const AUDIO_SOURCES = {
-        // === DYNAMIC BGM SYSTEM V2 ===
-        // Tutorial mode: use original 4 tracks
-        // Standard mode: random selection from expanded pool
+        // === SIMPLIFIED BGM SYSTEM V26.0 ===
+        // Tutorial mode: only down_DB_1
+        // Standard mode: only down_DB_2
+        bgm_tutorial: "down_DB_1.mp3",
+        bgm_standard: "down_DB_2.mp3",
         
-        // Original tracks (for tutorial)
-        bgm_guitar1: "3-Guitar.mp3",
-        bgm_guitar2: "4-Guitar.mp3",
-        bgm_bass: "7-ContemporaryBass.mp3",
-        bgm_drums: "9-TS_HMD_125_drums_groovy_hats.mp3",
-        
-        // New tracks for standard mode
-        bgm_db1: "down_DB_1.mp3",
-        bgm_db2: "down_DB_2.mp3",
-        bgm_guitar_2: "down_2-Guitar.mp3",
-        bgm_guitar_3: "Down_3-Guitar.mp3",
-        bgm_guitar_4: "down_4-Guitar.mp3",
-        bgm_guitar_5: "down_5-Guitar.mp3",
-        bgm_guitar_6: "down_6-Fourths_Lead.mp3",
-        
-        // Item sounds
+        // Item sounds - these are the main audio content players create
         SB1: "On_Beat_1.mp3", SB2: "On_Beat_2.mp3", SB3: "On_Beat_3.mp3", SB4: "On_Beat_4.mp3", SB5: "On_Beat_5.mp3",
         EB1: "Off_Beat_1.mp3", EB2: "Off_Beat_2.mp3", EB3: "Off_Beat_3.mp3", EB4: "Off_Beat_4.mp3", EB5: "Off_Beat_5.mp3", EB6: "Off_Beat_6.mp3",
         NG1: "exp_Beat_1.mp3", NG2: "exp_Beat_2.mp3", NG3: "exp_Beat_3.mp3", NG4: "exp_Beat_4.mp3",
         TUT1: "On_Beat_2.mp3", TUT2: "On_Beat_3.mp3"
     };
-    
-    // Track pools for standard mode random selection
-    const BGM_DRUMS_POOL = ['bgm_db1', 'bgm_db2'];  // Random 1 from 2
-    const BGM_GUITAR_POOL = ['bgm_guitar_2', 'bgm_guitar_3', 'bgm_guitar_4', 'bgm_guitar_5', 'bgm_guitar_6'];  // Random 3 from 5
 
     const UI_TEXT = {
         en: {
@@ -1121,11 +1696,9 @@
 
     // --- Audio & Visual ---
     let visualInterval = null; let playbackStartTime = 0; let playbackTimer = null; let audioInitialized = false; let isSkipping = false;
-    let bgPlayers = {}; // Multi-track background players (tutorial mode)
-    let bgmPool = null; // All BGM tracks pool for standard mode (Tone.Players)
-    let activeBgmPlayers = []; // Currently selected BGM players for this playback
-    let bgFilters = {}; // Per-track filters for tonal variation
-    let losePlayer = null; let samplePlayers = null; let effects = {};
+    let bgPlayers = {}; // V26.0: tutorial and standard BGM players
+    let samplePlayers = null; // Item sound players
+    let effects = {}; // Audio effects chain
     let activeBeams = [];
     let currentTier = 0; // Current audio tier (-4 to +4)
     let playbackSpeed = 1; // Speed multiplier (1 = normal, 4 = fast forward)
@@ -1179,86 +1752,130 @@
         const btn = document.getElementById('mainSubmitBtn'); if(btn) btn.innerText = "Loading...";
         await Tone.start();
         
-        // === EFFECTS CHAIN FOR 9-TIER SYSTEM ===
-        // Master filter (for low-tier degradation + item effects like SB4)
-        effects.masterFilter = new Tone.Filter(20000, "lowpass");
-        // BitCrusher (for low-tier digital artifacts + item effects like EB5)
-        effects.crusher = new Tone.BitCrusher(16);
-        // Phaser (for item effects like SB5 Quantizer)
-        effects.phaser = new Tone.Phaser({ frequency: 15, octaves: 5, baseFrequency: 1000, wet: 0 });
-        // Reverb (for high-tier richness)
-        effects.reverb = new Tone.Reverb({ decay: 2.5, wet: 0 });
-        // Master gain (for tier-based volume adjustment)
+        // === V26.0 SIMPLIFIED EFFECTS CHAIN ===
+        // BGM chain (quiet background)
+        effects.bgmGain = new Tone.Gain(0.3); // BGM is quiet background
+        effects.bgmFilter = new Tone.Filter(20000, "lowpass");
+        
+        // Item effects chain (louder, main content)
+        effects.itemGain = new Tone.Gain(1); // Items are the main audio
+        effects.itemFilter = new Tone.Filter(20000, "lowpass");
+        effects.itemReverb = new Tone.Reverb({ decay: 2.0, wet: 0 });
+        
+        // Master output
         effects.masterGain = new Tone.Gain(1);
         
-        // Create per-track filters (for subtle per-track variation)
-        bgFilters.drums = new Tone.Filter(20000, "lowpass");
-        bgFilters.melody = new Tone.Filter(20000, "lowpass");
-        bgFilters.rhythm = new Tone.Filter(20000, "lowpass");
-        bgFilters.bass = new Tone.Filter(20000, "lowpass");
+        // === SIMPLIFIED BGM: One track per mode ===
+        bgPlayers.tutorial = new Tone.Player({ url: AUDIO_SOURCES.bgm_tutorial, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -6 });
+        bgPlayers.standard = new Tone.Player({ url: AUDIO_SOURCES.bgm_standard, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -6 });
         
-        // === TUTORIAL MODE: Original 4 tracks ===
-        bgPlayers.drums = new Tone.Player({ url: AUDIO_SOURCES.bgm_drums, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: 0 });
-        bgPlayers.melody = new Tone.Player({ url: AUDIO_SOURCES.bgm_guitar1, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: 0 });
-        bgPlayers.rhythm = new Tone.Player({ url: AUDIO_SOURCES.bgm_guitar2, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: 0 });
-        bgPlayers.bass = new Tone.Player({ url: AUDIO_SOURCES.bgm_bass, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: 0 });
+        // Connect BGM chain
+        bgPlayers.tutorial.disconnect(); bgPlayers.tutorial.connect(effects.bgmFilter);
+        bgPlayers.standard.disconnect(); bgPlayers.standard.connect(effects.bgmFilter);
+        effects.bgmFilter.connect(effects.bgmGain);
+        effects.bgmGain.connect(effects.masterGain);
         
-        // === STANDARD MODE: All BGM tracks pool for random selection ===
-        const bgmUrls = {};
-        for (const [key, url] of Object.entries(AUDIO_SOURCES)) { 
-            if (key.startsWith('bgm_')) bgmUrls[key] = url; 
-        }
-        bgmPool = new Tone.Players({ urls: bgmUrls, fadeOut: 0.1, fadeIn: 0.1, volume: 0 });
-        
-        // Fallback single player for lose state
-        losePlayer = new Tone.Player({ url: AUDIO_SOURCES.bgm_drums, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -10 }); 
-        
-        // Connect tutorial players -> per-track filters -> master chain
-        bgPlayers.drums.disconnect(); bgPlayers.drums.connect(bgFilters.drums);
-        bgPlayers.melody.disconnect(); bgPlayers.melody.connect(bgFilters.melody);
-        bgPlayers.rhythm.disconnect(); bgPlayers.rhythm.connect(bgFilters.rhythm);
-        bgPlayers.bass.disconnect(); bgPlayers.bass.connect(bgFilters.bass);
-        
-        // Connect standard mode pool directly to masterGain
-        bgmPool.connect(effects.masterGain);
-        
-        // Connect per-track filters -> masterGain -> crusher -> masterFilter -> phaser -> reverb -> destination
-        Object.values(bgFilters).forEach(f => f.connect(effects.masterGain));
-        effects.masterGain.connect(effects.crusher);
-        effects.crusher.connect(effects.masterFilter);
-        effects.masterFilter.connect(effects.phaser);
-        effects.phaser.connect(effects.reverb);
-        effects.reverb.toDestination();
-        
-        // Lose player uses same chain
-        losePlayer.disconnect(); losePlayer.connect(effects.masterGain);
-        
+        // Item sounds - these are the MAIN audio content
         const itemUrls = {}; 
         for (const [key, url] of Object.entries(AUDIO_SOURCES)) { 
             if (!key.startsWith('bgm')) itemUrls[key] = url; 
         }
-        // Connect item sounds through the SAME effects chain as BGM
-        // This way items are also affected by the 9-tier quality system
-        samplePlayers = new Tone.Players({ urls: itemUrls, fadeOut: 0.05, volume: -6 });
-        samplePlayers.connect(effects.masterGain); // Route through tier effects
+        samplePlayers = new Tone.Players({ urls: itemUrls, fadeOut: 0.05, volume: 0 });
+        
+        // Connect item chain (separate from BGM for independent tier control)
+        samplePlayers.disconnect();
+        samplePlayers.connect(effects.itemFilter);
+        effects.itemFilter.connect(effects.itemReverb);
+        effects.itemReverb.connect(effects.itemGain);
+        effects.itemGain.connect(effects.masterGain);
+        
+        // Master to destination
+        effects.masterGain.toDestination();
         
         try {
-        await Tone.loaded();
-            console.log('✅ All audio files loaded successfully');
+            await Tone.loaded();
+            console.log('✅ V26.0 Audio system loaded');
         } catch(e) {
             console.warn('⚠️ Some audio files failed to load:', e);
-            // Continue anyway - some tracks may still work
         }
         
-        // Log which tracks are available
-        console.log('📀 Available bgmPool tracks:', bgmPool ? Object.keys(bgmPool._players || {}) : 'none');
-        
-        if (bgPlayers.drums.buffer && bgPlayers.drums.buffer.duration > 0) { 
-            TOTAL_DURATION = bgPlayers.drums.buffer.duration; 
+        // Get duration from tutorial BGM
+        if (bgPlayers.tutorial.buffer && bgPlayers.tutorial.buffer.duration > 0) { 
+            TOTAL_DURATION = bgPlayers.tutorial.buffer.duration; 
             TICK_DURATION = TOTAL_DURATION / TICKS; 
         }
         if(btn) btn.innerText = UI_TEXT[state.lang].submit;
         audioInitialized = true;
+    }
+    
+    // === V26.0 TIER-BASED ITEM AUDIO EFFECTS ===
+    // Apply audio effects to items based on score vs target ratio
+    // Only affects playback, not DAW editing
+    function applyItemTierEffects(scoreRatio) {
+        if (!audioInitialized) return;
+        
+        // 9 tiers from -20% to +20% of target, each 5%
+        // Tier affects: filter cutoff, reverb, volume
+        let filterFreq = 20000;
+        let reverbWet = 0;
+        let volumeDb = 0;
+        
+        if (scoreRatio < 0.80) {
+            // Very bad: muffled, no reverb
+            filterFreq = 2000;
+            reverbWet = 0;
+            volumeDb = -4;
+        } else if (scoreRatio < 0.85) {
+            filterFreq = 4000;
+            reverbWet = 0;
+            volumeDb = -3;
+        } else if (scoreRatio < 0.90) {
+            filterFreq = 6000;
+            reverbWet = 0;
+            volumeDb = -2;
+        } else if (scoreRatio < 0.95) {
+            filterFreq = 10000;
+            reverbWet = 0.05;
+            volumeDb = -1;
+        } else if (scoreRatio < 1.00) {
+            // Near target: clean
+            filterFreq = 15000;
+            reverbWet = 0.1;
+            volumeDb = 0;
+        } else if (scoreRatio < 1.05) {
+            // At target: good
+            filterFreq = 20000;
+            reverbWet = 0.15;
+            volumeDb = 1;
+        } else if (scoreRatio < 1.10) {
+            filterFreq = 20000;
+            reverbWet = 0.2;
+            volumeDb = 2;
+        } else if (scoreRatio < 1.15) {
+            filterFreq = 20000;
+            reverbWet = 0.25;
+            volumeDb = 3;
+        } else {
+            // Excellent: full, spacious
+            filterFreq = 20000;
+            reverbWet = 0.35;
+            volumeDb = 4;
+        }
+        
+        // Apply to item effects chain
+        if (effects.itemFilter) effects.itemFilter.frequency.value = filterFreq;
+        if (effects.itemReverb) effects.itemReverb.wet.value = reverbWet;
+        if (effects.itemGain) effects.itemGain.gain.value = Math.pow(10, volumeDb / 20);
+        
+        console.log(`🎵 Item tier effects: ratio=${scoreRatio.toFixed(2)}, filter=${filterFreq}Hz, reverb=${reverbWet}, vol=${volumeDb}dB`);
+    }
+    
+    // Reset item effects (for DAW editing mode)
+    function resetItemEffects() {
+        if (!audioInitialized) return;
+        if (effects.itemFilter) effects.itemFilter.frequency.value = 20000;
+        if (effects.itemReverb) effects.itemReverb.wet.value = 0;
+        if (effects.itemGain) effects.itemGain.gain.value = 1;
     }
 
     function randomVolume(min, max) {
@@ -1273,170 +1890,56 @@
         Tone.Transport.stop(); 
         Tone.Transport.position = 0;
         
-        // CRITICAL: Force stop ALL players and reset their rates BEFORE scheduling new playback
+        // Stop all players and reset rates
         Object.values(bgPlayers).forEach(p => { 
             if(p) {
-                p.stop(); // Force stop regardless of state
-                p.playbackRate = 1; // Reset rate immediately
+                p.stop();
+                p.playbackRate = 1;
             }
         });
-        if(bgmPool) {
-            bgmPool.stopAll();
-            // Reset all bgmPool players' rates - do this for ALL players, not just active ones
-            Object.keys(bgmPool._players || {}).forEach(key => {
-                const player = bgmPool.player(key);
-                if(player) {
-                    player.stop(); // Force stop
-                    player.playbackRate = 1; // Reset rate
-                }
-            });
-        }
-        if(losePlayer) {
-            losePlayer.stop(); // Force stop
-            losePlayer.playbackRate = 1;
-        }
-        activeBgmPlayers = [];
         
-        // CRITICAL: Reset samplePlayers rates for ALL players
         if(samplePlayers) {
-            samplePlayers.stopAll(); // Stop all item sounds
+            samplePlayers.stopAll();
             Object.keys(samplePlayers._players || {}).forEach(key => {
                 const player = samplePlayers.player(key);
-                if(player) {
-                    player.playbackRate = 1; // Reset rate
-                }
+                if(player) player.playbackRate = 1;
             });
         }
         
-        // Small delay to ensure all stops are processed (Tone.js async)
-        // This ensures playbackRate is reset before new playback starts
+        console.log('🔧 V26.0 Audio reset complete');
         
-        // Debug: Verify all rates are reset
-        console.log('🔧 Audio reset: All playback rates set to 1');
-        
-        // === 9-TIER AUDIO QUALITY SYSTEM ===
-        // Calculate tier based on pre-calculated score vs target
+        // === V26.0 SIMPLIFIED BGM: One track per mode ===
         const score = preCalculatedScore || 0;
-        currentTier = calculateTier(score, config.target);
-        // tierKey: '0' for tier 0, '+1' for positive, '-1' for negative
-        const tierKey = currentTier === 0 ? '0' : (currentTier > 0 ? '+' + currentTier : currentTier.toString());
-        const tierCfg = TIER_CONFIG[tierKey] || TIER_CONFIG['0'];
+        const scoreRatio = score / config.target;
         
-        // Apply tier effects to master chain
-        effects.masterFilter.frequency.value = tierCfg.filter;
-        effects.crusher.bits.value = tierCfg.bits;
-        effects.reverb.wet.value = tierCfg.reverb;
-        effects.masterGain.gain.value = Math.pow(10, tierCfg.volume / 20); // dB to linear
+        // Apply tier effects to items (not BGM)
+        applyItemTierEffects(scoreRatio);
         
-        console.log(`🎵 Tier ${currentTier} (${(score/config.target*100).toFixed(0)}%): Filter ${tierCfg.filter}Hz, Bits ${tierCfg.bits}, Reverb ${(tierCfg.reverb*100).toFixed(0)}%, Vol ${tierCfg.volume}dB`);
+        // Select BGM based on mode
+        const bgmPlayer = state.isTutorial ? bgPlayers.tutorial : bgPlayers.standard;
         
-        // Reset per-track filters
-        Object.values(bgFilters).forEach(f => { f.frequency.value = 20000; });
-        
-        if (state.isTutorial) {
-            // === TUTORIAL MODE: Original 4 fixed tracks ===
-            bgPlayers.drums.volume.value = 0;
-            bgPlayers.melody.volume.value = randomVolume(-6, -2);
-            bgPlayers.rhythm.volume.value = randomVolume(-6, -2);
-            bgPlayers.bass.volume.value = randomVolume(-4, 0);
-            
-            Object.values(bgPlayers).forEach(p => {
-                if(p && p.loaded) {
-                    // CRITICAL: Set playbackRate to 1 RIGHT BEFORE starting
-                    p.playbackRate = 1;
-                    Tone.Transport.schedule((t) => { 
-                        p.playbackRate = 1; // Ensure rate is 1 at start time
-                        console.log(`▶️ Starting BGM player at rate: ${p.playbackRate}`);
-                        p.start(t, 0).stop(t + TOTAL_DURATION); 
-                    }, 0);
-                }
-            });
-        } else {
-            // === STANDARD MODE: Random selection from expanded pool ===
-            // Select 1 random drum from DB1/DB2
-            const selectedDrum = BGM_DRUMS_POOL[Math.floor(Math.random() * BGM_DRUMS_POOL.length)];
-            
-            // Select 3 random guitars from 5
-            const shuffledGuitars = [...BGM_GUITAR_POOL].sort(() => Math.random() - 0.5);
-            const selectedGuitars = shuffledGuitars.slice(0, 3);
-            
-            const selectedTracks = [selectedDrum, ...selectedGuitars];
-            console.log(`🎸 Selected tracks: ${selectedTracks.join(', ')}`);
-            
-            // Schedule each selected track with random volume (-6 to -12 dB)
-            selectedTracks.forEach(trackKey => {
-                try {
-                    if (bgmPool && bgmPool.has(trackKey)) {
-                        const player = bgmPool.player(trackKey);
-                        // Check if buffer is loaded before playing
-                        if (player && player.buffer && player.buffer.loaded) {
-                            player.loop = true; // Ensure looping
-                            player.volume.value = randomVolume(-12, -6);
-                            // CRITICAL: Set playbackRate to 1 RIGHT BEFORE scheduling
-                            player.playbackRate = 1;
-                            activeBgmPlayers.push(player);
-                            Tone.Transport.schedule((t) => { 
-                                player.playbackRate = 1; // Ensure rate is 1 at start time
-                                console.log(`▶️ Starting ${trackKey} at rate: ${player.playbackRate}`);
-                                player.start(t, 0).stop(t + TOTAL_DURATION); 
-                            }, 0);
-                        } else {
-                            console.warn(`⚠️ Track ${trackKey} buffer not loaded, skipping`);
-                        }
-                    } else {
-                        console.warn(`⚠️ Track ${trackKey} not found in bgmPool`);
-                    }
-                } catch(e) {
-                    console.error(`❌ Error playing track ${trackKey}:`, e);
-                }
-            });
-            
-            // Set item sounds volume to fixed -6 dB for each item
-            if (samplePlayers) {
-                state.placedItems.forEach(item => {
-                    const id = item.data.id;
-                    if (samplePlayers.has(id)) {
-                        const player = samplePlayers.player(id);
-                        player.volume.value = -6; // Fixed -6 dB
-                        player.playbackRate = 1; // CRITICAL: Reset rate when setting volume
-                    }
-                });
-            }
+        if (bgmPlayer && bgmPlayer.loaded) {
+            bgmPlayer.playbackRate = 1;
+            bgmPlayer.volume.value = -8; // BGM is quiet background
+            Tone.Transport.schedule((t) => { 
+                bgmPlayer.start(t, 0).stop(t + TOTAL_DURATION); 
+            }, 0);
+            console.log(`▶️ V26.0 Playing ${state.isTutorial ? 'tutorial' : 'standard'} BGM`);
         }
         
-        // Item-specific effects (these trigger during playback)
-        // Store tier baseline for restoration after item effects
-        const tierFilterBaseline = tierCfg.filter;
-        effects.phaser.wet.value = 0;
-        
+        // Schedule item sounds - these are the MAIN audio content
         state.placedItems.forEach(item => {
-            const start = item.start * TICK_DURATION; const duration = item.data.len * TICK_DURATION; const id = item.data.id;
+            const start = item.start * TICK_DURATION;
+            const id = item.data.id;
+            
             Tone.Transport.schedule((time) => { 
-                if (samplePlayers.has(id)) {
+                if (samplePlayers && samplePlayers.has(id)) {
                     const player = samplePlayers.player(id);
-                    player.playbackRate = 1; // CRITICAL: Ensure rate is 1 at start time
+                    player.playbackRate = 1;
+                    player.volume.value = -2; // Items are louder than BGM
                     player.start(time);
                 }
             }, start);
-            
-            // Master Clock (SB4): dramatic low-pass sweep on BGM
-            if (id === "SB4") { 
-                Tone.Transport.schedule(t => effects.masterFilter.frequency.rampTo(400, 0.2, t), start); 
-                Tone.Transport.schedule(t => effects.masterFilter.frequency.rampTo(tierFilterBaseline, 0.2, t), start + duration); 
-            }
-            // Quantizer (SB5): phaser effect
-            else if (id === "SB5") { 
-                if (start % 8 === 0) { 
-                    Tone.Transport.schedule(t => effects.phaser.wet.rampTo(0.6, 0.2, t), start); 
-                    Tone.Transport.schedule(t => effects.phaser.wet.rampTo(0, 0.2, t), start + duration); 
-                } 
-            }
-            // Time Stretch (EB5): lo-fi effect
-            else if (id === "EB5") { 
-                const loFiBits = Math.max(4, tierCfg.bits - 8);
-                Tone.Transport.schedule(t => { effects.crusher.bits.value = loFiBits; }, start); 
-                Tone.Transport.schedule(t => { effects.crusher.bits.value = tierCfg.bits; }, start + duration); 
-            }
         });
     }
 
@@ -1444,15 +1947,11 @@
         if(state.isPlaying) return;
         state.isSimulation = !!isSim; state.isPlaying = true; isSkipping = false;
         
-        // CRITICAL: Reset playback speed at the START of every playback
-        // This prevents fast-forward from persisting between playbacks
+        // V26.0: Reset playback speed at the START of every playback
         playbackSpeed = 1;
         speedChangeTime = 0;
         positionAtSpeedChange = 0;
         Object.values(bgPlayers).forEach(p => { if(p) p.playbackRate = 1; });
-        activeBgmPlayers.forEach(p => { if(p) p.playbackRate = 1; });
-        if(losePlayer) losePlayer.playbackRate = 1;
-        // Reset samplePlayers (item sounds) playback rate
         if(samplePlayers) {
             Object.keys(samplePlayers._players || {}).forEach(key => {
                 const player = samplePlayers.player(key);
@@ -1668,22 +2167,12 @@
         speedChangeTime = Date.now();
         playbackSpeed = 8; // 8x speed (2 seconds total)
         
-        // Speed up audio players (BGM) - both tutorial and standard mode
-        // IMPORTANT: Set rate for ALL players, not just "started" ones
+        // V26.0: Speed up audio players
         Object.values(bgPlayers).forEach(p => { 
-            if(p) {
-                // Set rate even if not started yet - it will apply when it starts
-                p.playbackRate = 8;
-            }
+            if(p) p.playbackRate = 8;
         });
-        activeBgmPlayers.forEach(p => { 
-            if(p) {
-                p.playbackRate = 8;
-            }
-        });
-        if(losePlayer) losePlayer.playbackRate = 8;
         
-        // Also speed up samplePlayers (item sounds) that are currently playing
+        // Speed up samplePlayers (item sounds)
         if(samplePlayers) {
             Object.keys(samplePlayers._players || {}).forEach(key => {
                 const player = samplePlayers.player(key);
@@ -1696,7 +2185,7 @@
         // Calculate remaining time at 8x speed
         if (playbackTimer) clearTimeout(playbackTimer);
         const remaining = Math.max(0, TOTAL_DURATION * (1 - positionAtSpeedChange));
-        const fastRemaining = remaining / 8; // 8x speed for remaining portion
+        const fastRemaining = remaining / 8;
         
         playbackTimer = setTimeout(finishPlayback, (fastRemaining * 1000) + 100);
         
@@ -1704,32 +2193,15 @@
     }
     
     function resetAudioEffects() {
-        // Reset all effects to normal (no tier modifications)
-        // Called after playback ends so clicking items sounds normal
-        if (effects.masterFilter) effects.masterFilter.frequency.value = 20000;
-        if (effects.crusher) effects.crusher.bits.value = 16;
-        if (effects.reverb) effects.reverb.wet.value = 0;
-        if (effects.masterGain) effects.masterGain.gain.value = 1;
-        if (effects.phaser) effects.phaser.wet.value = 0;
-        
-        // Reset playback speed
+        // V26.0: Reset all audio effects and playback rates
+        resetItemEffects();
         playbackSpeed = 1;
         speedChangeTime = 0;
         positionAtSpeedChange = 0;
         Object.values(bgPlayers).forEach(p => { if(p) p.playbackRate = 1; });
-        activeBgmPlayers.forEach(p => { if(p) p.playbackRate = 1; });
-        if(losePlayer) losePlayer.playbackRate = 1;
-        // Reset samplePlayers rates
         if(samplePlayers) {
             Object.keys(samplePlayers._players || {}).forEach(key => {
                 const player = samplePlayers.player(key);
-                if(player) player.playbackRate = 1;
-            });
-        }
-        // Reset bgmPool rates
-        if(bgmPool) {
-            Object.keys(bgmPool._players || {}).forEach(key => {
-                const player = bgmPool.player(key);
                 if(player) player.playbackRate = 1;
             });
         }
@@ -1738,39 +2210,23 @@
     function finishPlayback() {
         Tone.Transport.stop(); Tone.Transport.cancel(); 
         
-        // Stop all players and IMMEDIATELY reset their playback rates
+        // V26.0: Stop all players and reset their playback rates
         Object.values(bgPlayers).forEach(p => { 
             if(p) {
                 p.stop();
-                p.playbackRate = 1; // Reset immediately after stopping
+                p.playbackRate = 1;
             }
         }); 
-        if(bgmPool) {
-            bgmPool.stopAll();
-            // Reset all bgmPool players' rates immediately
-            Object.keys(bgmPool._players || {}).forEach(key => {
-                const player = bgmPool.player(key);
-                if(player) {
-                    player.playbackRate = 1;
-                }
-            });
-        }
-        activeBgmPlayers = [];
-        if(losePlayer) {
-            losePlayer.stop();
-            losePlayer.playbackRate = 1;
-        }
         if(samplePlayers) {
             samplePlayers.stopAll();
-            // Reset all samplePlayers rates immediately
             Object.keys(samplePlayers._players || {}).forEach(key => {
                 const player = samplePlayers.player(key);
                 if(player) player.playbackRate = 1;
             });
         }
         
-        // Reset effects so clicking items sounds normal
-        resetAudioEffects();
+        // Reset item effects
+        resetItemEffects();
         
         if (visualInterval) clearInterval(visualInterval); 
         document.querySelectorAll('.placed-item').forEach(el => el.classList.remove('playing-active'));
@@ -1781,7 +2237,7 @@
         state.isPlaying = false; 
         document.getElementById('mainContainer').classList.remove('playing-lock'); 
         document.getElementById('mainSubmitBtn').disabled = false; 
-        document.getElementById('mainSubmitBtn').innerText = UI_TEXT[state.lang].submit; 
+        updateSubmitButtonText(); 
         document.querySelectorAll('.engine-aura').forEach(el=>el.remove());
         activeAuras = []; 
         isSkipping = false; // Reset skip flag
@@ -1930,7 +2386,9 @@
         const t = UI_TEXT[state.lang];
         ['txtClear','lblCpu','lblTarget','lblInventory','lblShop','txtUpCpu','txtHistory'].forEach(id => { const el = document.getElementById(id); if(el) el.innerText = t[id.replace('txt','').replace('lbl','').toLowerCase()] || t[id.toLowerCase()]; });
         document.getElementById('btnReroll').innerText = `${t.reroll} (10G)`; document.getElementById('detailTitle').innerText = t.ready; document.getElementById('detailContent').innerHTML = t.readyDesc;
-        document.getElementById('lblLevel').innerText = t.level; document.getElementById('lblTracks').innerText = t.tracks; document.getElementById('mainSubmitBtn').innerText = t.submit;
+        document.getElementById('lblLevel').innerText = t.level; document.getElementById('lblTracks').innerText = t.tracks;
+        // V26.0: Tutorial 1-3 shows "视听/PREVIEW", Tutorial 4+ and Standard shows "提交/SUBMIT"
+        updateSubmitButtonText();
         document.getElementById('txtStartMsg').innerText = t.startTitle; document.getElementById('btnStartGame').innerText = t.startGame; document.getElementById('resTitle').innerText = t.report;
         document.getElementById('lblResTarget').innerText = t.resTarget; document.getElementById('lblResTotal').innerText = t.resTotal; document.getElementById('nextLevelBtn').innerText = t.nextLevel;
         document.getElementById('finishGameBtn').innerText = t.victory; document.getElementById('retryLevelBtn').innerText = t.retry; document.getElementById('dieBtn').innerText = t.acceptFate;
@@ -2001,6 +2459,8 @@
         applyLevelConfig(idx); 
         if (idx > 0) forceTutorialShop(idx, isRetry); 
         else { state.currentShopItems = []; renderShopFromState(); }
+        // V26.0: Update submit button text
+        updateSubmitButtonText();
         // Start strong guide after a short delay (only if not retry)
         if (!isRetry) setTimeout(() => startLevelGuide(idx), 500);
     }
@@ -2148,31 +2608,103 @@
         runPlaybackSequence(true); 
     }
     
-    // Submit confirmation system (only for standard game, not tutorial)
+    // === V26.0 SUBMIT SYSTEM ===
+    // Tutorial 1-3: "视听" mode - preview only, auto-advance if score met
+    // Tutorial 4 + Standard: Enter Performance Stage
     function trySubmit() {
         if (state.isPlaying) return;
+        
         if (state.isTutorial) {
-            // Tutorial Level 4: Must simulate and reach target score first
-            if (state.levelIndex === 3) {
+            if (state.levelIndex <= 2) {
+                // Tutorial 1-3: Preview mode (视听)
+                // Play audio and show score, auto-advance if target met
+                runTutorialPreview();
+            } else {
+                // Tutorial 4: Enter Performance Stage
+                // Must simulate first
                 const simScore = tutorialState.l4.simScore;
                 if (simScore === null || simScore < config.target) {
                     showSimRequired();
                     return;
                 }
+                enterPerformanceStage();
             }
-            // Tutorial mode: no confirmation needed
-            runPlaybackSequence(false);
         } else {
-            // Standard mode: show confirmation dialog
+            // Standard mode: confirmation then Performance Stage
             document.getElementById('confirmSubmitModal').style.display = 'flex';
         }
     }
+    
     function cancelSubmit() {
         document.getElementById('confirmSubmitModal').style.display = 'none';
     }
+    
     function confirmSubmit() {
         document.getElementById('confirmSubmitModal').style.display = 'none';
-        runPlaybackSequence(false);
+        enterPerformanceStage();
+    }
+    
+    // Tutorial 1-3: Preview mode - now uses full simulation like normal mode
+    async function runTutorialPreview() {
+        // Use the same simulation flow as normal mode
+        // This allows fast-forward, result screen, and history viewing
+        checkGuideAction('simulate');
+        
+        // Mark as simulation so it shows result screen
+        state.isSimulation = true;
+        state.tutorialPreviewMode = true; // Special flag for tutorial preview
+        
+        runPlaybackSequence(true); // true = simulation mode
+    }
+    
+    // Called when tutorial preview finishes (from finishPlayback -> showResult)
+    // We override the result behavior for tutorial 1-3
+    function handleTutorialPreviewResult(totalScore) {
+        const isWin = totalScore >= config.target;
+        
+        if (isWin) {
+            // Auto advance after player closes result
+            state.pendingTutorialAdvance = true;
+            state.pendingReward = TUTORIAL_CONFIG[state.levelIndex].reward;
+        }
+    }
+    
+    // Show floating text on main screen
+    function showFloatText(text, color) {
+        const float = document.createElement('div');
+        float.className = 'floating-text';
+        float.innerText = text;
+        float.style.color = color;
+        float.style.left = '50%';
+        float.style.top = '40%';
+        float.style.transform = 'translateX(-50%)';
+        float.style.fontSize = '28px';
+        document.body.appendChild(float);
+        setTimeout(() => float.remove(), 1500);
+    }
+    
+    // V26.0: Update submit button text based on mode
+    function updateSubmitButtonText() {
+        const btn = document.getElementById('mainSubmitBtn');
+        if (!btn) return;
+        
+        if (state.isTutorial && state.levelIndex <= 2) {
+            // Tutorial 1-3: Preview mode
+            btn.innerText = state.lang === 'cn' ? '视听' : 'PREVIEW';
+        } else {
+            // Tutorial 4+ and Standard: Submit mode
+            btn.innerText = state.lang === 'cn' ? '提交' : 'SUBMIT';
+        }
+    }
+    
+    // Enter Performance Stage
+    function enterPerformanceStage() {
+        showPerformanceStage();
+        
+        // Start playback after a short delay
+        setTimeout(() => {
+            startStagePlayback();
+        }, 500);
     }
     
     // Tutorial L4: Simulate required modal
@@ -2427,17 +2959,41 @@
             document.getElementById('campaignStatusContainer').style.display = 'none';
             document.querySelector('#resultModal .modal-content > div:nth-child(4)').style.display = 'none'; // Hide target row
             
-            outcomeEl.innerText = state.lang === 'cn' ? '数据分析' : 'DATA ANALYSIS'; 
-            outcomeEl.style.color = "#aaa"; 
-            outcomeEl.style.fontSize = '24px';
-            info.innerHTML = `<span style="font-size:18px; color:#888;">${state.lang === 'cn' ? '总分' : 'Total'}:</span> <span style="font-size:36px; color:gold; font-weight:bold;">${Math.floor(totalScore)}</span>`;
+            // Tutorial 1-3: Show pass/fail status and allow advancement
+            if (state.isTutorial && state.levelIndex <= 2 && state.tutorialPreviewMode) {
+                const isWinTut = totalScore >= config.target;
+                if (isWinTut) {
+                    outcomeEl.innerHTML = `<span style="color:#4caf50">✓</span> ${state.lang === 'cn' ? '达标' : 'TARGET MET'}`;
+                    outcomeEl.style.color = "#4caf50";
+                    outcomeEl.style.fontSize = '24px';
+                    const reward = TUTORIAL_CONFIG[state.levelIndex].reward;
+                    info.innerHTML = `<span style="font-size:18px; color:#888;">${state.lang === 'cn' ? '总分' : 'Total'}:</span> <span style="font-size:36px; color:gold; font-weight:bold;">${Math.floor(totalScore)}</span><br><span style="color:#4caf50; font-size:16px;">+${reward}G</span>`;
+                    
+                    // Show "Next Level" button instead of "Back"
+                    document.getElementById('nextLevelBtn').style.display = "block";
+                    document.getElementById('nextLevelBtn').innerText = state.lang === 'cn' ? '下一关' : 'NEXT LEVEL';
+                    state.pendingReward = reward;
+                } else {
+                    outcomeEl.innerHTML = `<span style="color:#f44336">✗</span> ${state.lang === 'cn' ? '未达标' : 'NOT MET'}`;
+                    outcomeEl.style.color = "#f44336";
+                    outcomeEl.style.fontSize = '24px';
+                    info.innerHTML = `<span style="font-size:18px; color:#888;">${state.lang === 'cn' ? '总分' : 'Total'}:</span> <span style="font-size:36px; color:gold; font-weight:bold;">${Math.floor(totalScore)}</span><br><span style="color:#888; font-size:14px;">${state.lang === 'cn' ? '调整道具布局后再试' : 'Adjust your layout and try again'}</span>`;
+                    document.getElementById('simCloseBtn').style.display = "block";
+                }
+                state.tutorialPreviewMode = false;
+            } else {
+                outcomeEl.innerText = state.lang === 'cn' ? '数据分析' : 'DATA ANALYSIS'; 
+                outcomeEl.style.color = "#aaa"; 
+                outcomeEl.style.fontSize = '24px';
+                info.innerHTML = `<span style="font-size:18px; color:#888;">${state.lang === 'cn' ? '总分' : 'Total'}:</span> <span style="font-size:36px; color:gold; font-weight:bold;">${Math.floor(totalScore)}</span>`;
+                document.getElementById('simCloseBtn').style.display = "block";
+            }
             
             // Tutorial L4: Record simulation score for submit gate
             if (state.isTutorial && state.levelIndex === 3) {
                 tutorialState.l4.simScore = totalScore;
             }
             
-            document.getElementById('simCloseBtn').style.display = "block"; 
             renderResultGrid(state.lastResultData); 
             document.getElementById('resultModal').style.display = 'flex'; 
             
@@ -2936,6 +3492,840 @@
                 container.appendChild(textNode);
             }
         });
+    }
+    
+    // ===========================================
+    // === V26.0 PERFORMANCE STAGE SYSTEM ===
+    // ===========================================
+    
+    // Performance Stage configuration (based on image analysis)
+    // Image size: 3885 x 2145
+    const STAGE_CONFIG = {
+        imgWidth: 3885,
+        imgHeight: 2145,
+        // Computer screen area (where DAW is rendered)
+        computer: { x: 1340, y: 1580, w: 1200, h: 420 },
+        // Heart center position
+        heartCenter: { x: 1942, y: 1050 },
+        // Small heart positions (particle endpoints)
+        judgeHearts: {
+            left: { x: 520, y: 880 },
+            center: { x: 1942, y: 470 },
+            right: { x: 3360, y: 880 }
+        },
+        // Particle start point (bottom of heart, where lines connect to computer)
+        particleStart: { x: 1942, y: 1400 }
+    };
+    
+    // Performance stage state
+    let stageState = {
+        active: false,
+        currentScore: 0,
+        targetScore: 0,
+        currentExpression: 'neutral', // 'neutral', 'happy', 'angry'
+        expressionCheckInterval: null,
+        playbackInterval: null,
+        playbackStartTime: 0,
+        resultData: null,
+        particles: []
+    };
+    
+    // Convert image coordinates to screen percentage
+    function imgToScreen(x, y) {
+        return {
+            x: (x / STAGE_CONFIG.imgWidth) * 100,
+            y: (y / STAGE_CONFIG.imgHeight) * 100
+        };
+    }
+    
+    // Initialize and show Performance Stage
+    function showPerformanceStage() {
+        const stage = document.getElementById('performanceStage');
+        stage.classList.add('active');
+        stageState.active = true;
+        stageState.currentScore = 0;
+        stageState.targetScore = config.target;
+        stageState.currentExpression = 'neutral';
+        
+        // Position computer screen to match the monitor in the image
+        // Based on image analysis: monitor is roughly at bottom 25% center
+        const computerScreen = document.getElementById('stageComputerScreen');
+        computerScreen.style.left = '35%';
+        computerScreen.style.top = '73%';
+        computerScreen.style.width = '30%';
+        computerScreen.style.height = '18%';
+        
+        // Update score label
+        document.getElementById('heartScoreLabel').innerText = 'Total Groove';
+        document.getElementById('heartScoreValue').innerText = '0';
+        
+        // Reset expression to neutral
+        setExpression('neutral');
+        
+        // Render DAW in computer screen (same style as main DAW)
+        renderStageDAW();
+        
+        // Calculate result data
+        stageState.resultData = calculateLogic();
+        stageState.resultData.forEach(r => r.stageTriggered = false);
+        
+        console.log('🎭 Performance Stage opened');
+    }
+    
+    // Set judge expression
+    function setExpression(expr) {
+        if (expr === stageState.currentExpression) return;
+        stageState.currentExpression = expr;
+        
+        const bgNeutral = document.getElementById('stageBgNeutral');
+        const bgHappy = document.getElementById('stageBgHappy');
+        const bgAngry = document.getElementById('stageBgAngry');
+        
+        bgNeutral.classList.toggle('hidden', expr !== 'neutral');
+        bgHappy.classList.toggle('hidden', expr !== 'happy');
+        bgAngry.classList.toggle('hidden', expr !== 'angry');
+        
+        console.log(`😊 Expression changed to: ${expr}`);
+    }
+    
+    // Check expression based on current score vs expected score at current time
+    function checkExpression(elapsedTime) {
+        const progress = elapsedTime / TOTAL_DURATION;
+        const expectedScore = stageState.targetScore * progress;
+        const ratio = stageState.currentScore / expectedScore;
+        
+        // ±10% = neutral, <90% = angry, >110% = happy
+        if (ratio < 0.9) {
+            setExpression('angry');
+        } else if (ratio > 1.1) {
+            setExpression('happy');
+        } else {
+            setExpression('neutral');
+        }
+    }
+    
+    // Render DAW tracks in computer screen
+    function renderStageDAW() {
+        const container = document.getElementById('stageDawContainer');
+        container.innerHTML = '<div class="stage-playhead" id="stagePlayhead"></div>';
+        
+        const trackCount = config.activeTracks;
+        const trackHeight = 100 / trackCount;
+        
+        for (let t = 0; t < trackCount; t++) {
+            const track = document.createElement('div');
+            track.className = 'stage-track';
+            track.style.height = trackHeight + '%';
+            track.style.top = (t * trackHeight) + '%';
+            track.style.position = 'absolute';
+            track.style.left = '0';
+            track.style.right = '0';
+            
+            // Add grid cells
+            for (let i = 0; i < TICKS; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'stage-grid-cell';
+                if (Math.floor(i / 4) % 2 === 0) cell.classList.add('cell-strong');
+                cell.style.left = (i / TICKS * 100) + '%';
+                cell.style.width = (100 / TICKS) + '%';
+                track.appendChild(cell);
+            }
+            
+            container.appendChild(track);
+        }
+        
+        // Add placed items
+        state.placedItems.forEach(item => {
+            const el = document.createElement('div');
+            el.className = 'stage-placed-item';
+            el.style.backgroundColor = item.data.color;
+            el.style.left = (item.start / TICKS * 100) + '%';
+            el.style.width = (item.data.len / TICKS * 100) + '%';
+            el.style.top = (item.track * trackHeight + trackHeight * 0.2) + '%';
+            el.style.height = (trackHeight * 0.6) + '%';
+            el.innerText = item.data.name[state.lang];
+            el.id = 'stage-item-' + item.start + '-' + item.track;
+            container.appendChild(el);
+        });
+    }
+    
+    // Start performance stage playback
+    async function startStagePlayback() {
+        if (!stageState.active) return;
+        
+        await initAudio();
+        
+        // Pre-calculate total score
+        let totalScore = 0;
+        stageState.resultData.forEach(r => {
+            totalScore += (r.base + r.bonus) * r.mult * r.finalMultiplier;
+        });
+        
+        // Apply tier effects
+        const scoreRatio = totalScore / config.target;
+        applyItemTierEffects(scoreRatio);
+        
+        // Schedule audio
+        Tone.Transport.cancel();
+        Tone.Transport.stop();
+        Tone.Transport.position = 0;
+        
+        // Play BGM
+        const bgmPlayer = state.isTutorial ? bgPlayers.tutorial : bgPlayers.standard;
+        if (bgmPlayer && bgmPlayer.loaded) {
+            bgmPlayer.playbackRate = 1;
+            bgmPlayer.volume.value = -8;
+            Tone.Transport.schedule((t) => { 
+                bgmPlayer.start(t, 0).stop(t + TOTAL_DURATION); 
+            }, 0);
+        }
+        
+        // Schedule item sounds
+        state.placedItems.forEach(item => {
+            const start = item.start * TICK_DURATION;
+            const id = item.data.id;
+            Tone.Transport.schedule((time) => { 
+                if (samplePlayers && samplePlayers.has(id)) {
+                    const player = samplePlayers.player(id);
+                    player.playbackRate = 1;
+                    player.volume.value = -2;
+                    player.start(time);
+                }
+            }, start);
+        });
+        
+        Tone.Transport.start();
+        stageState.playbackStartTime = Date.now();
+        
+        // Start visual update loop
+        stageState.playbackInterval = setInterval(() => {
+            updateStageVisuals();
+        }, 50);
+        
+        // Start expression check every 3 seconds
+        stageState.expressionCheckInterval = setInterval(() => {
+            const elapsed = (Date.now() - stageState.playbackStartTime) / 1000;
+            checkExpression(elapsed);
+        }, 3000);
+        
+        // End playback after duration
+        setTimeout(() => {
+            finishStagePlayback();
+        }, TOTAL_DURATION * 1000 + 200);
+    }
+    
+    // Update stage visuals during playback
+    function updateStageVisuals() {
+        if (!stageState.active) return;
+        
+        const elapsed = (Date.now() - stageState.playbackStartTime) / 1000;
+        const progress = Math.min(elapsed / TOTAL_DURATION, 1);
+        
+        // Update playhead
+        const playhead = document.getElementById('stagePlayhead');
+        if (playhead) playhead.style.left = (progress * 100) + '%';
+        
+        // Check for item triggers
+        const currentTick = progress * TICKS;
+        
+        stageState.resultData.forEach((r, idx) => {
+            if (r.stageTriggered) return;
+            
+            const item = r.record;
+            if (currentTick >= item.start) {
+                r.stageTriggered = true;
+                
+                // Highlight item with enhanced effect
+                const itemEl = document.getElementById('stage-item-' + item.start + '-' + item.track);
+                if (itemEl) {
+                    itemEl.classList.add('playing-active');
+                    setTimeout(() => itemEl.classList.remove('playing-active'), 400);
+                    
+                    // Show floating text on DAW item
+                    const itemScore = Math.floor((r.base + r.bonus) * r.mult * r.finalMultiplier);
+                    if (r.record.data.type === 'score' && itemScore > 0) {
+                        spawnStageDawFloat(itemEl, '+' + itemScore, 'score');
+                    } else if (r.buffsGiven && r.buffsGiven.length > 0) {
+                        spawnStageDawFloat(itemEl, 'Buff!', 'buff');
+                        // Draw beam connections to buffed items
+                        r.buffsGiven.forEach(b => {
+                            const targetRes = stageState.resultData[b.targetIdx];
+                            if (targetRes) {
+                                const targetEl = document.getElementById('stage-item-' + targetRes.record.start + '-' + targetRes.record.track);
+                                if (targetEl) {
+                                    spawnStageDawBeam(itemEl, targetEl);
+                                }
+                            }
+                        });
+                    }
+                }
+                
+                // Calculate score for this item
+                const itemScore = Math.floor((r.base + r.bonus) * r.mult * r.finalMultiplier);
+                
+                if (r.record.data.type === 'score' && itemScore > 0) {
+                    // Add to total score
+                    stageState.currentScore += itemScore;
+                    document.getElementById('heartScoreValue').innerText = Math.floor(stageState.currentScore);
+                    
+                    // Spawn beam effect
+                    spawnScoreParticle(itemScore, item.track);
+                    
+                    // Pulse heart
+                    pulseHeart(itemScore);
+                    
+                    // Float score text in heart
+                    showFloatScore('+' + itemScore, 'score');
+                } else if (r.buffsGiven && r.buffsGiven.length > 0) {
+                    // Support item - show buff
+                    spawnScoreParticle(0, item.track);
+                    showFloatScore('Buff!', 'buff');
+                }
+            }
+        });
+    }
+    
+    // Spawn floating text on stage DAW item
+    function spawnStageDawFloat(itemEl, text, type) {
+        const daw = document.getElementById('stageDawContainer');
+        if (!daw) return;
+        
+        const rect = itemEl.getBoundingClientRect();
+        const dawRect = daw.getBoundingClientRect();
+        
+        const float = document.createElement('div');
+        float.className = 'stage-daw-float' + (type === 'buff' ? ' buff' : '');
+        float.innerText = text;
+        float.style.left = (rect.left - dawRect.left + rect.width / 2) + 'px';
+        float.style.top = (rect.top - dawRect.top) + 'px';
+        daw.appendChild(float);
+        
+        setTimeout(() => float.remove(), 800);
+    }
+    
+    // Draw beam connection between items on stage DAW
+    function spawnStageDawBeam(fromEl, toEl) {
+        const daw = document.getElementById('stageDawContainer');
+        if (!daw) return;
+        
+        const dawRect = daw.getBoundingClientRect();
+        const fromRect = fromEl.getBoundingClientRect();
+        const toRect = toEl.getBoundingClientRect();
+        
+        const x1 = fromRect.left - dawRect.left + fromRect.width / 2;
+        const y1 = fromRect.top - dawRect.top + fromRect.height / 2;
+        const x2 = toRect.left - dawRect.left + toRect.width / 2;
+        const y2 = toRect.top - dawRect.top + toRect.height / 2;
+        
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const len = Math.sqrt(dx*dx + dy*dy);
+        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        
+        const beam = document.createElement('div');
+        beam.className = 'stage-daw-beam';
+        beam.style.left = x1 + 'px';
+        beam.style.top = y1 + 'px';
+        beam.style.width = len + 'px';
+        beam.style.transform = `rotate(${angle}deg)`;
+        daw.appendChild(beam);
+        
+        setTimeout(() => beam.remove(), 600);
+    }
+    
+    // Pulse the heart based on score amount
+    // Pulse heart based on score - bigger score = stronger pulse
+    function pulseHeart(score) {
+        const heart = document.getElementById('stageHeartContainer');
+        heart.classList.remove('pulse-tiny', 'pulse-small', 'pulse-medium', 'pulse-large', 'pulse-huge');
+        
+        // Trigger reflow
+        void heart.offsetWidth;
+        
+        // More granular pulse based on score
+        if (score >= 80) {
+            heart.classList.add('pulse-huge');
+        } else if (score >= 50) {
+            heart.classList.add('pulse-large');
+        } else if (score >= 30) {
+            heart.classList.add('pulse-medium');
+        } else if (score >= 15) {
+            heart.classList.add('pulse-small');
+        } else {
+            heart.classList.add('pulse-tiny');
+        }
+    }
+    
+    // Show floating score text in heart area
+    function showFloatScore(text, type) {
+        const heartCenter = imgToScreen(STAGE_CONFIG.heartCenter.x, STAGE_CONFIG.heartCenter.y);
+        
+        // Random position within heart area
+        const offsetX = (Math.random() - 0.5) * 10;
+        const offsetY = (Math.random() - 0.5) * 8;
+        
+        const floatEl = document.createElement('div');
+        floatEl.className = 'stage-float-score ' + type;
+        floatEl.innerText = text;
+        floatEl.style.left = (heartCenter.x + offsetX) + '%';
+        floatEl.style.top = (heartCenter.y + offsetY) + '%';
+        
+        document.getElementById('performanceStage').appendChild(floatEl);
+        
+        setTimeout(() => floatEl.remove(), 1200);
+    }
+    
+    // Spawn particle effect from computer to judge heart
+    // Spawn energy beam/ray from computer to judge heart
+    function spawnScoreParticle(score, track) {
+        const container = document.getElementById('stageParticleContainer');
+        const wrapper = document.getElementById('stageWrapper');
+        if (!wrapper) return;
+        
+        const rect = wrapper.getBoundingClientRect();
+        
+        // Start from bottom center (heart bottom, where lines converge)
+        const startX = rect.width * 0.5;
+        const startY = rect.height * 0.62;
+        
+        // Select target based on track - adjusted positions to match judge hearts in image
+        let endX, endY;
+        if (track === 0) {
+            // Left judge heart - more towards center
+            endX = rect.width * 0.22;
+            endY = rect.height * 0.40;
+        } else if (track === 2) {
+            // Right judge heart - more towards center
+            endX = rect.width * 0.78;
+            endY = rect.height * 0.40;
+        } else {
+            // Center judge heart - at top
+            endX = rect.width * 0.5;
+            endY = rect.height * 0.22;
+        }
+        
+        // Control point (heart center area)
+        const ctrlX = rect.width * 0.5;
+        const ctrlY = rect.height * 0.42;
+        
+        // Create beam container
+        const beam = document.createElement('div');
+        beam.className = 'stage-beam';
+        container.appendChild(beam);
+        
+        // Create beam head (bright point)
+        const head = document.createElement('div');
+        head.className = 'stage-beam-head';
+        beam.appendChild(head);
+        
+        // Trail segments for fading effect
+        const trailSegments = [];
+        const maxTrailLength = 80; // pixels
+        let prevX = startX, prevY = startY;
+        
+        // Animate beam along bezier curve - 0.5 seconds
+        const duration = 500;
+        const startTime = Date.now();
+        
+        const animateBeam = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            // Quadratic bezier curve
+            const t = progress;
+            const x = (1-t)*(1-t)*startX + 2*(1-t)*t*ctrlX + t*t*endX;
+            const y = (1-t)*(1-t)*startY + 2*(1-t)*t*ctrlY + t*t*endY;
+            
+            // Position head
+            head.style.left = x + 'px';
+            head.style.top = y + 'px';
+            
+            // Create trail segment
+            if (progress > 0.02 && progress < 1) {
+                const dx = x - prevX;
+                const dy = y - prevY;
+                const len = Math.sqrt(dx*dx + dy*dy);
+                const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                
+                if (len > 2) {
+                    const trail = document.createElement('div');
+                    trail.className = 'stage-beam-trail';
+                    trail.style.left = prevX + 'px';
+                    trail.style.top = prevY + 'px';
+                    trail.style.width = len + 'px';
+                    trail.style.transform = `rotate(${angle}deg)`;
+                    trail.style.opacity = '1';
+                    beam.appendChild(trail);
+                    trailSegments.push({ el: trail, born: Date.now() });
+                }
+            }
+            
+            prevX = x;
+            prevY = y;
+            
+            // Fade out old trail segments (fading tail effect)
+            trailSegments.forEach((seg, i) => {
+                const age = Date.now() - seg.born;
+                const fadeProgress = age / 400; // 0.4s fade
+                const opacity = Math.max(0, 1 - fadeProgress);
+                const scale = Math.max(0.3, 1 - fadeProgress * 0.7);
+                seg.el.style.opacity = opacity;
+                seg.el.style.height = (4 * scale) + 'px';
+                if (fadeProgress >= 1) {
+                    seg.el.remove();
+                    trailSegments.splice(i, 1);
+                }
+            });
+            
+            if (progress < 1) {
+                requestAnimationFrame(animateBeam);
+            } else {
+                // Arrived at target - remove head immediately
+                head.remove();
+                
+                // Let trail fade out over another 0.5s
+                setTimeout(() => {
+                    beam.remove();
+                }, 500);
+            }
+        };
+        
+        requestAnimationFrame(animateBeam);
+    }
+    
+    // Finish stage playback
+    function finishStagePlayback() {
+        if (stageState.playbackInterval) clearInterval(stageState.playbackInterval);
+        if (stageState.expressionCheckInterval) clearInterval(stageState.expressionCheckInterval);
+        
+        Tone.Transport.stop();
+        Object.values(bgPlayers).forEach(p => { if(p) p.stop(); });
+        if (samplePlayers) samplePlayers.stopAll();
+        
+        // Reset item effects
+        resetItemEffects();
+        
+        // Wait a moment then show settlement
+        setTimeout(() => {
+            hidePerformanceStage();
+            showSettlement(stageState.currentScore);
+        }, 500);
+    }
+    
+    // Hide performance stage
+    function hidePerformanceStage() {
+        const stage = document.getElementById('performanceStage');
+        stage.classList.remove('active');
+        stageState.active = false;
+        
+        // Clear particles
+        document.getElementById('stageParticleContainer').innerHTML = '';
+    }
+    
+    // ===========================================
+    // === V26.0 SETTLEMENT SCREEN SYSTEM ===
+    // ===========================================
+    
+    let settlementData = {
+        score: 0,
+        isWin: false,
+        tier: 0,
+        reward: 0,
+        cpuBonus: 0
+    };
+    
+    // Show settlement screen
+    function showSettlement(totalScore) {
+        const isWin = totalScore >= config.target;
+        
+        // Calculate tier
+        let tier = 0;
+        if (totalScore >= config.target * 1.25) tier = 3;
+        else if (totalScore >= config.target * 1.10) tier = 2;
+        else if (totalScore >= config.target) tier = 1;
+        
+        // Calculate rewards based on tier
+        let baseReward = 0;
+        let bonusReward = 0;
+        let cpuBonus = 0;
+        let rareItemProgress = 0;
+        let rareRewardName = null;
+        
+        if (state.isTutorial) {
+            if (isWin) {
+                // Tutorial level 4 (index 3) uses same reward structure as normal levels
+                if (state.levelIndex === 3) {
+                    const tutorialReward = TUTORIAL_CONFIG[state.levelIndex].reward;
+                    if (tier === 1) {
+                        baseReward = Math.floor(tutorialReward * 0.85);
+                    } else if (tier === 2) {
+                        baseReward = Math.floor(tutorialReward * 0.85);
+                        bonusReward = Math.floor(tutorialReward * 0.15);
+                    } else if (tier === 3) {
+                        baseReward = Math.floor(tutorialReward * 0.85);
+                        bonusReward = Math.floor(tutorialReward * 0.15);
+                        cpuBonus = 2;
+                    }
+                } else {
+                    baseReward = TUTORIAL_CONFIG[state.levelIndex].reward;
+                }
+            }
+        } else {
+            const levelBaseReward = LEVEL_CONFIG[state.levelIndex].reward;
+            if (tier === 1) {
+                baseReward = Math.floor(levelBaseReward * 0.85);
+            } else if (tier === 2) {
+                baseReward = Math.floor(levelBaseReward * 0.85);
+                bonusReward = Math.floor(levelBaseReward * 0.15); // Extra for 2-star
+            } else if (tier === 3) {
+                baseReward = Math.floor(levelBaseReward * 0.85);
+                bonusReward = Math.floor(levelBaseReward * 0.15);
+                cpuBonus = 2;
+                
+                // Milestone progress for 3-star: +1 each time, reset to 0 after reaching 2
+                rareItemProgress = state.milestoneProgress + 1;
+                if (rareItemProgress >= 2) {
+                    rareRewardName = grantMilestoneReward();
+                    state.milestoneProgress = 0; // Reset after granting reward
+                    rareItemProgress = 0;
+                } else {
+                    state.milestoneProgress = rareItemProgress; // Update state
+                }
+            }
+        }
+        
+        const totalReward = baseReward + bonusReward;
+        settlementData = { score: totalScore, isWin, tier, reward: totalReward, cpuBonus, rareItemProgress, rareRewardName };
+        
+        // Set background (blurred stage bg)
+        const settleBg = document.getElementById('settlementBg');
+        settleBg.style.backgroundImage = `url('bg_${stageState.currentExpression || 'neutral'}.png')`;
+        
+        // Set stamp
+        const stampCircle = document.getElementById('stampCircle');
+        const stampScore = document.getElementById('stampScore');
+        const stampLabel = document.getElementById('stampLabel');
+        
+        stampCircle.className = 'stamp-circle ' + (isWin ? 'victory' : 'failed');
+        stampScore.innerText = Math.floor(totalScore) + ' / ' + config.target;
+        stampLabel.innerText = isWin ? (state.lang === 'cn' ? '通过' : 'VICTORY') : (state.lang === 'cn' ? '失败' : 'FAILED');
+        
+        // Set stars
+        const starsContainer = document.getElementById('settlementStars');
+        const stars = starsContainer.querySelectorAll('.settlement-star');
+        stars.forEach((star, i) => {
+            star.classList.toggle('earned', i < tier);
+        });
+        
+        // === Render DAW track preview with item names ===
+        renderSettlementDAW();
+        
+        // === Render rewards ===
+        const rewardsList = document.getElementById('rewardsList');
+        rewardsList.innerHTML = '';
+        
+        // Base gold reward
+        if (baseReward > 0) {
+            const row = document.createElement('div');
+            row.className = 'reward-row';
+            row.innerHTML = `<span class="reward-label">${state.lang === 'cn' ? '基础奖励' : 'Base Reward'}</span><span class="reward-value gold">+${baseReward}G</span>`;
+            rewardsList.appendChild(row);
+        }
+        
+        // Bonus gold (2-star+)
+        if (bonusReward > 0) {
+            const row = document.createElement('div');
+            row.className = 'reward-row';
+            row.innerHTML = `<span class="reward-label">${state.lang === 'cn' ? '★★ 额外奖励' : '★★ Bonus'}</span><span class="reward-value gold">+${bonusReward}G</span>`;
+            rewardsList.appendChild(row);
+        }
+        
+        // CPU bonus (3-star)
+        if (cpuBonus > 0) {
+            const row = document.createElement('div');
+            row.className = 'reward-row';
+            row.innerHTML = `<span class="reward-label">${state.lang === 'cn' ? '★★★ CPU奖励' : '★★★ CPU Bonus'}</span><span class="reward-value cpu">+${cpuBonus} CPU</span>`;
+            rewardsList.appendChild(row);
+        }
+        
+        // Rare item reward
+        if (rareRewardName) {
+            const row = document.createElement('div');
+            row.className = 'reward-row';
+            row.innerHTML = `<span class="reward-label">${state.lang === 'cn' ? '稀有道具' : 'Rare Item'}</span><span class="reward-value item">🎁 ${rareRewardName}</span>`;
+            rewardsList.appendChild(row);
+        }
+        
+        // No rewards
+        if (baseReward === 0 && bonusReward === 0 && cpuBonus === 0) {
+            const row = document.createElement('div');
+            row.className = 'reward-row';
+            row.innerHTML = `<span class="reward-label" style="color:#ff5252;">${state.lang === 'cn' ? '无奖励' : 'No Rewards'}</span>`;
+            rewardsList.appendChild(row);
+        }
+        
+        // === Milestone progress (only for 3-star in standard mode) ===
+        const milestoneContainer = document.getElementById('milestoneContainer');
+        if (!state.isTutorial && tier === 3) {
+            milestoneContainer.style.display = 'block';
+            const progress = rareRewardName ? 0 : rareItemProgress;
+            document.getElementById('milestoneLabel').innerText = state.lang === 'cn' 
+                ? `稀有道具进度: ${progress}/2` 
+                : `Rare Item Progress: ${progress}/2`;
+            document.getElementById('milestoneFill').style.width = (progress * 50) + '%';
+        } else {
+            milestoneContainer.style.display = 'none';
+        }
+        
+        // Set progress dots
+        const progressContainer = document.getElementById('settleProgress');
+        progressContainer.innerHTML = '';
+        const levelCount = state.isTutorial ? TUTORIAL_CONFIG.length : LEVEL_CONFIG.length;
+        for (let i = 0; i < levelCount; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'progress-dot';
+            if (i < state.levelIndex) dot.classList.add('done');
+            if (i === state.levelIndex && isWin) dot.classList.add('current', 'done');
+            progressContainer.appendChild(dot);
+        }
+        
+        // Set button
+        const btn = document.getElementById('settlementNextBtn');
+        if (isWin) {
+            btn.className = 'settlement-btn next';
+            btn.innerText = state.lang === 'cn' ? '继续' : 'NEXT';
+        } else {
+            btn.className = 'settlement-btn retry';
+            btn.innerText = state.lang === 'cn' ? '重试' : 'RETRY';
+        }
+        
+        // Show settlement screen with stamp animation
+        document.getElementById('settlementScreen').classList.add('active');
+        
+        // Play stamp sound
+        playStampSound();
+        
+        // Save result data
+        state.lastTotalScore = Math.floor(totalScore);
+        state.lastResultData = stageState.resultData;
+    }
+    
+    // Render DAW tracks in settlement screen
+    function renderSettlementDAW() {
+        const container = document.getElementById('settlementTrackPreview');
+        container.innerHTML = '';
+        
+        const results = stageState.resultData || state.lastResultData || [];
+        const trackCount = config.activeTracks;
+        
+        for (let t = 0; t < trackCount; t++) {
+            const row = document.createElement('div');
+            row.className = 'settle-daw-row';
+            
+            // Grid background
+            const gridBg = document.createElement('div');
+            gridBg.className = 'settle-grid-bg';
+            for (let i = 0; i < TICKS; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'settle-grid-cell';
+                gridBg.appendChild(cell);
+            }
+            row.appendChild(gridBg);
+            
+            // Items on this track
+            const trackItems = results.filter(r => r.record.track === t);
+            trackItems.forEach(r => {
+                const item = r.record;
+                const el = document.createElement('div');
+                el.className = 'settle-item';
+                el.style.backgroundColor = item.data.color;
+                el.style.left = (item.start / TICKS * 100) + '%';
+                el.style.width = (item.data.len / TICKS * 100) + '%';
+                el.innerText = item.data.name[state.lang]; // Show name instead of score
+                
+                // Hover to show details (same as other result screens)
+                el.onmouseenter = () => showResultTooltip(r);
+                el.onmouseleave = () => { document.getElementById('resultTooltip').style.display = 'none'; };
+                
+                // Store reference for tooltip
+                r.resEl = el;
+                
+                row.appendChild(el);
+            });
+            
+            container.appendChild(row);
+        }
+    }
+    
+    // Play stamp sound effect (generated)
+    function playStampSound() {
+        if (!audioInitialized) return;
+        
+        try {
+            // Create a simple stamp sound using oscillators
+            const now = Tone.now();
+            
+            // Thump sound
+            const osc = new Tone.Oscillator(80, 'sine').toDestination();
+            osc.volume.value = -6;
+            osc.start(now);
+            osc.frequency.exponentialRampTo(40, 0.1, now);
+            osc.stop(now + 0.15);
+            
+            // Click sound
+            const noise = new Tone.NoiseSynth({
+                noise: { type: 'white' },
+                envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.01 }
+            }).toDestination();
+            noise.volume.value = -12;
+            noise.triggerAttackRelease('16n', now);
+        } catch(e) {
+            console.log('Stamp sound error:', e);
+        }
+    }
+    
+    // Hide settlement screen
+    function hideSettlement() {
+        document.getElementById('settlementScreen').classList.remove('active');
+    }
+    
+    // Settlement next button handler
+    function settlementNext() {
+        hideSettlement();
+        
+        // Apply rewards
+        if (settlementData.reward > 0) {
+            updateGold(settlementData.reward);
+        }
+        if (settlementData.cpuBonus > 0) {
+            config.maxCpu += settlementData.cpuBonus;
+        }
+        
+        if (settlementData.isWin) {
+            // Progress to next level
+            if (state.isTutorial) {
+                if (state.levelIndex >= TUTORIAL_CONFIG.length - 1) {
+                    showTutorialComplete();
+                } else {
+                    startTutorialLevel(state.levelIndex + 1);
+                }
+            } else {
+                if (state.levelIndex >= LEVEL_CONFIG.length - 1) {
+                    showVictory();
+                } else {
+                    applyLevelConfig(state.levelIndex + 1);
+                }
+            }
+        } else {
+            // Retry or game over
+            if (state.isTutorial) {
+                startTutorialLevel(state.levelIndex, true);
+            } else {
+                showGameOver();
+            }
+        }
+        
+        updateUI();
     }
 </script>
 </body>

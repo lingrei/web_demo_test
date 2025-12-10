@@ -565,18 +565,20 @@
             position: relative;
             z-index: 1;
             display: flex;
-            gap: 30px;
-            align-items: stretch;
-            max-width: 1200px;
-            max-height: 90vh;
+            gap: 40px;
+            align-items: center;
+            justify-content: center;
+            max-width: 1400px;
+            max-height: 95vh;
             overflow: auto;
+            padding-top: 5vh;
         }
         
         .settlement-left {
             display: flex;
             flex-direction: column;
             gap: 15px;
-            flex: 1;
+            flex: 1.2;
             min-width: 500px;
         }
         
@@ -585,9 +587,9 @@
             background: #111;
             border: 2px solid #444;
             border-radius: 8px;
-            padding: 15px;
-            min-width: 500px;
-            margin-top: 30px; /* Move down */
+            padding: 20px;
+            min-width: 600px;
+            margin-top: 20px;
         }
         
         /* Settlement DAW Track display */
@@ -640,19 +642,19 @@
         
         .settlement-stamp {
             position: relative;
-            width: 220px;
-            min-width: 220px;
+            width: 280px;
+            min-width: 280px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: flex-start;
-            padding-top: 20px;
+            justify-content: center;
+            padding-top: 60px;
         }
         
         .stamp-circle {
-            width: 180px;
-            height: 180px;
-            border: 6px solid;
+            width: 240px;
+            height: 240px;
+            border: 8px solid;
             border-radius: 50%;
             display: flex;
             flex-direction: column;
@@ -672,14 +674,14 @@
         }
         
         .stamp-score {
-            font-size: 32px;
+            font-size: 42px;
             font-weight: bold;
         }
         .stamp-label {
-            font-size: 18px;
+            font-size: 24px;
             font-weight: bold;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 3px;
         }
         
         .settlement-right {
@@ -1766,8 +1768,8 @@
         effects.masterGain = new Tone.Gain(1);
         
         // === SIMPLIFIED BGM: One track per mode ===
-        bgPlayers.tutorial = new Tone.Player({ url: AUDIO_SOURCES.bgm_tutorial, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -6 });
-        bgPlayers.standard = new Tone.Player({ url: AUDIO_SOURCES.bgm_standard, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -6 });
+        bgPlayers.tutorial = new Tone.Player({ url: AUDIO_SOURCES.bgm_tutorial, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -3 });
+        bgPlayers.standard = new Tone.Player({ url: AUDIO_SOURCES.bgm_standard, loop: true, fadeOut: 0.1, fadeIn: 0.1, volume: -3 });
         
         // Connect BGM chain
         bgPlayers.tutorial.disconnect(); bgPlayers.tutorial.connect(effects.bgmFilter);
@@ -3548,12 +3550,12 @@
         stageState.currentExpression = 'neutral';
         
         // Position computer screen to match the monitor in the image
-        // Based on image analysis: monitor is roughly at bottom 25% center
+        // Adjusted: wider, taller, moved up to fit within monitor area
         const computerScreen = document.getElementById('stageComputerScreen');
-        computerScreen.style.left = '35%';
-        computerScreen.style.top = '73%';
-        computerScreen.style.width = '30%';
-        computerScreen.style.height = '18%';
+        computerScreen.style.left = '32%';
+        computerScreen.style.top = '66%';
+        computerScreen.style.width = '36%';
+        computerScreen.style.height = '22%';
         
         // Update score label
         document.getElementById('heartScoreLabel').innerText = 'Total Groove';
@@ -4065,6 +4067,16 @@
                         baseReward = Math.floor(tutorialReward * 0.85);
                         bonusReward = Math.floor(tutorialReward * 0.15);
                         cpuBonus = 2;
+                        
+                        // Tutorial level 4 3-star: Give 1/1 rare progress + Pad item
+                        rareItemProgress = 1; // Show as 1/1
+                        // Check if player already has Pad
+                        const hasPad = state.inventory.some(i => i.data.id === 'EB6');
+                        if (!hasPad) {
+                            rareRewardName = DB.find(i => i.id === 'EB6').name[state.lang];
+                            // Add Pad to inventory (will be done in nextLevel)
+                            settlementData.grantPadItem = true;
+                        }
                     }
                 } else {
                     baseReward = TUTORIAL_CONFIG[state.levelIndex].reward;
@@ -4083,11 +4095,15 @@
                 cpuBonus = 2;
                 
                 // Milestone progress for 3-star: +1 each time, reset to 0 after reaching 2
+                // First 3-star: 0 -> 1, display 1/2
+                // Second 3-star: 1 -> 2, display 2/2, then grant reward and reset
                 rareItemProgress = state.milestoneProgress + 1;
                 if (rareItemProgress >= 2) {
+                    // Show 2/2 first, then grant reward
                     rareRewardName = grantMilestoneReward();
+                    // Keep rareItemProgress at 2 for display, reset state after
+                    // rareItemProgress stays at 2 for this settlement display
                     state.milestoneProgress = 0; // Reset after granting reward
-                    rareItemProgress = 0;
                 } else {
                     state.milestoneProgress = rareItemProgress; // Update state
                 }
@@ -4166,13 +4182,24 @@
         
         // === Milestone progress (only for 3-star in standard mode) ===
         const milestoneContainer = document.getElementById('milestoneContainer');
-        if (!state.isTutorial && tier === 3) {
+        // Show milestone for standard levels 3-star, or tutorial level 4 3-star
+        const showMilestone = (tier === 3) && (!state.isTutorial || state.levelIndex === 3);
+        if (showMilestone) {
             milestoneContainer.style.display = 'block';
-            const progress = rareRewardName ? 0 : rareItemProgress;
+            // For tutorial level 4: show 1/1, for standard: show rareItemProgress/2
+            let displayProgress, displayMax;
+            if (state.isTutorial && state.levelIndex === 3) {
+                displayProgress = 1;
+                displayMax = 1;
+            } else {
+                // rareItemProgress is already set correctly (1 or 2)
+                displayProgress = rareItemProgress;
+                displayMax = 2;
+            }
             document.getElementById('milestoneLabel').innerText = state.lang === 'cn' 
-                ? `稀有道具进度: ${progress}/2` 
-                : `Rare Item Progress: ${progress}/2`;
-            document.getElementById('milestoneFill').style.width = (progress * 50) + '%';
+                ? `稀有道具进度: ${displayProgress}/${displayMax}` 
+                : `Rare Item Progress: ${displayProgress}/${displayMax}`;
+            document.getElementById('milestoneFill').style.width = (displayProgress / displayMax * 100) + '%';
         } else {
             milestoneContainer.style.display = 'none';
         }
@@ -4299,6 +4326,12 @@
         }
         if (settlementData.cpuBonus > 0) {
             config.maxCpu += settlementData.cpuBonus;
+        }
+        
+        // Grant Pad item from tutorial 3-star
+        if (settlementData.grantPadItem) {
+            addItemToInventory('EB6', 0);
+            settlementData.grantPadItem = false;
         }
         
         if (settlementData.isWin) {
